@@ -34,4 +34,19 @@ void main() {
     await config.clearSession();
     expect(config.needsOnboarding, isTrue);
   });
+
+  test('debug skip pairing enters shell after sign-in without master key', () async {
+    final storage = MemoryKeyValueStore();
+    final store = LocalBrainStore(databasePath: ':memory:');
+    final config = MobileSyncConfig(storage: storage, localStore: store);
+    await config.hydrate();
+    await config.saveSession(accessToken: 'tok');
+    expect(config.isPaired, isFalse);
+    expect(config.needsOnboarding, isTrue);
+
+    await config.completeOnboardingSkippingPair();
+    expect(config.isPaired, isFalse);
+    expect(config.isConfigured, isFalse);
+    expect(config.needsOnboarding, isFalse);
+  });
 }

@@ -31,6 +31,10 @@ Use after the paste-pairing + cube + offer slice lands on `incubating/mobile`.
 5. **Paste from clipboard** (Mac ↔ Simulator clipboard), or paste JSON into the field → **Use pasted code**.
 6. Pair succeeds → leave pairing screen → **Sync** / Today → memories from desktop appear (or “Up to date”).
 
+### Dev bypass (debug / `flutter run`)
+
+After sign-in, pair step shows **Skip pairing (dev)** → enters the shell without a master key. Sync stays unavailable until a real pair from Settings. Not available in production release / TestFlight.
+
 ### Pass / fail
 
 | Check | Pass? |
@@ -40,6 +44,7 @@ Use after the paste-pairing + cube + offer slice lands on `incubating/mobile`.
 | Field paste pairs | |
 | Bad JSON shows friendly error | |
 | Memories / sync after pair | |
+| Debug: Skip pairing (dev) after account sign-in | |
 
 ## B — TestFlight + device QR smoke
 

@@ -40,6 +40,9 @@ abstract final class SyncUserMessages {
   static const pasteFromClipboard = 'Paste from clipboard';
   static const usePastedCode = 'Use pasted code';
   static const clipboardEmpty = 'Nothing to paste — copy the code from desktop Sync settings first.';
+  static const skipPairingDev = 'Skip pairing (dev)';
+  static const skipPairingDevHint =
+      'Enter the app without desktop sync. Pair later from Settings when you have a code.';
   static const updatingFromDesktop = 'Updating from desktop…';
   static const syncNow = 'Sync now';
   static const firstSyncFailed = 'Couldn\'t update yet.';

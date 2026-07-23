@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/exo_config.dart';
+import '../../app/mobile_sync_config.dart';
 import '../../design/exo_spacing.dart';
 import '../../design/exo_status_banner.dart';
 import '../../design/exo_widgets.dart';
 import '../../sync/sync_errors.dart';
 import '../../sync/user_messages.dart';
 import '../auth/mobile_auth_service.dart';
-import '../../app/mobile_sync_config.dart';
 import '../settings/pairing_screen.dart';
 import 'setup_sign_in_panel.dart';
 
@@ -159,6 +160,10 @@ class _SetupGateState extends State<SetupGate> {
     }
   }
 
+  Future<void> _skipPairDev() async {
+    await widget.config.completeOnboardingSkippingPair();
+  }
+
   Future<void> _runFirstSync() async {
     setState(() {
       _syncing = true;
@@ -200,7 +205,10 @@ class _SetupGateState extends State<SetupGate> {
         onEmailRegister: _emailRegister,
       );
     } else if (!cfg.isPaired) {
-      body = _PairBody(onPair: _pair);
+      body = _PairBody(
+        onPair: _pair,
+        onSkipDev: ExoConfig.allowDevSkipPair ? _skipPairDev : null,
+      );
     } else {
       body = _FirstSyncBody(
         syncing: _syncing,
@@ -229,9 +237,10 @@ class _SetupGateState extends State<SetupGate> {
 }
 
 class _PairBody extends StatelessWidget {
-  const _PairBody({required this.onPair});
+  const _PairBody({required this.onPair, this.onSkipDev});
 
   final VoidCallback onPair;
+  final Future<void> Function()? onSkipDev;
 
   @override
   Widget build(BuildContext context) {
@@ -256,6 +265,18 @@ class _PairBody extends StatelessWidget {
               ),
               const SizedBox(height: ExoSpacing.lg),
               ExoPrimaryButton(label: SyncUserMessages.scanDesktopCode, onPressed: onPair),
+              if (onSkipDev != null) ...[
+                const SizedBox(height: ExoSpacing.md),
+                Text(
+                  SyncUserMessages.skipPairingDevHint,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: ExoSpacing.sm),
+                OutlinedButton(
+                  onPressed: () => onSkipDev!(),
+                  child: const Text(SyncUserMessages.skipPairingDev),
+                ),
+              ],
             ],
           ),
         ),

@@ -54,8 +54,16 @@ class MobileSyncConfig extends ChangeNotifier {
   bool get isConfigured =>
       _cloudUrlSync.isNotEmpty && _tokenSync.isNotEmpty && _paired;
 
-  /// Show guided setup until signed in, paired, and first-sync step finished/skipped.
-  bool get needsOnboarding => !isConfigured || !_onboardingComplete;
+  /// Show guided setup until signed in, paired (or dev skip), and first-sync finished.
+  bool get needsOnboarding {
+    if (!isSignedIn) return true;
+    if (!_paired) {
+      // Debug/dev: signed-in + completeOnboarding (skip pair) may enter the shell.
+      if (ExoConfig.allowDevSkipPair && _onboardingComplete) return false;
+      return true;
+    }
+    return !_onboardingComplete;
+  }
 
   String get syncReadyLabel {
     if (!isSignedIn) return 'Not signed in';
@@ -191,6 +199,14 @@ class MobileSyncConfig extends ChangeNotifier {
     _onboardingComplete = true;
     await _storage.write('setup_onboarding_complete', '1');
     notifyListeners();
+  }
+
+  /// Debug/dev: finish setup without a desktop master key (sync stays unavailable).
+  Future<void> completeOnboardingSkippingPair() async {
+    if (!ExoConfig.allowDevSkipPair) {
+      throw StateError('Dev skip pairing is not allowed in this build');
+    }
+    await completeOnboarding();
   }
 
   Future<void> registerDeviceIfNeeded() async {

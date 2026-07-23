@@ -70,10 +70,11 @@ Optional: `--dart-define=APP_VERSION=0.2.0` (defaults match `pubspec.yaml`). Cra
 
 ## GO SYNC flow
 
-1. **Desktop:** Settings → Sync → enable GO SYNC → **Pair mobile device** QR.
-2. **Mobile (first launch):** guided setup — Apple / Google / email → Scan desktop code → first sync → **Memories**.
-3. **Pull to refresh** on Memories (or AppBar sync) updates the local SQLite cache.
-4. **Sign out** confirms, then clears tokens, master key, pairing, cursor, and local DB.
+1. **Desktop:** Settings → Sync → enable GO SYNC → **Pair mobile device** QR (or **Copy pairing code** for Simulator).
+2. **Mobile (first launch):** guided setup — Apple / Google / email → scan/paste desktop code → first sync → **Memories**.
+3. **Debug only:** after sign-in, **Skip pairing (dev)** enters the shell without a master key (sync off until you pair from Settings). Never in production release / TestFlight unless `EXOSITES_DEV_SKIP_PAIR=true` on a non-production flavor.
+4. **Pull to refresh** on Memories (or AppBar sync) updates the local SQLite cache.
+5. **Sign out** confirms, then clears tokens, master key, pairing, cursor, and local DB.
 
 Tabs after setup: **Today · Memory · Search** (Capture is deferred — not in the tab bar).
 
