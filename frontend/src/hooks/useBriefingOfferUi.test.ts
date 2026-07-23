@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { createElement } from "react";
+import { createElement, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,8 +11,17 @@ let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 let latest: UseBriefingOfferUiReturn | null = null;
 
-function HookProbe({ sendFrame }: { sendFrame: (frame: Record<string, unknown>) => void }) {
-  latest = useBriefingOfferUi({ sendFrame });
+function HookProbe({
+  sendFrame,
+  onResult,
+}: {
+  sendFrame: (frame: Record<string, unknown>) => void;
+  onResult: (api: UseBriefingOfferUiReturn) => void;
+}) {
+  const api = useBriefingOfferUi({ sendFrame });
+  useEffect(() => {
+    onResult(api);
+  });
   return null;
 }
 
@@ -21,7 +30,14 @@ function mount(sendFrame: (frame: Record<string, unknown>) => void) {
   document.body.appendChild(host);
   root = createRoot(host);
   act(() => {
-    root!.render(createElement(HookProbe, { sendFrame }));
+    root!.render(
+      createElement(HookProbe, {
+        sendFrame,
+        onResult: (api) => {
+          latest = api;
+        },
+      }),
+    );
   });
 }
 
