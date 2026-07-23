@@ -214,6 +214,23 @@ async function getPairingQrDataUrl(userData) {
   return { dataUrl };
 }
 
+/**
+ * Copy the same JSON as the QR onto the system clipboard from main.
+ * Renderer never receives master_key_b64 (paste on mobile for Simulator / no-camera).
+ * @param {string} userData
+ * @returns {{ ok: true } | { ok: false, error: string }}
+ */
+function copyPairingPayloadToClipboard(userData) {
+  const { clipboard } = require("electron");
+  try {
+    const payload = getPairingPayload(userData);
+    clipboard.writeText(JSON.stringify(payload));
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err?.message ?? err) };
+  }
+}
+
 module.exports = {
   startSyncWorker,
   stopSyncWorker,
@@ -223,4 +240,5 @@ module.exports = {
   readPrefs,
   getPairingPayload,
   getPairingQrDataUrl,
+  copyPairingPayloadToClipboard,
 };

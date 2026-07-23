@@ -107,6 +107,7 @@
     "shell:showInFolder",
     "sync:getStatus",
     "sync:getPairingQr",
+    "sync:copyPairingPayload",
     "sync:runNow",
     "sync:setEnabled",
     "systemCommand:audit",

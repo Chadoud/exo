@@ -90,6 +90,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   syncSetEnabled: (enabled) => ipcRenderer.invoke("sync:setEnabled", enabled),
   syncRunNow: () => ipcRenderer.invoke("sync:runNow"),
   syncGetPairingQr: () => ipcRenderer.invoke("sync:getPairingQr"),
+  /** Main copies pairing JSON to clipboard — renderer never sees master_key_b64. */
+  syncCopyPairingPayload: () => ipcRenderer.invoke("sync:copyPairingPayload"),
   getRememberDevice: () => ipcRenderer.invoke("cloudSessionPrefs:getRememberDevice"),
   setRememberDevice: (value) => ipcRenderer.invoke("cloudSessionPrefs:setRememberDevice", value),
   telemetrySendBatch: (url, bodyStr) =>

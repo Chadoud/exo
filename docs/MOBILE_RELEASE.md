@@ -55,10 +55,12 @@ Requires `FASTLANE_USER`, App Store Connect API key, and Play service account JS
 
 ## 6. Desktop pairing smoke test
 
+Full checklist: [`runbooks/mobile-pairing-smoke.md`](./runbooks/mobile-pairing-smoke.md).
+
 1. Desktop: Settings → Sync → enable GO SYNC.
-2. Scan **Pair mobile device** QR from desktop.
-3. Mobile: Settings → Pair with desktop → Sync on Today tab.
-4. Confirm memories appear on phone.
+2. **Device / camera:** Mobile Settings → Pair with desktop → scan the QR.
+3. **Simulator / no camera:** Desktop → **Copy pairing code** → Mobile → **Paste from clipboard** (or paste into the field → Use pasted code).
+4. Confirm memories appear on the Today tab after sync.
 
 ## 7. Rollback
 

@@ -526,5 +526,12 @@ export const deSecondBrainLocaleSlice = {
     neverRun: "Noch nicht synchronisiert",
     errorPrefix: "Sync-Problem:",
     runNow: "Jetzt synchronisieren",
+    pairTitle: "Mobilgerät koppeln",
+    pairHint:
+      "Am Telefon: Einstellungen → Mit Desktop koppeln, dann diesen QR scannen — oder Code kopieren und am Telefon einfügen (Simulator / ohne Kamera).",
+    pairQrError: "Kopplungscode konnte nicht erstellt werden. Cloud-URL und Sync prüfen.",
+    pairCopy: "Kopplungscode kopieren",
+    pairCopied: "Kopiert — am Telefon einfügen",
+    pairCopyError: "Code konnte nicht kopiert werden. Erneut versuchen.",
   },
 } as const;

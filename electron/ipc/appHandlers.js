@@ -524,6 +524,12 @@ function registerAppHandlers() {
       return { ok: false, error: String(err?.message ?? err) };
     }
   });
+  ipcMain.handle("sync:copyPairingPayload", async (event) => {
+    const denied = rejectUntrustedSender(event);
+    if (denied) return denied;
+    const userData = app.getPath("userData");
+    return syncWorker.copyPairingPayloadToClipboard(userData);
+  });
 
   ipcMain.handle("accountProfile:getState", (event) => {
     const denied = rejectUntrustedSender(event);

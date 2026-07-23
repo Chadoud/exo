@@ -69,7 +69,8 @@ export function useBriefingOfferUi(options: UseBriefingOfferUiOptions): UseBrief
         break;
       case "briefing_offer_error":
         setPhase("error");
-        setErrorMessage(event.message.trim() || "Couldn't start today's briefing.");
+        // Empty → chrome falls back to t("briefingOffer.error") for locale.
+        setErrorMessage(event.message.trim() || null);
         setConfirmAlwaysOpen(false);
         break;
       case "briefing_offer_clear":

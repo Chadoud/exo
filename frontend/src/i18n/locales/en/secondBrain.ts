@@ -521,5 +521,12 @@ export const enSecondBrainLocaleSlice = {
     neverRun: "Not synced yet",
     errorPrefix: "Sync issue:",
     runNow: "Sync now",
+    pairTitle: "Pair mobile device",
+    pairHint:
+      "On your phone: Settings → Pair with desktop, then scan this QR — or copy the code and paste it on the phone (Simulator / no camera).",
+    pairQrError: "Couldn't create the pairing code. Check cloud URL and sync settings.",
+    pairCopy: "Copy pairing code",
+    pairCopied: "Copied — paste on your phone",
+    pairCopyError: "Couldn't copy the pairing code. Try again.",
   },
 } as const;

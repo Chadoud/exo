@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 
 import 'exo_colors.dart';
+import 'exo_cube_svg.dart';
 
 /// Isometric Exo cube (matches `assets/exo_cube.svg` / favicon) — draws itself.
 class ExoCubeDraw extends StatelessWidget {
   const ExoCubeDraw({
     super.key,
     required this.progress,
-    this.size = 96,
+    this.size = 128,
     this.strokeColor = ExoColors.textPrimary,
-    this.strokeWidth = 2.4,
+    this.strokeWidth = 1.5,
   });
 
   /// 0 = blank, 1 = fully drawn.
@@ -37,53 +38,82 @@ class ExoCubeDraw extends StatelessWidget {
   }
 }
 
-/// Animated boot mark — draws the cube once, then reports completion.
+/// Animated boot mark — stroke-draws the cube, crossfades to filled SVG, then completes.
 class ExoCubeIntro extends StatefulWidget {
   const ExoCubeIntro({
     super.key,
-    this.size = 112,
+    this.size = 168,
     this.duration = const Duration(milliseconds: 1400),
+    this.crossfadeDuration = const Duration(milliseconds: 280),
     this.onComplete,
   });
 
   final double size;
   final Duration duration;
+  final Duration crossfadeDuration;
   final VoidCallback? onComplete;
 
   @override
   State<ExoCubeIntro> createState() => _ExoCubeIntroState();
 }
 
-class _ExoCubeIntroState extends State<ExoCubeIntro> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
+class _ExoCubeIntroState extends State<ExoCubeIntro> with TickerProviderStateMixin {
+  late final AnimationController _drawController = AnimationController(
     vsync: this,
     duration: widget.duration,
+  );
+  late final AnimationController _fadeController = AnimationController(
+    vsync: this,
+    duration: widget.crossfadeDuration,
   );
 
   @override
   void initState() {
     super.initState();
-    _controller.addStatusListener((status) {
+    _drawController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _fadeController.forward();
+      }
+    });
+    _fadeController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         widget.onComplete?.call();
       }
     });
-    _controller.forward();
+    _drawController.forward();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _drawController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _controller,
+      animation: Listenable.merge([_drawController, _fadeController]),
       builder: (context, _) {
-        final t = Curves.easeInOutCubic.transform(_controller.value);
-        return ExoCubeDraw(progress: t, size: widget.size);
+        final t = Curves.easeInOutCubic.transform(_drawController.value);
+        final fade = Curves.easeInOut.transform(_fadeController.value);
+        return SizedBox(
+          width: widget.size,
+          height: widget.size,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Opacity(
+                opacity: 1 - fade,
+                child: ExoCubeDraw(progress: t, size: widget.size),
+              ),
+              Opacity(
+                opacity: fade,
+                child: ExoCubeSvg(size: widget.size),
+              ),
+            ],
+          ),
+        );
       },
     );
   }
@@ -121,27 +151,28 @@ class _ExoCubePainter extends CustomPainter {
   final double strokeWidth;
 
   /// Outer hexagon — drawn in the first ~58% of the animation.
+  /// Geometry matches `assets/exo_cube.svg` (larger inscribed cube in 48×48).
   static Path outerPath() {
     return Path()
-      ..moveTo(24, 8)
-      ..lineTo(38, 16)
-      ..lineTo(38, 32)
-      ..lineTo(24, 40)
-      ..lineTo(10, 32)
-      ..lineTo(10, 16)
+      ..moveTo(24, 5)
+      ..lineTo(41, 15)
+      ..lineTo(41, 33)
+      ..lineTo(24, 43)
+      ..lineTo(7, 33)
+      ..lineTo(7, 15)
       ..close();
   }
 
   /// Internal Y edges — drawn in the remaining ~42%.
   static Path innerPath() {
     return Path()
-      ..moveTo(24, 8)
+      ..moveTo(24, 5)
       ..lineTo(24, 24)
-      ..moveTo(10, 16)
+      ..moveTo(7, 15)
       ..lineTo(24, 24)
-      ..lineTo(38, 16)
+      ..lineTo(41, 15)
       ..moveTo(24, 24)
-      ..lineTo(24, 40);
+      ..lineTo(24, 43);
   }
 
   @override
@@ -149,10 +180,11 @@ class _ExoCubePainter extends CustomPainter {
     final scale = size.shortestSide / 48;
     canvas.scale(scale);
 
+    // strokeWidth is logical px; divide so it does not thicken when size grows.
     final paint = Paint()
       ..color = strokeColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
+      ..strokeWidth = strokeWidth / scale
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..isAntiAlias = true;

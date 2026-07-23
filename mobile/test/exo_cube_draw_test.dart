@@ -1,4 +1,5 @@
 import 'package:exosites_mobile/design/exo_cube_draw.dart';
+import 'package:exosites_mobile/design/exo_cube_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -35,6 +36,7 @@ void main() {
         home: Scaffold(
           body: ExoCubeIntro(
             duration: const Duration(milliseconds: 200),
+            crossfadeDuration: const Duration(milliseconds: 100),
             onComplete: () => done = true,
           ),
         ),
@@ -42,6 +44,16 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
+    expect(done, isFalse);
+    await tester.pump(const Duration(milliseconds: 120));
     expect(done, isTrue);
+    expect(find.byType(ExoCubeSvg), findsOneWidget);
+  });
+
+  test('stroke geometry matches SVG face vertices', () {
+    // Outer hex matches filled SVG paths in assets/exo_cube.svg (viewBox 48×48).
+    expect(exoCubeOuterPathLength(), closeTo(114.0, 8.0));
+    expect(exoCubeInnerPathLength(), closeTo(76.0, 8.0));
   });
 }
+

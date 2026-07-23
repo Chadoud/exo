@@ -25,6 +25,7 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
   const [busy, setBusy] = useState(false);
   const [pairQrDataUrl, setPairQrDataUrl] = useState<string | null>(null);
   const [pairError, setPairError] = useState<string | null>(null);
+  const [copyHint, setCopyHint] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const api = window.electronAPI;
@@ -41,6 +42,7 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
     if (!status.enabled) {
       setPairQrDataUrl(null);
       setPairError(null);
+      setCopyHint(null);
       return;
     }
     const api = window.electronAPI;
@@ -55,13 +57,13 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
           return;
         }
         setPairQrDataUrl(null);
-        setPairError("Could not generate pairing QR. Check cloud URL and sync settings.");
+        setPairError(t("sync.pairQrError"));
       } catch {
         setPairQrDataUrl(null);
-        setPairError("Could not generate pairing QR. Check cloud URL and sync settings.");
+        setPairError(t("sync.pairQrError"));
       }
     })();
-  }, [status.enabled]);
+  }, [status.enabled, t]);
 
   const toggle = async () => {
     if (!canUseSync) return;
@@ -83,6 +85,28 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
     try {
       await api.syncRunNow();
       await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyPairing = async () => {
+    const api = window.electronAPI;
+    if (!api?.syncCopyPairingPayload) {
+      setCopyHint(t("sync.pairCopyError"));
+      return;
+    }
+    setBusy(true);
+    setCopyHint(null);
+    try {
+      const result = await api.syncCopyPairingPayload();
+      if (result && result.ok === true) {
+        setCopyHint(t("sync.pairCopied"));
+        return;
+      }
+      setCopyHint(t("sync.pairCopyError"));
+    } catch {
+      setCopyHint(t("sync.pairCopyError"));
     } finally {
       setBusy(false);
     }
@@ -132,14 +156,23 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
             {t("sync.runNow")}
           </button>
           <div className="rounded-lg border border-border bg-bg-primary/40 p-3">
-            <p className="text-xs font-medium text-text-primary">Pair mobile device</p>
-            <p className="mt-1 text-[11px] text-muted">
-              On your phone: Settings → Pair with desktop, then scan this QR code.
-            </p>
+            <p className="text-xs font-medium text-text-primary">{t("sync.pairTitle")}</p>
+            <p className="mt-1 text-[11px] text-muted">{t("sync.pairHint")}</p>
             {pairError ? <p className="mt-2 text-[11px] text-red-500">{pairError}</p> : null}
             {pairQrDataUrl ? (
-              <img src={pairQrDataUrl} alt="Mobile pairing QR code" className="mt-3 h-[220px] w-[220px] rounded-md bg-white p-2" />
+              <img src={pairQrDataUrl} alt="" className="mt-3 h-[220px] w-[220px] rounded-md bg-white p-2" />
             ) : null}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void copyPairing()}
+                className="inline-flex min-h-10 items-center rounded-lg border border-border bg-bg-card px-3 py-2 text-xs font-medium text-text-primary hover:bg-hover-overlay disabled:opacity-50"
+              >
+                {t("sync.pairCopy")}
+              </button>
+              {copyHint ? <p className="text-[11px] text-muted">{copyHint}</p> : null}
+            </div>
           </div>
         </div>
       ) : null}

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'app/exo_config.dart';
 import 'design/exo_colors.dart';
 import 'design/exo_cube_draw.dart';
+import 'design/exo_cube_svg.dart';
 import 'design/exo_theme.dart';
 import 'features/auth/mobile_auth_service.dart';
 import 'app/mobile_sync_config.dart';
@@ -75,7 +76,7 @@ class _ExositesMobileAppState extends State<ExositesMobileApp> {
     if (_introDone) {
       return const Scaffold(
         backgroundColor: ExoColors.bgPrimary,
-        body: Center(child: ExoCubeDraw(progress: 1, size: 112)),
+        body: Center(child: ExoCubeSvg(size: 168)),
       );
     }
     return ExoBootScreen(onIntroComplete: _onIntroComplete);

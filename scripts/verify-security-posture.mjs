@@ -161,8 +161,10 @@ function read(rel) {
       fail(`${rel} still exposes integrationGetToken`);
     } else if (!src.includes("syncGetPairingQr")) {
       fail(`${rel} missing syncGetPairingQr`);
+    } else if (!src.includes("syncCopyPairingPayload")) {
+      fail(`${rel} missing syncCopyPairingPayload (clipboard via main)`);
     } else {
-      ok(`${rel} pairing QR only; no getToken`);
+      ok(`${rel} pairing QR + clipboard copy; no payload/getToken to renderer`);
     }
   }
 }

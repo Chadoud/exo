@@ -527,5 +527,12 @@ export const frSecondBrainLocaleSlice = {
     neverRun: "Pas encore synchronisé",
     errorPrefix: "Problème de sync :",
     runNow: "Synchroniser maintenant",
+    pairTitle: "Apparier un appareil mobile",
+    pairHint:
+      "Sur le téléphone : Réglages → Apparier avec l’ordinateur, puis scannez ce QR — ou copiez le code et collez-le sur le téléphone (Simulateur / sans caméra).",
+    pairQrError: "Impossible de créer le code d’appariement. Vérifiez l’URL cloud et la sync.",
+    pairCopy: "Copier le code d’appariement",
+    pairCopied: "Copié — collez-le sur le téléphone",
+    pairCopyError: "Impossible de copier le code. Réessayez.",
   },
 } as const;

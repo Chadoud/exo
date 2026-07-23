@@ -27,8 +27,19 @@ abstract final class SyncUserMessages {
   static const invalidEmailPassword = 'Email or password looks wrong — try again.';
   static const scanDesktopCode = 'Scan desktop code';
   static const pairStepTitle = 'Scan the code on your computer';
+  static const pairPasteTitle = 'Paste pairing code';
   static const pairStepSubtitle =
-      'On desktop: Settings → Sync → Pair mobile device.';
+      'On desktop: Settings → Sync → Pair mobile device. Or copy the pairing code and paste it below.';
+  static const pairStepSubtitleNoCamera =
+      'This device has no camera. On desktop: Settings → Sync → Copy pairing code, then paste it here.';
+  static const pastePairingHint =
+      'Or paste the code from desktop instead of scanning.';
+  static const pastePairingPrimaryHint =
+      'On desktop tap Copy pairing code, then paste it below.';
+  static const pastePairingFieldHint = 'Paste pairing code from desktop';
+  static const pasteFromClipboard = 'Paste from clipboard';
+  static const usePastedCode = 'Use pasted code';
+  static const clipboardEmpty = 'Nothing to paste — copy the code from desktop Sync settings first.';
   static const updatingFromDesktop = 'Updating from desktop…';
   static const syncNow = 'Sync now';
   static const firstSyncFailed = 'Couldn\'t update yet.';

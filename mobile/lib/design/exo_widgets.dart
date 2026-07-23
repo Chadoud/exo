@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'exo_colors.dart';
-import 'exo_cube_draw.dart';
+import 'exo_cube_svg.dart';
 import 'exo_spacing.dart';
 import 'exo_theme.dart';
 
-/// Compact wordmark — static cube + EXO (boot uses [ExoCubeIntro] instead).
+/// Compact wordmark — SVG cube + EXO (boot draw uses [ExoCubeIntro] instead).
 class ExoMark extends StatelessWidget {
   const ExoMark({super.key, this.compact = false});
 
@@ -13,15 +13,11 @@ class ExoMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cubeSize = compact ? 28.0 : 36.0;
+    final cubeSize = compact ? 34.0 : 44.0;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ExoCubeDraw(
-          progress: 1,
-          size: cubeSize,
-          strokeWidth: compact ? 2.0 : 2.2,
-        ),
+        ExoCubeSvg(size: cubeSize),
         SizedBox(width: compact ? ExoSpacing.sm : ExoSpacing.md),
         Text(
           'EXO',

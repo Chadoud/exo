@@ -526,5 +526,12 @@ export const itSecondBrainLocaleSlice = {
     neverRun: "Non ancora sincronizzato",
     errorPrefix: "Problema sync:",
     runNow: "Sincronizza ora",
+    pairTitle: "Associa dispositivo mobile",
+    pairHint:
+      "Sul telefono: Impostazioni → Associa al desktop, poi scansiona questo QR — oppure copia il codice e incollalo sul telefono (Simulator / senza fotocamera).",
+    pairQrError: "Impossibile creare il codice di associazione. Controlla URL cloud e sync.",
+    pairCopy: "Copia codice di associazione",
+    pairCopied: "Copiato — incolla sul telefono",
+    pairCopyError: "Impossibile copiare il codice. Riprova.",
   },
 } as const;

@@ -20,7 +20,7 @@ export interface BriefingOfferChromeProps {
 }
 
 const PRIMARY_BTN =
-  "inline-flex items-center justify-center rounded-lg px-2.5 py-1 text-2xs font-medium transition-colors";
+  "inline-flex min-h-10 min-w-[2.75rem] items-center justify-center rounded-lg px-3 py-2 text-xs font-medium transition-colors";
 
 /**
  * Presentational BriefingOffer chrome — Offering / Loading / Error.
@@ -77,15 +77,7 @@ export default function BriefingOfferChrome({
       >
         {phase === "offering" ? (
           <>
-            <p
-              className={
-                variant === "hud"
-                  ? "text-xs font-medium text-text-primary"
-                  : "text-xs font-medium text-white/90"
-              }
-            >
-              {t("briefingOffer.title")}
-            </p>
+            <p className="text-xs font-medium text-text-primary">{t("briefingOffer.title")}</p>
             <div className="flex flex-wrap items-center justify-center gap-1.5">
               <button
                 ref={yesRef}
@@ -113,11 +105,7 @@ export default function BriefingOfferChrome({
             <button
               type="button"
               onClick={onOpenAlwaysConfirm}
-              className={
-                variant === "hud"
-                  ? "text-3xs text-accent underline-offset-2 hover:underline"
-                  : "text-3xs text-white/55 underline-offset-2 hover:text-white/85 hover:underline"
-              }
+              className="min-h-10 px-2 text-xs text-accent underline-offset-2 hover:underline"
             >
               {t("briefingOffer.always")}
             </button>
@@ -131,15 +119,7 @@ export default function BriefingOfferChrome({
                 className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-accent/30 border-t-accent animate-spin"
                 aria-hidden
               />
-              <p
-                className={
-                  variant === "hud"
-                    ? "text-xs text-text-secondary"
-                    : "text-xs text-white/80"
-                }
-              >
-                {t("briefingOffer.loading")}
-              </p>
+              <p className="text-xs text-text-secondary">{t("briefingOffer.loading")}</p>
             </div>
             <button
               type="button"
@@ -153,15 +133,7 @@ export default function BriefingOfferChrome({
 
         {phase === "error" ? (
           <div className="flex flex-col items-center gap-1.5" aria-live="polite">
-            <p
-              className={
-                variant === "hud"
-                  ? "text-xs text-red-200/95"
-                  : "text-xs text-red-200/95"
-              }
-            >
-              {errorMessage || t("briefingOffer.error")}
-            </p>
+            <p className="text-xs text-red-400">{errorMessage || t("briefingOffer.error")}</p>
             <div className="flex flex-wrap items-center justify-center gap-1.5">
               <button
                 type="button"

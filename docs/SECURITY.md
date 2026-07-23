@@ -38,7 +38,7 @@ The UI is a React renderer with `contextIsolation` and a narrow preload bridge (
 | Stored XSS in chat / markdown | Sanitize user-generated HTML; avoid `dangerouslySetInnerHTML` without a vetted pipeline |
 | XSS → steal provider keys / app token | **M2.3:** renderer does **not** receive the durable app token or raw secrets. `secrets:get` returns a mask only; HTTP uses main-process `backend:http`; voice uses short-lived tickets (`voiceMintWsAuthTicket`) |
 | XSS → read arbitrary `$HOME` files | Content reads (`dialog:readComposerAttachment`, Electron `read_file` / `list_directory`) require a prior native-dialog grant via `isSafeUserContentPath`; Electron `userData` and app secret leaves are denied |
-| XSS → sync master key | Pairing QR is built in main (`sync:getPairingQr`); renderer receives image data URL only |
+| XSS → sync master key | Pairing QR is built in main (`sync:getPairingQr`); renderer receives image data URL only. Paste path (`sync:copyPairingPayload`) writes JSON to the system clipboard from main — renderer never receives `master_key_b64` |
 | Composer documents | PDF/Office/text extracted via authenticated `/assistant/extract-attachment` (path-gated); videos rejected; raw binary never inlined into chat |
 | XSS → call `window.electronAPI` | Preload exposes fixed IPC methods only; no arbitrary Node access |
 
