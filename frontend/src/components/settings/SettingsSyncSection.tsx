@@ -19,6 +19,17 @@ interface Props {
   onUpgrade: () => void;
 }
 
+function pairingErrorMessage(
+  result: unknown,
+  fallback: string,
+): string {
+  if (result && typeof result === "object" && "error" in result) {
+    const err = (result as { error?: unknown }).error;
+    if (typeof err === "string" && err.trim()) return `${fallback} (${err.trim()})`;
+  }
+  return fallback;
+}
+
 export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
   const { t } = useI18n();
   const [status, setStatus] = useState<SyncStatus>({});
@@ -26,6 +37,7 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
   const [pairQrDataUrl, setPairQrDataUrl] = useState<string | null>(null);
   const [pairError, setPairError] = useState<string | null>(null);
   const [copyHint, setCopyHint] = useState<string | null>(null);
+  const [pairRetryTick, setPairRetryTick] = useState(0);
 
   const refresh = useCallback(async () => {
     const api = window.electronAPI;
@@ -46,7 +58,11 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
       return;
     }
     const api = window.electronAPI;
-    if (!api?.syncGetPairingQr) return;
+    if (!api?.syncGetPairingQr) {
+      setPairQrDataUrl(null);
+      setPairError(t("sync.pairQrError"));
+      return;
+    }
     const getPairingQr = api.syncGetPairingQr;
     void (async () => {
       try {
@@ -57,13 +73,13 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
           return;
         }
         setPairQrDataUrl(null);
-        setPairError(t("sync.pairQrError"));
+        setPairError(pairingErrorMessage(result, t("sync.pairQrError")));
       } catch {
         setPairQrDataUrl(null);
         setPairError(t("sync.pairQrError"));
       }
     })();
-  }, [status.enabled, t]);
+  }, [status.enabled, t, pairRetryTick]);
 
   const toggle = async () => {
     if (!canUseSync) return;
@@ -104,7 +120,7 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
         setCopyHint(t("sync.pairCopied"));
         return;
       }
-      setCopyHint(t("sync.pairCopyError"));
+      setCopyHint(pairingErrorMessage(result, t("sync.pairCopyError")));
     } catch {
       setCopyHint(t("sync.pairCopyError"));
     } finally {
@@ -171,6 +187,16 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
               >
                 {t("sync.pairCopy")}
               </button>
+              {pairError || !pairQrDataUrl ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setPairRetryTick((n) => n + 1)}
+                  className="inline-flex min-h-10 items-center rounded-lg border border-border bg-bg-card px-3 py-2 text-xs font-medium text-text-primary hover:bg-hover-overlay disabled:opacity-50"
+                >
+                  {t("sync.pairRetry")}
+                </button>
+              ) : null}
               {copyHint ? <p className="text-[11px] text-muted">{copyHint}</p> : null}
             </div>
           </div>

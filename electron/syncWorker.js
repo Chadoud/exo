@@ -61,7 +61,11 @@ function appendRunLog(userData, entry) {
 }
 
 function cloudUrl() {
-  return (process.env.EXOSITES_CLOUD_URL || "").trim().replace(/\/$/, "");
+  try {
+    return require("./cloudAuth").cloudBaseUrl();
+  } catch {
+    return (process.env.EXOSITES_CLOUD_URL || "").trim().replace(/\/$/, "");
+  }
 }
 
 function ensureMasterKey(userData) {

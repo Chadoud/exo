@@ -533,5 +533,6 @@ export const deSecondBrainLocaleSlice = {
     pairCopy: "Kopplungscode kopieren",
     pairCopied: "Kopiert — am Telefon einfügen",
     pairCopyError: "Code konnte nicht kopiert werden. Erneut versuchen.",
+    pairRetry: "QR erneut laden",
   },
 } as const;

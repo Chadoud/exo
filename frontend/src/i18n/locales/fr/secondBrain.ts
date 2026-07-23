@@ -534,5 +534,6 @@ export const frSecondBrainLocaleSlice = {
     pairCopy: "Copier le code d’appariement",
     pairCopied: "Copié — collez-le sur le téléphone",
     pairCopyError: "Impossible de copier le code. Réessayez.",
+    pairRetry: "Réessayer le QR",
   },
 } as const;

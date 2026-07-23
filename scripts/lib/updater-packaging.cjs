@@ -3,6 +3,7 @@
  * package.json excludes all of node_modules by default; these globs re-include:
  * - electron-updater (+ dependency tree) for macOS in-app updates
  * - @noble/ed25519 for update-feed + license signature verification
+ * - qrcode (+ dependency tree) for GO SYNC mobile pairing QR
  */
 const fs = require("fs");
 const path = require("path");
@@ -11,7 +12,7 @@ const ROOT = path.join(__dirname, "..", "..");
 const NODE_MODULES = path.join(ROOT, "node_modules");
 
 /** Packages that must be present even when dependency walking is unavailable. */
-const REQUIRED_ASAR_PACKAGES = ["electron-updater", "@noble/ed25519"];
+const REQUIRED_ASAR_PACKAGES = ["electron-updater", "@noble/ed25519", "qrcode"];
 
 /** @returns {string[]} */
 function updaterRuntimePackageNames() {
@@ -88,7 +89,15 @@ function verifyElectronUpdaterInAsar(asarPath) {
     return false;
   }
 
-  console.log("[updater-packaging] OK electron-updater + @noble/ed25519 bundled in app.asar");
+  const hasQrcode = lines.some((line) => /\/node_modules\/qrcode\//.test(line));
+  if (!hasQrcode) {
+    console.error(
+      "[updater-packaging] qrcode missing from app.asar — Sync pairing QR will fail at runtime",
+    );
+    return false;
+  }
+
+  console.log("[updater-packaging] OK electron-updater + @noble/ed25519 + qrcode bundled in app.asar");
   return true;
 }
 
@@ -105,6 +114,9 @@ function verifyUpdaterPackagingConfig() {
   const hasNobleGlob = files.some(
     (entry) => typeof entry === "string" && entry.includes("node_modules/@noble/ed25519/")
   );
+  const hasQrcodeGlob = files.some(
+    (entry) => typeof entry === "string" && entry.includes("node_modules/qrcode/")
+  );
   if (!hasUpdaterGlob) {
     console.error("[updater-packaging] mac electron-builder files[] missing electron-updater glob");
     return false;
@@ -113,7 +125,13 @@ function verifyUpdaterPackagingConfig() {
     console.error("[updater-packaging] mac electron-builder files[] missing @noble/ed25519 glob");
     return false;
   }
-  console.log("[updater-packaging] OK electron-builder files include electron-updater + @noble/ed25519");
+  if (!hasQrcodeGlob) {
+    console.error("[updater-packaging] mac electron-builder files[] missing qrcode glob");
+    return false;
+  }
+  console.log(
+    "[updater-packaging] OK electron-builder files include electron-updater + @noble/ed25519 + qrcode",
+  );
   return true;
 }
 

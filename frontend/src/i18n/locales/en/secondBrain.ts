@@ -528,5 +528,6 @@ export const enSecondBrainLocaleSlice = {
     pairCopy: "Copy pairing code",
     pairCopied: "Copied — paste on your phone",
     pairCopyError: "Couldn't copy the pairing code. Try again.",
+    pairRetry: "Retry QR",
   },
 } as const;

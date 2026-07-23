@@ -110,12 +110,13 @@ Tag `publish-website` **fails** if the private key secret is missing.
 - Windows does not self-update via electron-updater today.
 - **Packaging:** `package.json` excludes `node_modules/**` from the asar by default.
   Runtime packages needed in the packaged app (today: `electron-updater`,
-  `@noble/ed25519`) are listed in `REQUIRED_ASAR_PACKAGES`
+  `@noble/ed25519`, `qrcode`) are listed in `REQUIRED_ASAR_PACKAGES`
   ([`scripts/lib/updater-packaging.cjs`](../scripts/lib/updater-packaging.cjs)).
-  **If you add a new `import("dependency")` in Electron main, add that package to
-  `REQUIRED_ASAR_PACKAGES` in the same PR.** CI / `npm run test:electron` runs
-  `assertDynamicImportsCovered()`; `npm run package:mac` runs
-  `verify-packaged-app` which fails if `@noble/ed25519` is missing from `app.asar`.
+  **If you add a new `import("dependency")` / `require("dependency")` needed at
+  runtime in Electron main, add that package to `REQUIRED_ASAR_PACKAGES` in the
+  same PR.** CI / `npm run test:electron` runs `assertDynamicImportsCovered()`;
+  `npm run package:mac` runs `verify-packaged-app` which fails if
+  `@noble/ed25519` or `qrcode` is missing from `app.asar`.
 - **Windows manual packager** (`scripts/package-app.js`) still packs asar without
   `node_modules`. Redirect-only Windows updates do not need `electron-updater` at
   runtime; if license / feed verify runs on Windows, stage the same

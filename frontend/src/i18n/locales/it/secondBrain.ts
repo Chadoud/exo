@@ -533,5 +533,6 @@ export const itSecondBrainLocaleSlice = {
     pairCopy: "Copia codice di associazione",
     pairCopied: "Copiato — incolla sul telefono",
     pairCopyError: "Impossibile copiare il codice. Riprova.",
+    pairRetry: "Riprova QR",
   },
 } as const;
