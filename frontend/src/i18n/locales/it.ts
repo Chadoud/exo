@@ -3081,5 +3081,21 @@ Esempi:
     issueOpenAiSettings: "Apri impostazioni IA",
     issueRetryVoice: "Riprova",
   },
+  briefingOffer: {
+    regionLabel: "Briefing di oggi",
+    title: "Vuoi il briefing di oggi?",
+    yes: "Sì",
+    notNow: "Non ora",
+    never: "Mai",
+    always: "Sempre…",
+    alwaysConfirmTitle: "Eseguire sempre il briefing di oggi?",
+    alwaysConfirmBody:
+      "Exo proporrà di avviare il briefing all’apertura. Puoi cambiarlo più tardi in Ricordi.",
+    alwaysConfirm: "Sempre",
+    loading: "Caricamento del briefing di oggi…",
+    cancel: "Annulla",
+    error: "Impossibile avviare il briefing di oggi.",
+    retry: "Riprova",
+  },
   navShortcutTitle: "{label} â€” {shortcut}",
 } as Record<string, unknown>;

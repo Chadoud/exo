@@ -259,4 +259,40 @@ describe("routeVoiceFrame", () => {
     expect(refs.reconnectAttemptCount.current).toBe(0);
     expect(actions.clearEphemeralVoiceIssue).toHaveBeenCalled();
   });
+
+  it("routes briefing offer frames to onBriefingOfferEvent", () => {
+    const onBriefingOfferEvent = vi.fn();
+    const deps = createDeps({ onBriefingOfferEvent });
+
+    routeVoiceFrame({ type: "briefing_offer" }, deps);
+    expect(onBriefingOfferEvent).toHaveBeenCalledWith({ type: "briefing_offer" });
+
+    routeVoiceFrame({ type: "briefing_loading" }, deps);
+    expect(onBriefingOfferEvent).toHaveBeenCalledWith({ type: "briefing_loading" });
+
+    routeVoiceFrame({ type: "briefing_offer_error", message: "Offline" }, deps);
+    expect(onBriefingOfferEvent).toHaveBeenCalledWith({
+      type: "briefing_offer_error",
+      message: "Offline",
+    });
+
+    routeVoiceFrame({ type: "briefing_offer_clear" }, deps);
+    expect(onBriefingOfferEvent).toHaveBeenCalledWith({ type: "briefing_offer_clear" });
+  });
+
+  it("marks briefing running on startup_routine_running and section progress", () => {
+    const onBriefingOfferEvent = vi.fn();
+    const refs = createMockRefs();
+    const actions = createMockActions();
+    const deps = createDeps({ refs, actions, onBriefingOfferEvent });
+
+    routeVoiceFrame({ type: "startup_routine_running" }, deps);
+    expect(refs.briefingActive.current).toBe(true);
+    expect(actions.setToolPhaseLabel).toHaveBeenCalledWith("Running your briefing…");
+    expect(onBriefingOfferEvent).toHaveBeenCalledWith({ type: "briefing_running" });
+
+    routeVoiceFrame({ type: "briefing_progress", section: "news" }, deps);
+    expect(actions.setBriefingSection).toHaveBeenCalledWith("news");
+    expect(onBriefingOfferEvent).toHaveBeenCalledWith({ type: "briefing_running" });
+  });
 });

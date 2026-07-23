@@ -6,6 +6,7 @@ import { CLAP_WAKE_VOICE_EVENT } from "../constants";
 import { openPrimarySettingsSection } from "../utils/settingsNav";
 import { assertVoiceBackendReady } from "../voice/ensureVoiceBackendReady";
 import { useVoiceSession, type UseVoiceSessionReturn } from "./useVoiceSession";
+import { useBriefingOfferUi, type UseBriefingOfferUiReturn } from "./useBriefingOfferUi";
 import { usePushToTalk } from "./usePushToTalk";
 import {
   formatConnectResultForVoice,
@@ -42,6 +43,7 @@ type UseWorkspaceVoiceBridgeOptions = {
 
 type UseWorkspaceVoiceBridgeReturn = {
   voice: UseVoiceSessionReturn;
+  briefingOffer: UseBriefingOfferUiReturn;
   pushToTalk: ReturnType<typeof usePushToTalk>;
   isConversationVoiceMode: boolean;
   openVoiceInteractionSettings: () => void;
@@ -115,6 +117,47 @@ export function useWorkspaceVoiceBridge({
     onToolRunning,
     onToolResult,
   });
+
+  const sendJsonFrame = voice.sendJsonFrame;
+  const setOnBriefingOfferEvent = voice.setOnBriefingOfferEvent;
+
+  const briefingOffer = useBriefingOfferUi({
+    sendFrame: sendJsonFrame,
+  });
+
+  useEffect(() => {
+    setOnBriefingOfferEvent(briefingOffer.handleServerEvent);
+    return () => setOnBriefingOfferEvent(null);
+  }, [setOnBriefingOfferEvent, briefingOffer.handleServerEvent]);
+
+  const hadVoiceSessionRef = useRef(false);
+  useEffect(() => {
+    const sessionOpen = voice.isListening || voice.isReconnecting;
+    if (hadVoiceSessionRef.current && !sessionOpen) {
+      briefingOffer.clearLocal();
+    }
+    hadVoiceSessionRef.current = sessionOpen;
+  }, [voice.isListening, voice.isReconnecting, briefingOffer.clearLocal]);
+
+  // Land warm (muted): deliver BriefingOffer on app ready without waiting for first utterance.
+  // Conversation + voiceAutoStart already opens unmuted with startup=1 via ExoPanel — skip duplicate.
+  const landOfferStartedRef = useRef(false);
+  useEffect(() => {
+    if (!settingsHydrated || !backendOnline) return;
+    if (landOfferStartedRef.current) return;
+    if (voice.isListening || voice.isReconnecting) return;
+    if (settings.voiceInteractionMode === "conversation" && settings.voiceAutoStart) return;
+    landOfferStartedRef.current = true;
+    void voice.startForLandOffer();
+  }, [
+    settingsHydrated,
+    backendOnline,
+    settings.voiceInteractionMode,
+    settings.voiceAutoStart,
+    voice.isListening,
+    voice.isReconnecting,
+    voice.startForLandOffer,
+  ]);
 
   const pushToTalk = usePushToTalk({
     settings,
@@ -253,6 +296,7 @@ export function useWorkspaceVoiceBridge({
 
   return {
     voice,
+    briefingOffer,
     pushToTalk,
     isConversationVoiceMode,
     openVoiceInteractionSettings,

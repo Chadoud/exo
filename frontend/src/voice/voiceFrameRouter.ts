@@ -34,6 +34,7 @@ import {
   TRANSCRIPT_RECONNECT_WAIT_MS,
   type TranscriptResetTimer,
 } from "./voiceTranscriptCommit";
+import type { BriefingOfferServerEvent } from "./briefingOfferTypes";
 
 export interface VoiceTurnTraceEntry {
   commit_reason: string;
@@ -123,10 +124,19 @@ export interface VoiceFrameRouterDeps {
   onTurnTrace?: (traces: VoiceTurnTraceEntry[]) => void;
   /** Fires when the backend finishes a voice turn — use for immediate chat commit. */
   onTurnComplete?: (payload: ServerTurnCommitPayload) => void;
+  /** Startup BriefingOffer chrome — Offering / Loading / Error / clear. */
+  onBriefingOfferEvent?: (event: BriefingOfferServerEvent) => void;
   resolveAction?: (id: ErrorActionId) => (() => void) | undefined;
   /** When false, quota/connection toasts are suppressed (Exo uses inline banner). */
   shouldNotifyToast?: () => boolean;
   ws: WebSocket | null;
+}
+
+function emitBriefingOffer(
+  deps: VoiceFrameRouterDeps,
+  event: BriefingOfferServerEvent,
+): void {
+  deps.onBriefingOfferEvent?.(event);
 }
 
 /**
@@ -220,9 +230,36 @@ export function routeVoiceFrame(frame: Record<string, unknown>, deps: VoiceFrame
     return;
   }
 
+  if (type === "briefing_offer") {
+    emitBriefingOffer(deps, { type: "briefing_offer" });
+    return;
+  }
+
+  if (type === "briefing_loading") {
+    emitBriefingOffer(deps, { type: "briefing_loading" });
+    return;
+  }
+
+  if (type === "briefing_offer_error") {
+    const message =
+      typeof frame.message === "string" && frame.message.trim()
+        ? frame.message.trim()
+        : "Couldn't start today's briefing.";
+    emitBriefingOffer(deps, { type: "briefing_offer_error", message });
+    return;
+  }
+
+  if (type === "briefing_offer_clear") {
+    emitBriefingOffer(deps, { type: "briefing_offer_clear" });
+    return;
+  }
+
   if (type === "briefing_progress") {
     const section = typeof frame.section === "string" ? frame.section : null;
     actions.setBriefingSection(section);
+    if (section) {
+      emitBriefingOffer(deps, { type: "briefing_running" });
+    }
     if (!section) {
       refs.briefingActive.current = false;
       actions.setToolPhaseLabel(null);
@@ -339,6 +376,7 @@ export function routeVoiceFrame(frame: Record<string, unknown>, deps: VoiceFrame
   if (type === "startup_routine_running") {
     refs.briefingActive.current = true;
     actions.setToolPhaseLabel("Running your briefing…");
+    emitBriefingOffer(deps, { type: "briefing_running" });
     return;
   }
 

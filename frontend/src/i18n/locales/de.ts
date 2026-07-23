@@ -3075,5 +3075,21 @@ Beispiele:
     issueOpenAiSettings: "KI-Einstellungen öffnen",
     issueRetryVoice: "Erneut versuchen",
   },
+  briefingOffer: {
+    regionLabel: "Heutiges Briefing",
+    title: "Möchten Sie das heutige Briefing?",
+    yes: "Ja",
+    notNow: "Nicht jetzt",
+    never: "Nie",
+    always: "Immer…",
+    alwaysConfirmTitle: "Heutiges Briefing immer starten?",
+    alwaysConfirmBody:
+      "Exo bietet beim Öffnen an, Ihr Briefing zu starten. Sie können das später unter Erinnerungen ändern.",
+    alwaysConfirm: "Immer",
+    loading: "Heutiges Briefing wird geladen…",
+    cancel: "Abbrechen",
+    error: "Heutiges Briefing konnte nicht gestartet werden.",
+    retry: "Erneut versuchen",
+  },
   navShortcutTitle: "{label} — {shortcut}",
 } as Record<string, unknown>;

@@ -188,6 +188,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
 
   const {
     voice: shellVoiceSession,
+    briefingOffer,
     pushToTalk,
     openVoiceInteractionSettings,
     handleAlwaysAllowVoiceTool,
@@ -433,6 +434,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
             infomaniakMergePrefsSnapshot={infomaniakMergePrefsSnapshot}
             infomaniakMailMergePrefsSnapshot={infomaniakMailMergePrefsSnapshot}
             shellVoiceSession={shellVoiceSession}
+            briefingOffer={briefingOffer}
             setVisualAnalysisSuspended={setVisualAnalysisSuspended}
             openVoiceInteractionSettings={openVoiceInteractionSettings}
             exoChromeRevealed={exoChromeRevealed}
@@ -445,6 +447,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
 
       <AmbientVoiceHud
         voice={shellVoiceSession}
+        briefingOffer={briefingOffer}
         activeTab={tab}
         anchorRef={mainColumnRef}
         onAlwaysAllowVoiceTool={handleAlwaysAllowVoiceTool}

@@ -10,6 +10,7 @@ import type { TodoSubTab } from "../../utils/todoUi";
 import type { TodoFeed } from "../../hooks/useTodoFeed";
 import type { SettingsNavTab } from "../../utils/settingsNav";
 import type { UseVoiceSessionReturn } from "../../hooks/useVoiceSession";
+import type { UseBriefingOfferUiReturn } from "../../hooks/useBriefingOfferUi";
 import type { WorkspaceExternalSourcesSectionProps } from "./WorkspaceExternalSourcesSection";
 import type { GmailMergePrefs } from "./GmailWorkspaceSortBlock";
 import type { DriveMergePrefs } from "./DriveWorkspaceSortBlock";
@@ -141,6 +142,7 @@ interface WorkspacePanelRouterProps {
   infomaniakMergePrefsSnapshot: InfomaniakMergePrefs | null;
   infomaniakMailMergePrefsSnapshot: InfomaniakMailMergePrefs | null;
   shellVoiceSession: UseVoiceSessionReturn;
+  briefingOffer: UseBriefingOfferUiReturn;
   setVisualAnalysisSuspended?: (suspended: boolean) => void;
   openVoiceInteractionSettings: () => void;
   exoChromeRevealed: boolean;
@@ -244,6 +246,7 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
     infomaniakMergePrefsSnapshot,
     infomaniakMailMergePrefsSnapshot,
     shellVoiceSession,
+    briefingOffer,
     setVisualAnalysisSuspended,
     openVoiceInteractionSettings,
     exoChromeRevealed,
@@ -470,6 +473,7 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
       <Suspense fallback={tab === "exo" ? <PanelRouteFallback /> : null}>
         <LazyExoPanel
         voice={shellVoiceSession}
+        briefingOffer={briefingOffer}
         centerAnchorRef={exoCenterAnchorRef}
         visuallyHidden={tab !== "exo"}
         setVisualAnalysisSuspended={setVisualAnalysisSuspended}

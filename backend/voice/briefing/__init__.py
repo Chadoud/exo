@@ -1,5 +1,6 @@
 """Startup briefing pipeline extracted from ``routes.voice_routes``."""
 
+from voice.briefing.offer import CLIENT_OFFER_TYPES, BriefingOfferController, OfferPhase
 from voice.briefing.pipeline import (
     drain_queued_briefing_injections,
     is_briefing_injection,
@@ -15,6 +16,9 @@ from voice.briefing.startup import (
 )
 
 __all__ = [
+    "BriefingOfferController",
+    "CLIENT_OFFER_TYPES",
+    "OfferPhase",
     "SECTION_REGISTRY",
     "build_ask_startup_message",
     "build_auto_startup_message",

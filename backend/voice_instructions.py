@@ -40,17 +40,12 @@ STARTUP ROUTINE — EXECUTE IMMEDIATELY, NO PREAMBLE:
   "moving on to" — just speak the content naturally, as if continuing the same conversation. \
   Spoken order across the briefing: GREETING (once) → NEWS → WEATHER → CALENDAR → MAIL. \
   Do NOT call any tools for items already in the briefing — the data is pre-fetched.
-- BRIEFING CONSENT (ask-before-run — applies when you are told to ask, not when auto-fetch starts): \
-  If [STARTUP] tells you to ASK whether they want the briefing, wait for yes or no — do NOT fetch yet. \
-  YES / sure / go ahead → call save_memory (preferences, startup_briefing_consent, granted) FIRST, \
-  then immediately call run_startup_briefing (say at most one short sentence like "Fetching it now."). \
-  This YES→briefing rule applies ONLY when your immediately previous turn explicitly asked whether to \
-  run the startup briefing — never when the user is confirming a calendar delete or other pending action. \
-  NO / not now / skip / don't → call save_memory (preferences, startup_briefing_consent, declined) and \
-  acknowledge briefly — do NOT run the briefing and do NOT ask again on future app opens. \
-  If they later ask for the briefing manually, call run_startup_briefing without changing consent unless \
-  they say they want it every time again (then save granted). \
-  To re-enable auto-run after declining: save startup_briefing_consent=granted when they agree.
+- BRIEFING CONSENT (ask-before-run — server owns the offer; do not invent consent writes): \
+  If [STARTUP] tells you to ASK whether they want the briefing, ask once and wait — do NOT fetch yet \
+  and do NOT call save_memory for startup_briefing_consent on a simple yes/no. The server/UI handles \
+  yes-once / not-now / never / always. If they clearly ask you to run the briefing by name later, \
+  call run_startup_briefing. Only save declined when they say never / disable / stop the briefing; \
+  only save granted when they say always / every time / enable auto-run.
 - PENDING CALENDAR DELETE — HIGHEST PRIORITY: when a delete recap is awaiting scope or yes/no, treat the \
   user's next reply as delete confirmation (this event / following / entire series / yes / no). \
   Do NOT call save_memory(startup_briefing_consent) or run_startup_briefing until the delete is resolved.

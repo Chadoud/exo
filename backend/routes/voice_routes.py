@@ -7,9 +7,12 @@ Protocol:
       | {"type":"tool_denied","call_id":"<id>"}
       | {"type":"abort_briefing"} | {"type":"text_input","text":"..."}
       | {"type":"ptt_end"}
+      | briefing_offer_accept | briefing_offer_skip_session | briefing_offer_never
+      | briefing_offer_always | briefing_offer_cancel | briefing_offer_retry
   - Server sends JSON text frames: session_start | transcript_* | audio_out |
       tool_approval_required | tool_running | tool_idle | tool_result |
-      turn_complete | briefing_progress | voice_session_end | done | error
+      turn_complete | briefing_progress | briefing_offer | briefing_loading |
+      briefing_offer_error | briefing_offer_clear | voice_session_end | done | error
   - Client may send {"type":"provider_relay","provider":"gemini","model":"...","api_key":"..."}
     so plan_and_execute uses the same engine as text chat.
   - Zero-length binary frame stops the session.
@@ -30,12 +33,11 @@ from pydantic import BaseModel, Field
 from assistant_memory import format_memory_for_prompt
 from provider_context import ProviderContextHolder, provider_context_from_payload
 from voice.briefing import (
-    build_ask_startup_message,
-    build_auto_startup_message,
+    CLIENT_OFFER_TYPES,
+    BriefingOfferController,
     drain_queued_briefing_injections,
     get_startup_briefing_consent,
     get_startup_message,
-    resolve_startup_briefing_mode,
     stream_briefing_sections,
 )
 from voice.model import GEMINI_VOICE_MODEL_DEFAULT, resolve_gemini_voice_model
@@ -44,6 +46,7 @@ from voice.pending_delete_sync import PendingDeleteSyncHolder, pending_delete_bl
 from voice_briefing_consent import (
     looks_like_briefing_decline,
     looks_like_briefing_enable,
+    persist_briefing_always,
     persist_briefing_consent,
 )
 from voice_briefing_gate import (
@@ -190,19 +193,12 @@ async def voice_ws(
             primed_provider.preferred_model or "",
         )
 
-    # ── Shared signalling objects (persist across Gemini reconnects) ───────────
-    # tokens_ready: unblocks calendar/mail fetches once OAuth tokens are stored.
-    # turn_done:    pacing queue — one signal per completed Gemini turn.
-    # user_spoke:   abort event — set when input transcription arrives mid-briefing.
-    # ws_lock:      guards concurrent ws.send_text calls (main loop + progress).
+    # Persist across Gemini reconnects: tokens, turn pacing, barge-in, send lock.
     _tokens_ready = asyncio.Event()
     _turn_done: asyncio.Queue[None] = asyncio.Queue()
     _user_spoke = asyncio.Event()
     _ws_lock = asyncio.Lock()
-
-    # Repeated barge-ins over the briefing are a strong signal the user doesn't
-    # want it. After this many aborts in a session we persist ``declined`` so it
-    # stops auto-running, without depending on the model to call save_memory.
+    # Repeated barge-ins → persist declined (model save_memory is unreliable).
     _BRIEFING_ABORT_DECLINE_THRESHOLD = 2
     _briefing_abort_count = 0
 
@@ -225,10 +221,16 @@ async def voice_ws(
         # section=None signals the briefing is over so the UI hides the indicator.
         await _send_frame(json.dumps({"type": "briefing_progress", "section": section_label}))
 
+    # Late-bound so the receive loop can forward offer frames once ready.
+    offer_ref: dict[str, BriefingOfferController | None] = {"ctrl": None}
+
     async def _abort_briefing(*, reason: str) -> None:
-        """Stop the briefing pipeline and drop any queued briefing sections."""
+        """Stop the briefing pipeline / land offer and drop queued sections."""
         nonlocal _briefing_abort_count
         _user_spoke.set()
+        ctrl = offer_ref["ctrl"]
+        if ctrl is not None and ctrl.is_active:
+            await ctrl.preempt(reason=reason)
         dropped = drain_queued_briefing_injections(audio_queue)
         await _send_progress(None)
         if dropped:
@@ -251,21 +253,14 @@ async def voice_ws(
                     )
 
     def _maybe_persist_briefing_consent(text: str) -> None:
-        """Persist briefing consent when the user clearly enabled/disabled it.
-
-        Enforces the user's intent server-side so a missed ``save_memory`` call by
-        the model can't leave the briefing auto-running against their wishes.
-        """
         if pending_delete_blocks_briefing(pending_delete_holder):
             return
         if looks_like_briefing_decline(text):
             if get_startup_briefing_consent() != "declined":
                 persist_briefing_consent("declined")
-                logger.info("[briefing] consent set to declined from user text")
         elif looks_like_briefing_enable(text):
             if get_startup_briefing_consent() != "granted":
-                persist_briefing_consent("granted")
-                logger.info("[briefing] consent set to granted from user text")
+                persist_briefing_always()
 
     # ── Receive loop ──────────────────────────────────────────────────────────
     async def _receive_loop() -> None:
@@ -342,6 +337,12 @@ async def voice_ws(
                         _tokens_ready.set()
                         continue
 
+                    if msg_type in CLIENT_OFFER_TYPES:
+                        ctrl = offer_ref["ctrl"]
+                        if ctrl is not None:
+                            await ctrl.handle_client_type(str(msg_type))
+                        continue
+
                     if msg_type == "abort_briefing":
                         await _abort_briefing(reason="client_abort")
                         continue
@@ -389,9 +390,7 @@ async def voice_ws(
 
     receive_task = asyncio.create_task(_receive_loop())
 
-    # ── Free-tier quota hint ───────────────────────────────────────────────────
-    # Provider 429s on the free tier happen on background threads (vision loop,
-    # chat stream). Bridge them onto this WS so the UI can offer a paid-key nudge.
+    # Bridge free-tier 429s from background threads onto this WS.
     from orchestrator.quota_notice import register_quota_listener
 
     _quota_loop = asyncio.get_running_loop()
@@ -412,12 +411,10 @@ async def voice_ws(
     briefing_gate = VoiceBriefingGate()
     bind_voice_briefing_gate(briefing_gate)
 
-    async def _run_briefing_pipeline(*, announce_start: bool = False) -> None:
+    async def _run_briefing_pipeline() -> None:
         routine = get_startup_message()
         if not routine:
             return
-        if announce_start:
-            await _send_frame(json.dumps({"type": "startup_routine_running"}))
         await stream_briefing_sections(
             routine=routine,
             audio_queue=audio_queue,
@@ -427,31 +424,21 @@ async def voice_ws(
             send_progress=_send_progress,
         )
 
+    offer = BriefingOfferController(
+        send_frame=_send_frame,
+        run_pipeline=_run_briefing_pipeline,
+        pending_delete_holder=pending_delete_holder,
+        clear_barge_in=_user_spoke.clear,
+    )
+    offer_ref["ctrl"] = offer
+
     async def _start_briefing_after_consent() -> None:
-        await _run_briefing_pipeline(announce_start=True)
+        await offer.start_from_gate()
 
     briefing_gate.configure(_start_briefing_after_consent)
 
-    # ── Startup ───────────────────────────────────────────────────────────────
-    # Phase 1 (instant): greeting or consent ask so Gemini speaks within ~1 s.
-    # Phase 2 (streaming pipeline): each section injected individually, paced
-    #   by turn_complete, once its fetch completes — auto or after user consent.
-    startup_message: str | None = None
-    briefing_task: asyncio.Task | None = None
+    startup_message: str | None = await offer.begin_land() if startup else None
 
-    if startup:
-        routine = get_startup_message()
-        mode = resolve_startup_briefing_mode(routine, get_startup_briefing_consent())
-        if mode == "auto" and routine:
-            startup_message = build_auto_startup_message(routine)
-            briefing_task = asyncio.create_task(
-                _run_briefing_pipeline(announce_start=False),
-                name="briefing_pipeline",
-            )
-        elif mode == "ask" and routine:
-            startup_message = build_ask_startup_message(routine)
-
-    # ── Main frame loop ───────────────────────────────────────────────────────
     try:
         async for frame_json in run_voice_session(
             audio_queue,
@@ -467,20 +454,22 @@ async def voice_ws(
             pending_delete_holder=pending_delete_holder,
             allow_sensitive=autonomous_mode,
         ):
+            if offer.is_offering:
+                try:
+                    parsed = json.loads(frame_json)
+                except json.JSONDecodeError:
+                    parsed = None
+                if isinstance(parsed, dict) and parsed.get("type") == "transcript_user_full":
+                    spoken = str(parsed.get("text") or "").strip()
+                    if spoken and not await offer.on_user_transcript(spoken):
+                        await offer.preempt(reason="non_consent_intent")
             if not await _send_frame(frame_json):
                 break
     except Exception:
         logger.exception("Error in voice WebSocket handler")
     finally:
         log_voice_event(session_id, "disconnect")
-        if briefing_task is not None:
-            briefing_task.cancel()
-            try:
-                await briefing_task
-            except asyncio.CancelledError:
-                pass  # expected: we just cancelled it
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("voice briefing task ended with error during cleanup: %s", exc)
+        await offer.cleanup()
         _unregister_quota()
         briefing_gate.clear()
         clear_voice_briefing_gate()

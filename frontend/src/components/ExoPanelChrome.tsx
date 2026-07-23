@@ -9,6 +9,8 @@ import type { AgentActivity } from "../features/assistant/plan/planStore";
 import { computePreBlendDelayMs } from "../exo/exoLandingTiming";
 import type { VoiceVisualMetrics } from "../voice/voiceVisualMetrics";
 import type { VoiceTesseractDrive } from "../voice/voiceTesseractPlayback";
+import type { UseBriefingOfferUiReturn } from "../hooks/useBriefingOfferUi";
+import BriefingOfferChrome from "./BriefingOfferChrome";
 
 // ── Voice / landing (shared with parent status derivation) ───────────────────
 
@@ -91,6 +93,8 @@ interface ExoCenterProps {
    * Renders a lightweight progress strip below the status text.
    */
   briefingSection?: string | null;
+  /** Startup BriefingOffer chrome — null when Exo is visually hidden (HUD hosts instead). */
+  briefingOffer?: UseBriefingOfferUiReturn | null;
   /** Cube visualizer layout — "plan" morphs cubes into the live plan board. */
   planLayout?: "idle" | "plan";
   /** Plan descriptor for the cube board (when planLayout is "plan"). */
@@ -167,6 +171,7 @@ export function ExoCenter({
   introActive,
   onTesseractIntroComplete,
   briefingSection = null,
+  briefingOffer = null,
   planLayout = "idle",
   plan = null,
   planPhase = null,
@@ -314,10 +319,16 @@ export function ExoCenter({
 
       {/* Fixed-height, top-aligned status stack: the label is pinned so it never
           shifts when the working-detail / briefing breadcrumb / transcript rows
-          appear or disappear while the AI or the user is speaking. */}
+          appear or disappear while the AI or the user is speaking.
+          BriefingOffer expands the stack so Yes / Not now / Never stay usable. */}
       <div
         className="absolute inset-x-0 bottom-[2%] flex flex-col items-center gap-1 px-2 text-center pointer-events-none"
-        style={{ height: "6rem", justifyContent: "flex-start" }}
+        style={{
+          height: briefingOffer?.isActive ? "auto" : "6rem",
+          minHeight: "6rem",
+          maxHeight: "40%",
+          justifyContent: "flex-start",
+        }}
       >
         {displayLabel && (
           <p className="exo-voice-status-text" style={{ color: displayColor }}>
@@ -331,6 +342,22 @@ export function ExoCenter({
         ) : null}
         {activeAgents.length > 0 ? (
           <AgentActivityRoster agents={activeAgents} />
+        ) : null}
+        {briefingOffer?.isActive ? (
+          <BriefingOfferChrome
+            variant="exo"
+            phase={briefingOffer.phase}
+            errorMessage={briefingOffer.errorMessage}
+            confirmAlwaysOpen={briefingOffer.confirmAlwaysOpen}
+            onAccept={briefingOffer.accept}
+            onSkipSession={briefingOffer.skipSession}
+            onNever={briefingOffer.never}
+            onOpenAlwaysConfirm={briefingOffer.openAlwaysConfirm}
+            onConfirmAlways={briefingOffer.confirmAlways}
+            onCancelAlwaysConfirm={briefingOffer.cancelAlwaysConfirm}
+            onCancel={briefingOffer.cancel}
+            onRetry={briefingOffer.retry}
+          />
         ) : null}
         {briefingSection && (
           <div className="mt-1.5 flex items-center gap-0.5">

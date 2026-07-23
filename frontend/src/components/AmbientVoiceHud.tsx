@@ -8,12 +8,15 @@ import {
 } from "react";
 import type { MainNavTab } from "../hooks/useMainNavItems";
 import type { UseVoiceSessionReturn } from "../hooks/useVoiceSession";
+import type { UseBriefingOfferUiReturn } from "../hooks/useBriefingOfferUi";
 import type { VoiceInteractionMode } from "../types/voiceInteraction";
 import ScreenConsentModal from "./ScreenConsentModal";
+import BriefingOfferChrome from "./BriefingOfferChrome";
 import { isPushToTalkMode, isPttVoiceUiActive } from "../utils/voiceInteractionUi";
 
 interface AmbientVoiceHudProps {
   voice: UseVoiceSessionReturn;
+  briefingOffer: UseBriefingOfferUiReturn;
   activeTab: MainNavTab;
   /** Main workspace column — default placement is horizontally centered within this region. */
   anchorRef?: RefObject<HTMLElement | null>;
@@ -46,6 +49,7 @@ function truncate(s: string, max: number): string {
  */
 export default function AmbientVoiceHud({
   voice,
+  briefingOffer,
   activeTab,
   anchorRef,
   onAlwaysAllowVoiceTool,
@@ -57,6 +61,7 @@ export default function AmbientVoiceHud({
     ? isPttVoiceUiActive(voice)
     : voice.isListening || voice.isReconnecting;
   const hudAllowed = activeTab !== "exo";
+  const showBriefingOffer = hudAllowed && briefingOffer.isActive;
 
   /** Starts collapsed; expands when user or assistant transcript is non-empty (not on idle “Listening”). */
   const [minimized, setMinimized] = useState(true);
@@ -169,15 +174,20 @@ export default function AmbientVoiceHud({
     }
   }, [active]);
 
-  // Expand only when there is something to show (user or assistant spoke), unless user collapsed the panel.
+  // Expand when there is something to show (speech or BriefingOffer), unless user collapsed the panel.
   useEffect(() => {
-    if (!active || userClosedRef.current) return;
+    if (userClosedRef.current) return;
+    if (showBriefingOffer) {
+      setMinimized(false);
+      return;
+    }
+    if (!active) return;
     const userSpeaking = Boolean(voice.inputTranscript?.trim());
     const assistantSpeaking = Boolean(voice.outputTranscript?.trim());
     if (userSpeaking || assistantSpeaking) {
       setMinimized(false);
     }
-  }, [active, voice.inputTranscript, voice.outputTranscript]);
+  }, [active, showBriefingOffer, voice.inputTranscript, voice.outputTranscript]);
 
   useEffect(() => {
     if (hudAllowed) return;
@@ -220,7 +230,7 @@ export default function AmbientVoiceHud({
     };
   }, [anchorRef, activeTab]);
 
-  if (!voice.pendingToolApproval && !active) return null;
+  if (!voice.pendingToolApproval && !active && !showBriefingOffer) return null;
 
   /**
    * Shell position + slide animation.
@@ -282,7 +292,7 @@ export default function AmbientVoiceHud({
         }}
       />
 
-      {active && hudAllowed ? (
+      {(active || showBriefingOffer) && hudAllowed ? (
         <div
           ref={hudShellRef}
           style={shellStyle}
@@ -338,9 +348,11 @@ export default function AmbientVoiceHud({
               <span className="text-3xs uppercase tracking-wide text-accent shrink-0">
                 {voice.isReconnecting
                   ? "Reconnecting voice…"
-                  : isPtt && !voice.isPttCapturing
-                    ? `Hold ${pttShortcutLabel}`
-                    : "Voice active"}
+                  : showBriefingOffer && !active
+                    ? "Briefing"
+                    : isPtt && !voice.isPttCapturing
+                      ? `Hold ${pttShortcutLabel}`
+                      : "Voice active"}
               </span>
               {voice.toolPhaseLabel ? (
                 <span className="min-w-0 truncate text-2xs text-amber-200/95">{voice.toolPhaseLabel}</span>
@@ -348,11 +360,29 @@ export default function AmbientVoiceHud({
                 !voice.outputTranscript &&
                 !voice.inputTranscript &&
                 voice.isListening &&
-                !isPtt && (
+                !isPtt &&
+                !showBriefingOffer && (
                   <span className="min-w-0 truncate text-2xs text-muted">Listening…</span>
                 )
               )}
             </button>
+
+            {showBriefingOffer ? (
+              <BriefingOfferChrome
+                variant="hud"
+                phase={briefingOffer.phase}
+                errorMessage={briefingOffer.errorMessage}
+                confirmAlwaysOpen={briefingOffer.confirmAlwaysOpen}
+                onAccept={briefingOffer.accept}
+                onSkipSession={briefingOffer.skipSession}
+                onNever={briefingOffer.never}
+                onOpenAlwaysConfirm={briefingOffer.openAlwaysConfirm}
+                onConfirmAlways={briefingOffer.confirmAlways}
+                onCancelAlwaysConfirm={briefingOffer.cancelAlwaysConfirm}
+                onCancel={briefingOffer.cancel}
+                onRetry={briefingOffer.retry}
+              />
+            ) : null}
 
             {voice.inputTranscript ? (
               <p className="text-xs text-muted line-clamp-2 px-1">

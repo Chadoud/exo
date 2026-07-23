@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+
 from assistant_memory import load_memory
 from voice.briefing.sections import SECTION_REGISTRY, _resolve_greeting
-from voice_briefing_consent import STARTUP_BRIEFING_CONSENT_KEY
+from voice_briefing_consent import (
+    STARTUP_BRIEFING_CONSENT_KEY,
+    STARTUP_BRIEFING_CONSENT_V2_KEY,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def get_startup_message() -> str | None:
@@ -20,16 +27,34 @@ def get_startup_message() -> str | None:
     return value
 
 
+def _demote_legacy_granted(prefs: dict) -> None:
+    """One-shot: sticky granted without v2 flag → ask-each-session."""
+    try:
+        from assistant_memory import update_memory
+
+        update_memory("preferences", STARTUP_BRIEFING_CONSENT_KEY, "ask")
+        update_memory("preferences", STARTUP_BRIEFING_CONSENT_V2_KEY, "1")
+    except Exception:  # noqa: BLE001 — migration must not break voice connect
+        logger.debug("failed to demote legacy briefing consent", exc_info=True)
+
+
 def get_startup_briefing_consent() -> str | None:
     """
     Return persisted briefing auto-run preference.
 
-    - ``granted`` — run the briefing on open without asking.
-    - ``declined`` — never auto-run; user can still ask manually.
-    - ``None`` — unset; ask once before the first briefing.
+    - ``granted`` — sticky always (land auto without ask). Only after BriefingOffer
+      v2 Always / explicit always-intent (``startup_briefing_consent_v2=1``).
+    - ``declined`` — never auto-offer; user can still ask manually.
+    - ``None`` — unset / ask; ask each land session before fetching.
+
+    Legacy ``granted`` without the v2 flag is demoted once to ask-each-session.
     """
     prefs = load_memory().get("preferences", {})
-    value = prefs.get(STARTUP_BRIEFING_CONSENT_KEY, "").strip().lower()
+    value = str(prefs.get(STARTUP_BRIEFING_CONSENT_KEY, "") or "").strip().lower()
+    v2 = str(prefs.get(STARTUP_BRIEFING_CONSENT_V2_KEY, "") or "").strip()
+    if value == "granted" and v2 != "1":
+        _demote_legacy_granted(prefs)
+        return None
     if value == "granted":
         return "granted"
     if value == "declined":
@@ -91,5 +116,6 @@ def build_ask_startup_message(routine: str) -> str:
     return (
         f"[STARTUP] {greet_clause}ask in one short natural sentence whether they want "
         f"their briefing now (it covers {hints}). Wait for yes or no — do NOT fetch "
-        "or start the briefing yet."
+        "or start the briefing yet. Do NOT call save_memory for consent — the server "
+        "handles yes / not now / never / always."
     )

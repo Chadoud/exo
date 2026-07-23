@@ -7,13 +7,19 @@ Exo supports two ways to talk to the AI assistant over Gemini Live:
 - Toggle the mic with **F4** or the mic button in AI Manager.
 - The session stays open; you can interrupt the assistant by speaking (barge-in).
 - Optional **auto-start on launch** opens the mic when the app and backend are ready.
-- Startup briefing runs on the first session of an app lifecycle.
+- Startup briefing: on first land (`startup=1`), if a routine exists and consent is not
+  `declined`, the server emits `briefing_offer` and asks before any fetch. Sticky
+  always (`granted` + `startup_briefing_consent_v2`) auto-runs without asking.
+  Legacy sticky `granted` is demoted once to ask-each-session. Client frames:
+  `briefing_offer_accept` (this session only), `briefing_offer_skip_session`,
+  `briefing_offer_never`, `briefing_offer_always`, `briefing_offer_cancel`,
+  `briefing_offer_retry`. See `backend/voice/briefing/offer.py`.
 
 ## Push-to-talk mode
 
 - Hold the **talk key** (default: **⌥ Option** on Mac, **Right Alt + Shift + Space** on Windows/Linux).
 - Release to send one utterance; stopping mic audio ends the turn (Gemini automatic activity detection).
-- The voice WebSocket opens on your **first talk-key press** (not at app launch) and can stay warm between turns; mic PCM is muted until you hold the key again.
+- On backend-ready land, Exo opens a **muted warm** voice session once so `briefing_offer` can appear without speaking. Mic PCM stays muted until you hold the talk key; the session can stay warm between turns.
 - **Double-tap** the talk key quickly to enter locked hands-free mode; tap again to send.
 - Settings → Assistant actions → **How you talk to the assistant**.
 

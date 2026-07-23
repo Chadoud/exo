@@ -14,10 +14,14 @@ voice session loop can use it without import cycles.
 from __future__ import annotations
 
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
 STARTUP_BRIEFING_CONSENT_KEY = "startup_briefing_consent"
+# Set when sticky always is confirmed via the BriefingOffer v2 UI/frames.
+# Legacy ``granted`` without this flag is demoted to ask-each-session once.
+STARTUP_BRIEFING_CONSENT_V2_KEY = "startup_briefing_consent_v2"
 
 # Phrases that mean "stop auto-running the briefing". Matched case-insensitively as
 # substrings against the user's utterance, in the languages the assistant supports.
@@ -55,7 +59,7 @@ _DECLINE_PHRASES = (
     "disattiva il briefing",
 )
 
-# Phrases that mean "resume auto-running the briefing".
+# Sticky always / re-enable auto-run.
 _ENABLE_PHRASES = (
     "run the briefing on startup",
     "enable the briefing",
@@ -68,9 +72,103 @@ _ENABLE_PHRASES = (
     "attiva il briefing",
 )
 
+# Sticky always — longer anchors only (bare "always"/"toujours" are too broad).
+_ALWAYS_PHRASES = (
+    "always run the briefing",
+    "run the briefing every time",
+    "every time i open",
+    "every time i launch",
+    "every session",
+    "every morning",
+    "chaque fois que j'ouvre",
+    "chaque fois",
+    "toujours le briefing",
+    "jedes mal",
+    "immer das briefing",
+    "sempre il briefing",
+    *_ENABLE_PHRASES,
+)
+
+# Sticky never — longer anchors only (bare "never"/"jamais" are too broad).
+_NEVER_PHRASES = (
+    "never again",
+    "never ask",
+    "don't ever",
+    "dont ever",
+    "do not ever",
+    "plus jamais",
+    "jamais plus",
+    "niemals",
+    "nie wieder",
+    "mai più",
+    "mai piu",
+    *_DECLINE_PHRASES,
+)
+
+_SKIP_PHRASES = (
+    "not now",
+    "maybe later",
+    "later",
+    "skip",
+    "skip it",
+    "not today",
+    "pas maintenant",
+    "plus tard",
+    "nicht jetzt",
+    "später",
+    "spaeter",
+    "non ora",
+    "più tardi",
+    "piu tardi",
+)
+
+# Whole-utterance accept (avoid matching "yes" inside unrelated words).
+_ACCEPT_EXACT = frozenset(
+    {
+        "yes",
+        "yeah",
+        "yep",
+        "yup",
+        "sure",
+        "ok",
+        "okay",
+        "please",
+        "go ahead",
+        "do it",
+        "oui",
+        "ouais",
+        "d'accord",
+        "daccord",
+        "ja",
+        "si",
+        "sì",
+        "certo",
+        "vas-y",
+        "vas y",
+    }
+)
+
+_ACCEPT_PREFIXES = (
+    "yes ",
+    "yeah ",
+    "yep ",
+    "sure ",
+    "ok ",
+    "okay ",
+    "go ahead",
+    "oui ",
+    "ouais ",
+    "ja ",
+)
+
 
 def _normalize(text: str) -> str:
     return (text or "").strip().lower()
+
+
+def _utterance_core(text: str) -> str:
+    """Strip trailing punctuation for exact accept matching."""
+    return re.sub(r"[.!?,;:]+$", "", _normalize(text)).strip()
 
 
 def looks_like_briefing_decline(text: str) -> bool:
@@ -89,8 +187,44 @@ def looks_like_briefing_enable(text: str) -> bool:
     return any(phrase in low for phrase in _ENABLE_PHRASES)
 
 
+def looks_like_briefing_always(text: str) -> bool:
+    """True when the user wants sticky always (land auto without ask)."""
+    low = _normalize(text)
+    if not low:
+        return False
+    return any(phrase in low for phrase in _ALWAYS_PHRASES)
+
+
+def looks_like_briefing_never(text: str) -> bool:
+    """True when the user wants never again (persist declined)."""
+    low = _normalize(text)
+    if not low:
+        return False
+    return any(phrase in low for phrase in _NEVER_PHRASES)
+
+
+def looks_like_briefing_skip_session(text: str) -> bool:
+    """True when the user declines for this session only (not now / skip / bare no)."""
+    core = _utterance_core(text)
+    if not core:
+        return False
+    if core in {"no", "nope", "nah", "non", "nein", "no thanks", "no thank you"}:
+        return True
+    return any(phrase in core for phrase in _SKIP_PHRASES)
+
+
+def looks_like_briefing_accept(text: str) -> bool:
+    """True when the user accepts the briefing for this session only."""
+    core = _utterance_core(text)
+    if not core:
+        return False
+    if core in _ACCEPT_EXACT:
+        return True
+    return any(core.startswith(prefix) for prefix in _ACCEPT_PREFIXES)
+
+
 def persist_briefing_consent(value: str) -> bool:
-    """Write ``startup_briefing_consent`` (``granted``/``declined``). Never raises.
+    """Write ``startup_briefing_consent`` (``granted``/``declined``/``ask``). Never raises.
 
     :returns: True on success, False if persistence failed.
     """
@@ -103,4 +237,20 @@ def persist_briefing_consent(value: str) -> bool:
         return True
     except Exception:  # noqa: BLE001 — consent persistence must never break the session
         logger.debug("failed to persist briefing consent=%s", value, exc_info=True)
+        return False
+
+
+def persist_briefing_always() -> bool:
+    """Persist sticky always (``granted``) and mark consent as v2-confirmed.
+
+    :returns: True when both writes succeed.
+    """
+    try:
+        from assistant_memory import update_memory
+
+        update_memory("preferences", STARTUP_BRIEFING_CONSENT_KEY, "granted")
+        update_memory("preferences", STARTUP_BRIEFING_CONSENT_V2_KEY, "1")
+        return True
+    except Exception:  # noqa: BLE001
+        logger.debug("failed to persist briefing always consent", exc_info=True)
         return False

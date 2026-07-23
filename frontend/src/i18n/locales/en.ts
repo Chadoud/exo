@@ -3236,5 +3236,21 @@ Override examples:
     issueOpenAiSettings: "Open AI settings",
     issueRetryVoice: "Try again",
   },
+  briefingOffer: {
+    regionLabel: "Today's briefing",
+    title: "Want today's briefing?",
+    yes: "Yes",
+    notNow: "Not now",
+    never: "Never",
+    always: "Always…",
+    alwaysConfirmTitle: "Always run today's briefing?",
+    alwaysConfirmBody:
+      "Exo will offer to run your briefing when you open the app. You can change this later in Memories.",
+    alwaysConfirm: "Always",
+    loading: "Loading today's briefing…",
+    cancel: "Cancel",
+    error: "Couldn't start today's briefing.",
+    retry: "Retry",
+  },
   navShortcutTitle: "{label} — {shortcut}",
 } as Record<string, unknown>;

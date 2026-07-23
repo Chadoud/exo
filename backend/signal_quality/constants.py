@@ -25,6 +25,7 @@ GMAIL_NOISE_QUERY_EXCLUSIONS = (
 SIGNAL_CHECK_BYPASS_KEYS = frozenset(
     {
         "startup_briefing_consent",
+        "startup_briefing_consent_v2",
         "startup_routine",
     }
 )

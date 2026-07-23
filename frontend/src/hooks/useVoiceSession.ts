@@ -33,6 +33,7 @@ import type {
   VoiceToolRunningPayload,
   VoiceTurnTraceEntry,
 } from "../voice/voiceFrameRouter";
+import type { BriefingOfferServerEvent } from "../voice/briefingOfferTypes";
 import { cancelDelayedTranscriptReset } from "../voice/voiceTranscriptCommit";
 import { useVoiceAudio } from "../voice/useVoiceAudio";
 import { useVoiceWebSocket } from "../voice/useVoiceWebSocket";
@@ -111,6 +112,8 @@ export interface UseVoiceSessionReturn {
   isPttCapturing: boolean;
   /** Open a warm voice session with the mic muted until push-to-talk capture starts. */
   startForPushToTalk: () => Promise<void>;
+  /** Muted land warm so BriefingOffer can ask before the user speaks. */
+  startForLandOffer: () => Promise<void>;
   /** Mute or unmute outbound mic PCM without tearing down the session. */
   setMicCaptureEnabled: (enabled: boolean) => void;
   /** Start buffering mic audio before the PTT session finishes warming up. */
@@ -128,6 +131,12 @@ export interface UseVoiceSessionReturn {
   setOnToolResult: (handler: ((payload: VoiceToolResultPayload) => void) | null) => void;
   /** Register a chained handler for voice tool_running frames. */
   setOnToolRunning: (handler: ((payload: VoiceToolRunningPayload) => void) | null) => void;
+  /** Register a handler for BriefingOffer server frames (offer / loading / error / clear). */
+  setOnBriefingOfferEvent: (
+    handler: ((event: BriefingOfferServerEvent) => void) | null,
+  ) => void;
+  /** Send an arbitrary JSON frame on the open voice WebSocket (no-op when disconnected). */
+  sendJsonFrame: (frame: Record<string, unknown>) => void;
   /** Sync a pending calendar delete draft to the voice backend (survives Gemini reconnect). */
   sendPendingCalendarDeleteSync: (draft: Record<string, unknown> | null) => void;
   /** Last few voice turn diagnostics from the backend (for debug export). */
@@ -193,6 +202,7 @@ export function useVoiceSession(options?: UseVoiceSessionOptions): UseVoiceSessi
   const onToolRunningRef = useRef(options?.onToolRunning);
   onToolRunningRef.current = options?.onToolRunning;
   const onToolRunningChainedRef = useRef<((payload: VoiceToolRunningPayload) => void) | null>(null);
+  const onBriefingOfferEventRef = useRef<((event: BriefingOfferServerEvent) => void) | null>(null);
 
   const memoryEnabledRef = useRef(options?.memoryEnabled ?? true);
   memoryEnabledRef.current = options?.memoryEnabled ?? true;
@@ -409,6 +419,7 @@ export function useVoiceSession(options?: UseVoiceSessionOptions): UseVoiceSessi
     },
     onTurnTrace: (traces) => setVoiceTurnTraces(traces),
     onTurnComplete: (payload) => onTurnCompleteRef.current?.(payload),
+    onBriefingOfferEvent: (event) => onBriefingOfferEventRef.current?.(event),
     resolveAction: resolveActionRef.current,
     shouldNotifyToast: shouldNotifyErrorRef.current,
     ws: null,
@@ -606,6 +617,23 @@ export function useVoiceSession(options?: UseVoiceSessionOptions): UseVoiceSessi
     [],
   );
 
+  const setOnBriefingOfferEvent = useCallback(
+    (handler: ((event: BriefingOfferServerEvent) => void) | null) => {
+      onBriefingOfferEventRef.current = handler;
+    },
+    [],
+  );
+
+  const sendJsonFrame = useCallback(
+    (frame: Record<string, unknown>) => {
+      const ws = wsRef.current;
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(frame));
+      }
+    },
+    [wsRef],
+  );
+
   const lastPendingDeleteSyncRef = useRef<{ ws: WebSocket | null; key: string }>({
     ws: null,
     key: "",
@@ -631,7 +659,14 @@ export function useVoiceSession(options?: UseVoiceSessionOptions): UseVoiceSessi
   );
 
   const startForPushToTalk = useCallback(async () => {
-    skipStartupBriefingRef.current = true;
+    // BriefingOffer asks before fetch — safe to run startup=1 on PTT warm.
+    startMutedMicRef.current = true;
+    setPttCapturing(false);
+    await start();
+  }, [start, setPttCapturing]);
+
+  /** Muted land warm so the server can emit briefing_offer without the user speaking first. */
+  const startForLandOffer = useCallback(async () => {
     startMutedMicRef.current = true;
     setPttCapturing(false);
     await start();
@@ -661,6 +696,7 @@ export function useVoiceSession(options?: UseVoiceSessionOptions): UseVoiceSessi
     relayIntegrationTokens,
     isPttCapturing,
     startForPushToTalk,
+    startForLandOffer,
     setMicCaptureEnabled,
     beginPttCaptureWarmup,
     sendPttTurnEnd,
@@ -668,6 +704,8 @@ export function useVoiceSession(options?: UseVoiceSessionOptions): UseVoiceSessi
     setOnTurnComplete,
     setOnToolResult,
     setOnToolRunning,
+    setOnBriefingOfferEvent,
+    sendJsonFrame,
     sendPendingCalendarDeleteSync,
     voiceTurnTraces,
   };

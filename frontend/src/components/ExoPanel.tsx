@@ -22,6 +22,7 @@ import {
   CLAP_NEW_SESSION_EVENT,
 } from "../constants";
 import type { UseVoiceSessionReturn } from "../hooks/useVoiceSession";
+import type { UseBriefingOfferUiReturn } from "../hooks/useBriefingOfferUi";
 import { useVoiceBackendReady } from "../hooks/useVoiceBackendReady";
 import { AssistantChatPanelWithSharedVoice } from "./AssistantChatPanel";
 import ExoConversationTabBar from "./ExoConversationTabBar";
@@ -78,6 +79,8 @@ function readStoredExoRailWidthPx(): number {
 interface ExoPanelProps {
   /** Shared Gemini Live voice session owned by {@link AppMainWorkspace} â€” persists across workspace tabs. */
   voice: UseVoiceSessionReturn;
+  /** Startup BriefingOffer chrome state (shared with AmbientVoiceHud). */
+  briefingOffer: UseBriefingOfferUiReturn;
   settings: AppSettings;
   settingsHydrated: boolean;
   backendOnline: boolean;
@@ -122,6 +125,7 @@ type ExoChromePhase = "intro" | "phase1_right" | "full";
 
 export default function ExoPanel({
   voice,
+  briefingOffer,
   settings,
   settingsHydrated,
   backendOnline,
@@ -477,6 +481,7 @@ export default function ExoPanel({
             briefingSection={
               codegenCubeLayout.layout === "plan" ? null : voice.briefingSection
             }
+            briefingOffer={visuallyHidden ? null : briefingOffer}
             planLayout={centerCubeLayout.layout}
             plan={centerCubeLayout.plan}
             planPhase={centerCubeLayout.layout === "plan" ? centerPlanPhase : null}
