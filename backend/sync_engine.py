@@ -20,12 +20,45 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent
-_CRYPTO_PATH = _REPO_ROOT / "sync" / "client" / "crypto"
-if str(_CRYPTO_PATH) not in sys.path:
-    sys.path.insert(0, str(_CRYPTO_PATH))
+def _ensure_sync_crypto_import_path() -> None:
+    """Dev: repo layout. Packaged: exosites_crypto is a PyInstaller hiddenimport."""
+    try:
+        import exosites_crypto  # noqa: F401
 
-from exosites_crypto import build_envelope, content_hash, decrypt_record  # noqa: E402
+        return
+    except ImportError:
+        pass
+    candidates = [
+        Path(__file__).resolve().parent.parent / "sync" / "client" / "crypto",
+    ]
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(Path(meipass) / "sync" / "client" / "crypto")
+        candidates.append(Path(meipass))
+    for path in candidates:
+        if path.is_dir() and str(path) not in sys.path:
+            sys.path.insert(0, str(path))
+            try:
+                import exosites_crypto  # noqa: F401
+
+                return
+            except ImportError:
+                continue
+    raise ImportError(
+        "exosites_crypto not found — rebuild backend with sync/client/crypto on pathex"
+    )
+
+
+_ensure_sync_crypto_import_path()
+
+from exosites_crypto import (  # noqa: E402
+    SCHEMA_V2,
+    SCHEMA_V3,
+    aad_bytes,
+    build_envelope,
+    content_hash,
+    decrypt_record,
+)
 
 import sync_export  # noqa: E402
 
@@ -51,11 +84,14 @@ def export_encrypted_blobs(
     *,
     master_key: bytes,
     device_id: str,
+    account_id: str,
     since_updated_at: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Export all sync collections as encrypted blob envelopes."""
+    """Export all sync collections as encrypted blob envelopes (schema v3)."""
     if len(master_key) != 32:
         raise ValueError("master_key must be 32 bytes")
+    if not account_id:
+        raise ValueError("account_id is required")
     blobs: list[dict[str, Any]] = []
     for item in sync_export.export_all(since_updated_at=since_updated_at):
         collection = str(item["collection"])
@@ -72,6 +108,8 @@ def export_encrypted_blobs(
                 updated_at=updated_at,
                 plaintext=plaintext,
                 record_key=rkey,
+                schema_version=SCHEMA_V3,
+                account_id=account_id,
             )
         )
     return blobs
@@ -120,16 +158,41 @@ def pull_blobs(
         return resp.json()
 
 
-def decrypt_envelope(envelope: dict[str, Any], master_key: bytes) -> dict[str, Any]:
-    """Decrypt a pulled blob envelope to payload dict."""
+def decrypt_envelope(
+    envelope: dict[str, Any],
+    master_key: bytes,
+    *,
+    account_id: str | None = None,
+) -> dict[str, Any]:
+    """Decrypt a pulled blob envelope to payload dict (v2+/v3 verifies AAD metadata)."""
     collection = str(envelope["collection"])
     record_id = str(envelope["record_id"])
+    device_id = str(envelope.get("device_id") or "")
+    logical_clock = int(envelope.get("logical_clock") or 0)
+    deleted = bool(envelope.get("deleted", False))
+    schema_version = int(envelope.get("schema_version") or 1)
     rkey = _record_key(master_key, collection, record_id)
-    plain = decrypt_record(str(envelope["ciphertext"]), rkey)
-    payload = json.loads(plain.decode("utf-8"))
+    aad = None
+    if schema_version >= SCHEMA_V2:
+        aad = aad_bytes(
+            collection=collection,
+            record_id=record_id,
+            device_id=device_id,
+            logical_clock=logical_clock,
+            deleted=deleted,
+            schema_version=schema_version,
+            account_id=account_id,
+        )
+    plain = decrypt_record(str(envelope["ciphertext"]), rkey, aad=aad)
+    payload = json.loads(plain.decode("utf-8")) if plain else {}
     if content_hash(plain) != envelope.get("content_hash"):
         logger.warning("content_hash mismatch for %s/%s", collection, record_id)
-    return {"collection": collection, "record_id": record_id, "payload": payload, "deleted": envelope.get("deleted", False)}
+    return {
+        "collection": collection,
+        "record_id": record_id,
+        "payload": payload,
+        "deleted": deleted,
+    }
 
 
 def run_sync_push(
@@ -138,6 +201,7 @@ def run_sync_push(
     access_token: str,
     master_key_b64: str,
     device_id: str,
+    account_id: str,
     since_updated_at: str | None = None,
 ) -> dict[str, Any]:
     """Full push cycle: export → encrypt → relay."""
@@ -148,7 +212,10 @@ def run_sync_push(
     started = datetime.now(UTC).isoformat()
     try:
         blobs = export_encrypted_blobs(
-            master_key=master_key, device_id=device_id, since_updated_at=since_updated_at
+            master_key=master_key,
+            device_id=device_id,
+            account_id=account_id,
+            since_updated_at=since_updated_at,
         )
         result = push_blobs(cloud_url=cloud_url, access_token=access_token, blobs=blobs)
         return {

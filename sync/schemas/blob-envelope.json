@@ -14,16 +14,14 @@
     "ciphertext"
   ],
   "properties": {
-    "schema_version": { "type": "integer", "minimum": 1 },
+    "schema_version": { "type": "integer", "minimum": 2, "maximum": 3 },
     "collection": {
       "type": "string",
       "enum": [
         "memory_entries",
         "conversations",
         "tasks",
-        "activity_entries",
-        "digests",
-        "nudges"
+        "activity_entries"
       ]
     },
     "record_id": { "type": "string", "minLength": 1, "maxLength": 128 },

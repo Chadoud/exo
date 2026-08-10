@@ -31,6 +31,7 @@ class TestSyncRoutes(unittest.TestCase):
                 "access_token": "token",
                 "master_key_b64": key,
                 "device_id": "desktop-1",
+                "account_id": "550e8400-e29b-41d4-a716-446655440000",
             },
         )
         self.assertEqual(res.status_code, 200)

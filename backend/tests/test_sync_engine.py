@@ -29,18 +29,24 @@ class TestSyncEngine(unittest.TestCase):
         blobs = self.sync_engine.export_encrypted_blobs(
             master_key=self.master_key,
             device_id="dev-test",
+            account_id="550e8400-e29b-41d4-a716-446655440000",
         )
         self.assertTrue(blobs)
         self.assertIn("ciphertext", blobs[0])
         self.assertEqual(blobs[0]["collection"], "memory_entries")
+        self.assertEqual(blobs[0]["schema_version"], 3)
 
     def test_decrypt_roundtrip(self) -> None:
+        account = "550e8400-e29b-41d4-a716-446655440000"
         assistant_memory.update_memory("notes", "roundtrip", "value", conversation_id=None)
         blobs = self.sync_engine.export_encrypted_blobs(
             master_key=self.master_key,
             device_id="dev-test",
+            account_id=account,
         )
-        plain = self.sync_engine.decrypt_envelope(blobs[0], self.master_key)
+        plain = self.sync_engine.decrypt_envelope(
+            blobs[0], self.master_key, account_id=account
+        )
         self.assertEqual(plain["collection"], "memory_entries")
         self.assertIn("payload", plain)
 
@@ -61,6 +67,7 @@ class TestSyncEngine(unittest.TestCase):
             access_token="tok",
             master_key_b64=base64.b64encode(self.master_key).decode("ascii"),
             device_id="dev-1",
+            account_id="550e8400-e29b-41d4-a716-446655440000",
         )
         self.assertTrue(result["ok"])
         self.assertGreaterEqual(result.get("blob_count", 0), 1)

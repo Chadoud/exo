@@ -39,6 +39,8 @@ async function deleteAccountRows(conn, accountId) {
   const statements = [
     "DELETE FROM whatsapp_events WHERE account_id = ?",
     "DELETE FROM whatsapp_phone_bindings WHERE account_id = ?",
+    "DELETE FROM sync_changes WHERE account_id = ?",
+    "DELETE FROM sync_pairing_grants WHERE account_id = ?",
     "DELETE FROM sync_blobs WHERE account_id = ?",
     "DELETE FROM sync_cursors WHERE account_id = ?",
     "DELETE FROM sync_devices WHERE account_id = ?",

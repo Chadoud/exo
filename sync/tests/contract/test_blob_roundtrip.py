@@ -9,7 +9,15 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT / "client" / "crypto"))
 
-from exosites_crypto import build_envelope, decrypt_record, new_record_key  # noqa: E402
+from exosites_crypto import (  # noqa: E402
+    SCHEMA_V3,
+    aad_bytes,
+    build_envelope,
+    decrypt_record,
+    new_record_key,
+)
+
+_ACCOUNT = "550e8400-e29b-41d4-a716-446655440000"
 
 
 def test_golden_envelope_roundtrip() -> None:
@@ -23,6 +31,17 @@ def test_golden_envelope_roundtrip() -> None:
         updated_at="2026-06-11T12:00:00+00:00",
         plaintext=plain,
         record_key=key,
+        account_id=_ACCOUNT,
     )
-    restored = decrypt_record(env["ciphertext"], key)
+    assert env["schema_version"] == SCHEMA_V3
+    aad = aad_bytes(
+        collection="memory_entries",
+        record_id="1",
+        device_id="desktop-test",
+        logical_clock=1,
+        deleted=False,
+        schema_version=SCHEMA_V3,
+        account_id=_ACCOUNT,
+    )
+    restored = decrypt_record(env["ciphertext"], key, aad=aad)
     assert restored == plain

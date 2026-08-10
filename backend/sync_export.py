@@ -10,8 +10,9 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
+# Keep in lockstep with cloud-node ALLOWED_COLLECTIONS + blob-envelope.json.
 SYNC_COLLECTIONS = frozenset(
-    {"memory_entries", "conversations", "tasks", "activity_entries", "digests"}
+    {"memory_entries", "conversations", "tasks", "activity_entries"}
 )
 
 

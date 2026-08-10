@@ -15,6 +15,7 @@ class SyncPushBody(BaseModel):
     access_token: str = Field(min_length=1, max_length=4096)
     master_key_b64: str = Field(min_length=1, max_length=256)
     device_id: str = Field(min_length=1, max_length=128)
+    account_id: str = Field(min_length=1, max_length=64)
     since_updated_at: str | None = None
 
 
@@ -39,5 +40,6 @@ def run_sync(body: SyncPushBody) -> dict[str, Any]:
         access_token=body.access_token,
         master_key_b64=body.master_key_b64,
         device_id=body.device_id,
+        account_id=body.account_id,
         since_updated_at=body.since_updated_at,
     )

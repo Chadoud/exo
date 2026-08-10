@@ -70,20 +70,33 @@ function cloudUrl() {
 
 function ensureMasterKey(userData) {
   const kp = keyPath(userData);
+  const encOk = safeStorage.isEncryptionAvailable();
+  const allowPlain =
+    process.env.EXOSITES_INSECURE_LOCAL === "1" || process.env.NODE_ENV === "test";
   if (fs.existsSync(kp)) {
     try {
       const raw = fs.readFileSync(kp);
-      if (safeStorage.isEncryptionAvailable()) {
+      if (encOk) {
         return safeStorage.decryptString(raw);
       }
-      return raw.toString("utf8");
-    } catch {
-      /* regenerate below */
+      if (allowPlain) return raw.toString("utf8");
+      throw new Error("safeStorage unavailable");
+    } catch (err) {
+      // Fail closed: regenerating would mint a new key while relay ciphertext
+      // stays encrypted under the old one — mobile pairing then "works" but decrypt fails.
+      throw new Error(
+        `sync_master_key_unreadable: ${err?.message || err}. Unlock Keychain or re-enable GO SYNC after a data reset.`,
+      );
     }
+  }
+  if (!encOk && !allowPlain) {
+    throw new Error(
+      "sync_master_key_unreadable: secure storage unavailable. Unlock Keychain and retry.",
+    );
   }
   const keyB64 = crypto.randomBytes(32).toString("base64");
   fs.mkdirSync(userData, { recursive: true });
-  if (safeStorage.isEncryptionAvailable()) {
+  if (encOk) {
     fs.writeFileSync(kp, safeStorage.encryptString(keyB64));
   } else {
     fs.writeFileSync(kp, keyB64, "utf8");
@@ -114,6 +127,20 @@ async function runSyncOnce(deviceRootHint) {
     prefs.deviceId = deviceId;
     writePrefs(profileRoot, prefs);
   }
+  const accountId =
+    session.account_id ||
+    (() => {
+      try {
+        const { accountIdFromAccessToken } = require("./accountProfile");
+        return accountIdFromAccessToken(session.access_token);
+      } catch {
+        return null;
+      }
+    })();
+  if (!accountId) {
+    lastStatus = { ...lastStatus, lastError: "account_id_missing" };
+    return lastStatus;
+  }
   const token = state.appToken || "";
   const headers = { "Content-Type": "application/json" };
   if (token) headers["X-App-Token"] = token;
@@ -127,6 +154,7 @@ async function runSyncOnce(deviceRootHint) {
         access_token: session.access_token,
         master_key_b64: masterKeyB64,
         device_id: deviceId,
+        account_id: accountId,
         since_updated_at: prefs.lastSyncedAt || null,
       }),
     });
@@ -172,23 +200,36 @@ function stopSyncWorker() {
   timer = null;
 }
 
-function getSyncStatus() {
-  return { ...lastStatus };
+function getSyncStatus(deviceRootHint) {
+  const { profileRoot } = syncRoots(deviceRootHint);
+  const prefs = readPrefs(profileRoot);
+  return {
+    ...lastStatus,
+    /** ISO time of last successful push (prefs) — used for Sync-before-pair gate. */
+    lastSuccessfulSyncAt: prefs.lastSyncedAt || null,
+  };
 }
 
 function setSyncEnabled(deviceRootHint, enabled) {
   const { profileRoot } = syncRoots(deviceRootHint);
   const prefs = readPrefs(profileRoot);
-  prefs.enabled = Boolean(enabled);
+  const nextEnabled = Boolean(enabled);
   if (!prefs.deviceId) prefs.deviceId = crypto.randomUUID();
-  if (prefs.enabled) ensureMasterKey(profileRoot);
+  // Fail closed before persisting enabled=true when the existing key is unreadable.
+  if (nextEnabled) ensureMasterKey(profileRoot);
+  prefs.enabled = nextEnabled;
   writePrefs(profileRoot, prefs);
   lastStatus.enabled = prefs.enabled;
   return prefs;
 }
 
-function getPairingPayload(deviceRootHint) {
-  const { profileRoot } = syncRoots(deviceRootHint);
+/**
+ * Build pairing JSON (v2): master key + cloud URL + account-bound grant token.
+ * @param {string} deviceRootHint
+ * @returns {Promise<object>}
+ */
+async function getPairingPayload(deviceRootHint) {
+  const { profileRoot, deviceRoot } = syncRoots(deviceRootHint);
   const base = cloudUrl();
   if (!base) {
     throw new Error("cloud_url_not_configured");
@@ -198,11 +239,47 @@ function getPairingPayload(deviceRootHint) {
     throw new Error("sync_not_enabled");
   }
   const masterKeyB64 = ensureMasterKey(profileRoot);
+  const session = cloudAuth.readSession(deviceRoot || activeDeviceRoot);
+  if (!session?.access_token) {
+    throw new Error("not_logged_in");
+  }
+  const accountId =
+    session.account_id ||
+    (() => {
+      try {
+        const { accountIdFromAccessToken } = require("./accountProfile");
+        return accountIdFromAccessToken(session.access_token);
+      } catch {
+        return null;
+      }
+    })();
+  if (!accountId) {
+    throw new Error("account_id_missing");
+  }
+  const keyFingerprint = crypto
+    .createHash("sha256")
+    .update(Buffer.from(masterKeyB64, "base64"))
+    .digest("hex");
+  const grantRes = await fetch(`${base.replace(/\/$/, "")}/v1/sync/pairing/grants`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ key_fingerprint: keyFingerprint }),
+  });
+  const grant = await grantRes.json().catch(() => ({}));
+  if (!grantRes.ok || !grant.grant_token) {
+    throw new Error(grant.detail || `pairing_grant_${grantRes.status}`);
+  }
   return {
-    v: 1,
+    v: 2,
     cloud_url: base,
     master_key_b64: masterKeyB64,
+    account_id: accountId,
+    grant_token: grant.grant_token,
     issued_at: new Date().toISOString(),
+    expires_at: grant.expires_at || null,
   };
 }
 
@@ -213,7 +290,7 @@ function getPairingPayload(deviceRootHint) {
  */
 async function getPairingQrDataUrl(userData) {
   const QRCode = require("qrcode");
-  const payload = getPairingPayload(userData);
+  const payload = await getPairingPayload(userData);
   const dataUrl = await QRCode.toDataURL(JSON.stringify(payload), { margin: 1, width: 220 });
   return { dataUrl };
 }
@@ -222,12 +299,12 @@ async function getPairingQrDataUrl(userData) {
  * Copy the same JSON as the QR onto the system clipboard from main.
  * Renderer never receives master_key_b64 (paste on mobile for Simulator / no-camera).
  * @param {string} userData
- * @returns {{ ok: true } | { ok: false, error: string }}
+ * @returns {Promise<{ ok: true } | { ok: false, error: string }>}
  */
-function copyPairingPayloadToClipboard(userData) {
+async function copyPairingPayloadToClipboard(userData) {
   const { clipboard } = require("electron");
   try {
-    const payload = getPairingPayload(userData);
+    const payload = await getPairingPayload(userData);
     clipboard.writeText(JSON.stringify(payload));
     return { ok: true };
   } catch (err) {

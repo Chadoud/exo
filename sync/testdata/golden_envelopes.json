@@ -1,0 +1,40 @@
+{
+  "vectors": [
+    {
+      "name": "schema_v2",
+      "schema_version": 2,
+      "master_key_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "account_id": null,
+      "collection": "tasks",
+      "record_id": "rec-golden-1",
+      "device_id": "device-golden",
+      "logical_clock": 1718000000123,
+      "updated_at": "2024-06-10T12:00:00+00:00",
+      "deleted": false,
+      "plaintext_utf8": "{\"id\":\"rec-golden-1\",\"title\":\"golden\"}",
+      "nonce_b64": "BwcHBwcHBwcHBwcH",
+      "ciphertext_b64": "BwcHBwcHBwcHBwcHFBvANvSKvZee64d3zdvSkrREqKxJgtWUhYFxHIQm62KiI75JpA4W6HxR80K3uDb1TH9Pb6kJ",
+      "content_hash": "200f978c21493abdc9c548756515d4a1a5ce44d539ec7b7bec0e43b13f3cd3c4",
+      "aad_utf8": "exo-sync-aad-v1|tasks|rec-golden-1|device-golden|1718000000123|0|2",
+      "record_key_b64": "ist9OYd30inEE+YrLRaUInkKEw+UVT3ekCcx9UIO9Qw="
+    },
+    {
+      "name": "schema_v3",
+      "schema_version": 3,
+      "master_key_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "account_id": "550e8400-e29b-41d4-a716-446655440000",
+      "collection": "tasks",
+      "record_id": "rec-golden-1",
+      "device_id": "device-golden",
+      "logical_clock": 1718000000123,
+      "updated_at": "2024-06-10T12:00:00+00:00",
+      "deleted": false,
+      "plaintext_utf8": "{\"id\":\"rec-golden-1\",\"title\":\"golden\"}",
+      "nonce_b64": "BwcHBwcHBwcHBwcH",
+      "ciphertext_b64": "BwcHBwcHBwcHBwcHFBvANvSKvZee64d3zdvSkrREqKxJgtWUhYFxHIQm62KiI75JpA4dcMC4Gk0dtgBmsOe5zqDQ",
+      "content_hash": "200f978c21493abdc9c548756515d4a1a5ce44d539ec7b7bec0e43b13f3cd3c4",
+      "aad_utf8": "exo-sync-aad-v1|550e8400-e29b-41d4-a716-446655440000|tasks|rec-golden-1|device-golden|1718000000123|0|3",
+      "record_key_b64": "ist9OYd30inEE+YrLRaUInkKEw+UVT3ekCcx9UIO9Qw="
+    }
+  ]
+}

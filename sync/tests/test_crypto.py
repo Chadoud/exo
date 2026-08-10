@@ -12,6 +12,9 @@ _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT / "sync" / "client" / "crypto"))
 
 from exosites_crypto import (  # noqa: E402
+    SCHEMA_V2,
+    SCHEMA_V3,
+    aad_bytes,
     build_envelope,
     content_hash,
     decrypt_record,
@@ -21,6 +24,8 @@ from exosites_crypto import (  # noqa: E402
     unwrap_record_key,
     wrap_record_key,
 )
+
+_ACCOUNT = "550e8400-e29b-41d4-a716-446655440000"
 
 
 def test_derive_master_key_deterministic() -> None:
@@ -62,8 +67,69 @@ def test_build_envelope_shape() -> None:
         updated_at="2026-06-11T12:00:00+00:00",
         plaintext=json.dumps({"id": 1}).encode(),
         record_key=key,
+        account_id=_ACCOUNT,
     )
-    assert env["schema_version"] == 1
+    assert env["schema_version"] == SCHEMA_V3
     assert env["collection"] == "memory_entries"
     assert env["ciphertext"]
     assert len(env["content_hash"]) == 64
+    aad = aad_bytes(
+        collection="memory_entries",
+        record_id="abc-123",
+        device_id="device-1",
+        logical_clock=1,
+        deleted=False,
+        schema_version=SCHEMA_V3,
+        account_id=_ACCOUNT,
+    )
+    assert decrypt_record(env["ciphertext"], key, aad=aad) == json.dumps({"id": 1}).encode()
+
+
+def test_v2_aad_rejects_tombstone_flip() -> None:
+    key = new_record_key()
+    env = build_envelope(
+        collection="tasks",
+        record_id="t1",
+        device_id="d1",
+        logical_clock=2,
+        updated_at="2026-06-11T12:00:00+00:00",
+        plaintext=b"{}",
+        record_key=key,
+        deleted=False,
+        schema_version=SCHEMA_V2,
+    )
+    bad_aad = aad_bytes(
+        collection="tasks",
+        record_id="t1",
+        device_id="d1",
+        logical_clock=2,
+        deleted=True,
+        schema_version=SCHEMA_V2,
+    )
+    with pytest.raises(Exception):
+        decrypt_record(env["ciphertext"], key, aad=bad_aad)
+
+
+def test_v3_aad_binds_account_id() -> None:
+    key = new_record_key()
+    env = build_envelope(
+        collection="tasks",
+        record_id="t1",
+        device_id="d1",
+        logical_clock=2,
+        updated_at="2026-06-11T12:00:00+00:00",
+        plaintext=b"{}",
+        record_key=key,
+        account_id=_ACCOUNT,
+    )
+    bad = aad_bytes(
+        collection="tasks",
+        record_id="t1",
+        device_id="d1",
+        logical_clock=2,
+        deleted=False,
+        schema_version=SCHEMA_V3,
+        account_id="660e8400-e29b-41d4-a716-446655440099",
+    )
+    with pytest.raises(Exception):
+        decrypt_record(env["ciphertext"], key, aad=bad)

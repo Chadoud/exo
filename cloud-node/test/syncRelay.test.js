@@ -14,23 +14,27 @@ function loadSyncRelayWithMock(mock) {
   return require("../lib/syncRelay");
 }
 
-test("pushBlobs accepts envelopes and advances cursor", async () => {
+function envelope(overrides = {}) {
+  return {
+    collection: "memory_entries",
+    record_id: "mem-1",
+    device_id: "dev-a",
+    logical_clock: 3,
+    updated_at: "2026-06-16T10:00:00Z",
+    deleted: false,
+    schema_version: 2,
+    ciphertext: "cipher-a",
+    content_hash: "a".repeat(64),
+    ...overrides,
+  };
+}
+
+test("pushBlobs accepts envelopes and advances change_seq cursor", async () => {
   const mock = createSyncMockPool();
   const syncRelay = loadSyncRelayWithMock(mock);
-  const result = await syncRelay.pushBlobs(ACCOUNT, [
-    {
-      collection: "memory_entries",
-      record_id: "mem-1",
-      device_id: "dev-a",
-      logical_clock: 3,
-      updated_at: "2026-06-16T10:00:00Z",
-      deleted: false,
-      schema_version: 1,
-      ciphertext: "cipher-a",
-      content_hash: "hash-a",
-    },
-  ]);
+  const result = await syncRelay.pushBlobs(ACCOUNT, [envelope()]);
   assert.equal(result.accepted, 1);
+  assert.equal(result.feed_version, 1);
   assert.ok(result.cursor >= 1);
   const status = await syncRelay.syncStatus(ACCOUNT);
   assert.equal(status.blob_count, 1);
@@ -40,30 +44,15 @@ test("pushBlobs ignores stale logical_clock (idempotency)", async () => {
   const mock = createSyncMockPool();
   const syncRelay = loadSyncRelayWithMock(mock);
   await syncRelay.pushBlobs(ACCOUNT, [
-    {
-      collection: "memory_entries",
-      record_id: "mem-1",
-      device_id: "dev-a",
-      logical_clock: 5,
-      updated_at: "2026-06-16T10:00:00Z",
-      deleted: false,
-      schema_version: 1,
-      ciphertext: "cipher-new",
-      content_hash: "hash-new",
-    },
+    envelope({ logical_clock: 5, ciphertext: "cipher-new", content_hash: "b".repeat(64) }),
   ]);
   await syncRelay.pushBlobs(ACCOUNT, [
-    {
-      collection: "memory_entries",
-      record_id: "mem-1",
-      device_id: "dev-b",
+    envelope({
       logical_clock: 2,
-      updated_at: "2026-06-16T09:00:00Z",
-      deleted: false,
-      schema_version: 1,
+      device_id: "dev-b",
       ciphertext: "cipher-stale",
-      content_hash: "hash-stale",
-    },
+      content_hash: "c".repeat(64),
+    }),
   ]);
   const pulled = await syncRelay.pullBlobs(ACCOUNT, 0, 10);
   assert.equal(pulled.blobs.length, 1);
@@ -71,28 +60,50 @@ test("pushBlobs ignores stale logical_clock (idempotency)", async () => {
   assert.equal(pulled.blobs[0].logical_clock, 5);
 });
 
-test("pullBlobs paginates after cursor", async () => {
+test("pullBlobs delivers update after cursor (change feed)", async () => {
+  const mock = createSyncMockPool();
+  const syncRelay = loadSyncRelayWithMock(mock);
+  const first = await syncRelay.pushBlobs(ACCOUNT, [
+    envelope({ logical_clock: 1, ciphertext: "v1", content_hash: "d".repeat(64) }),
+  ]);
+  const page1 = await syncRelay.pullBlobs(ACCOUNT, 0, 10);
+  assert.equal(page1.blobs.length, 1);
+  assert.equal(page1.blobs[0].ciphertext, "v1");
+  assert.equal(page1.cursor, first.cursor);
+
+  await syncRelay.pushBlobs(ACCOUNT, [
+    envelope({
+      logical_clock: 2,
+      ciphertext: "v2",
+      content_hash: "e".repeat(64),
+      updated_at: "2026-06-16T11:00:00Z",
+    }),
+  ]);
+  const page2 = await syncRelay.pullBlobs(ACCOUNT, page1.cursor, 10);
+  assert.equal(page2.blobs.length, 1);
+  assert.equal(page2.blobs[0].ciphertext, "v2");
+  assert.equal(page2.feed_version, 1);
+});
+
+test("pullBlobs paginates after change_seq cursor", async () => {
   const mock = createSyncMockPool();
   const syncRelay = loadSyncRelayWithMock(mock);
   await syncRelay.pushBlobs(ACCOUNT, [
-    {
+    envelope({
       collection: "tasks",
       record_id: "t-1",
-      device_id: "dev-a",
       logical_clock: 1,
-      updated_at: "2026-06-16T10:00:00Z",
       ciphertext: "c1",
-      content_hash: "h1",
-    },
-    {
+      content_hash: "f".repeat(64),
+    }),
+    envelope({
       collection: "tasks",
       record_id: "t-2",
-      device_id: "dev-a",
       logical_clock: 2,
-      updated_at: "2026-06-16T10:01:00Z",
       ciphertext: "c2",
-      content_hash: "h2",
-    },
+      content_hash: "0".repeat(64),
+      updated_at: "2026-06-16T10:01:00Z",
+    }),
   ]);
   const page1 = await syncRelay.pullBlobs(ACCOUNT, 0, 1);
   assert.equal(page1.blobs.length, 1);
@@ -101,6 +112,52 @@ test("pullBlobs paginates after cursor", async () => {
   const page2 = await syncRelay.pullBlobs(ACCOUNT, page1.cursor, 10);
   assert.equal(page2.blobs.length, 1);
   assert.equal(page2.blobs[0].record_id, "t-2");
+});
+
+test("pullBlobs behind compaction floor returns sync_blobs snapshot", async () => {
+  const mock = createSyncMockPool();
+  const syncRelay = loadSyncRelayWithMock(mock);
+  await syncRelay.pushBlobs(ACCOUNT, [
+    envelope({ logical_clock: 1, ciphertext: "old", content_hash: "1".repeat(64) }),
+  ]);
+  await syncRelay.pushBlobs(ACCOUNT, [
+    envelope({
+      logical_clock: 2,
+      ciphertext: "mid",
+      content_hash: "2".repeat(64),
+      updated_at: "2026-06-16T11:00:00Z",
+    }),
+  ]);
+  await syncRelay.pushBlobs(ACCOUNT, [
+    envelope({
+      logical_clock: 3,
+      ciphertext: "cur",
+      content_hash: "3".repeat(64),
+      updated_at: "2026-06-16T12:00:00Z",
+    }),
+  ]);
+  // Simulate compaction: drop change_seq < 3 (floor becomes 3).
+  await mock.query("DELETE FROM sync_changes WHERE account_id = ? AND change_seq < ?", [
+    ACCOUNT,
+    3,
+  ]);
+  const snap = await syncRelay.pullBlobs(ACCOUNT, 1, 10, 0);
+  assert.equal(snap.resync_required, true);
+  assert.equal(snap.snapshot, true);
+  assert.equal(snap.blobs.length, 1);
+  assert.equal(snap.blobs[0].ciphertext, "cur");
+  assert.equal(snap.resume_cursor, 3);
+  assert.equal(snap.has_more, false);
+});
+
+test("pushBlobs rejects unknown collection", async () => {
+  const mock = createSyncMockPool();
+  const syncRelay = loadSyncRelayWithMock(mock);
+  const result = await syncRelay.pushBlobs(ACCOUNT, [
+    envelope({ collection: "evil_collection" }),
+  ]);
+  assert.equal(result.accepted, 0);
+  assert.equal(result.rejected, 1);
 });
 
 test("registerDevice upserts device row", async () => {
@@ -115,4 +172,25 @@ test("registerDevice upserts device row", async () => {
   assert.equal(out.device_id, "device-fixed-id");
   const status = await syncRelay.syncStatus(ACCOUNT);
   assert.equal(status.device_count, 1);
+});
+
+test("pairing grant redeem binds account, key fingerprint, and is single-use", async () => {
+  const mock = createSyncMockPool();
+  const syncRelay = loadSyncRelayWithMock(mock);
+  const fp = "a".repeat(64);
+  const grant = await syncRelay.createPairingGrant(ACCOUNT, fp);
+  assert.equal(grant.ok, true);
+  assert.ok(grant.grant_token);
+  const other = "660e8400-e29b-41d4-a716-446655440099";
+  const mismatch = await syncRelay.redeemPairingGrant(other, grant.grant_token, fp);
+  assert.equal(mismatch.ok, false);
+  assert.equal(mismatch.error, "account_mismatch");
+  const badKey = await syncRelay.redeemPairingGrant(ACCOUNT, grant.grant_token, "b".repeat(64));
+  assert.equal(badKey.ok, false);
+  assert.equal(badKey.error, "key_mismatch");
+  const ok = await syncRelay.redeemPairingGrant(ACCOUNT, grant.grant_token, fp);
+  assert.equal(ok.ok, true);
+  const again = await syncRelay.redeemPairingGrant(ACCOUNT, grant.grant_token, fp);
+  assert.equal(again.ok, false);
+  assert.equal(again.error, "already_redeemed");
 });
