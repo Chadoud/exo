@@ -230,7 +230,7 @@ class _PairingScreenState extends State<PairingScreen>
                           ? null
                           : () async {
                               await widget.config.clearSession();
-                              if (mounted) Navigator.pop(context, false);
+                              if (context.mounted) Navigator.pop(context, false);
                             },
                       child: const Text(SyncUserMessages.signOutSwitchAccount),
                     ),
@@ -263,7 +263,9 @@ class _PairingScreenState extends State<PairingScreen>
                                 ? null
                                 : () async {
                                     await widget.config.clearSession();
-                                    if (mounted) Navigator.pop(context, false);
+                                    if (context.mounted) {
+                                      Navigator.pop(context, false);
+                                    }
                                   },
                             child: const Text(SyncUserMessages.signOutSwitchAccount),
                           ),
