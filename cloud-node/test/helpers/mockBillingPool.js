@@ -10,6 +10,8 @@ function createBillingMockPool() {
     entitlements: [],
     /** @type {Record<string, { event_type: string; account_id: string | null }>} */
     events: {},
+    /** @type {Array<{ admin_account_id: string; action: string; target_account_id: string; details: string }>} */
+    adminAudit: [],
     nextSubId: 1,
     updateSeq: 1,
   };
@@ -72,6 +74,43 @@ function createBillingMockPool() {
     if (q.startsWith("select feature, source, active, extra from entitlements")) {
       const [accountId] = params;
       return [state.entitlements.filter((e) => e.account_id === accountId)];
+    }
+
+    if (q.startsWith("update accounts set trial_ends_at")) {
+      // Mirrors DATE_ADD(GREATEST(COALESCE(trial_ends_at, now), now), INTERVAL ? DAY).
+      const [days, id] = params;
+      const row = state.accounts[id];
+      if (!row || !row.is_active) return [{ affectedRows: 0 }];
+      const nowMs = Date.now();
+      const baseMs = Math.max(row.trial_ends_at ? new Date(row.trial_ends_at).getTime() : nowMs, nowMs);
+      row.trial_ends_at = new Date(baseMs + Number(days) * 24 * 60 * 60 * 1000).toISOString();
+      return [{ affectedRows: 1 }];
+    }
+
+    if (q.startsWith("select trial_ends_at from accounts")) {
+      const [id] = params;
+      const row = state.accounts[id];
+      return [row ? [{ trial_ends_at: row.trial_ends_at }] : []];
+    }
+
+    if (q.startsWith("insert into admin_audit")) {
+      const [adminAccountId, action, targetAccountId, details] = params;
+      state.adminAudit.push({
+        admin_account_id: adminAccountId,
+        action,
+        target_account_id: targetAccountId,
+        details,
+      });
+      return [{ affectedRows: 1 }];
+    }
+
+    if (q.startsWith("select stripe_subscription_id, status from subscriptions")) {
+      const [accountId] = params;
+      return [
+        state.subscriptions
+          .filter((s) => s.account_id === accountId)
+          .map((s) => ({ stripe_subscription_id: s.stripe_subscription_id, status: s.status })),
+      ];
     }
 
     if (q.startsWith("select 1 from product_admins")) {

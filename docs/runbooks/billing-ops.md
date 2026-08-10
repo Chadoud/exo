@@ -87,6 +87,23 @@ Returns plan, trial state, subscription status/renewal, and the
 `stripe_customer_id` to paste into the Stripe dashboard. Non-admins get a 404;
 lookups are rate-limited and audit-logged (`[admin] account lookup by=…`).
 
+## Admin actions (audited)
+
+Same allowlist and credentials as lookup. Every action writes an `admin_audit`
+row (admin, action, target, details) in the same transaction as the change.
+
+```bash
+# Give free time / comp a customer (1–90 days, counted from now or the
+# current trial end, whichever is later):
+node scripts/admin-action.js extend-trial customer@example.com 30
+
+# "Paid but shows trial ended" — re-pull their subscriptions from Stripe:
+node scripts/admin-action.js resync customer@example.com
+```
+
+Review the trail in the DB console:
+`SELECT * FROM admin_audit ORDER BY created_at DESC LIMIT 20;`
+
 ## Alerts to watch in API logs
 
 All billing log lines are prefixed `[billing]`.
