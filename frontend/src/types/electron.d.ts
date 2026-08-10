@@ -102,6 +102,8 @@ export interface ElectronAPI {
   getOCRCapabilities: () => Promise<OCRCapabilities>;
   /** Kill and respawn the Python API (e.g. after crash or port conflict). */
   restartBackend: () => Promise<{ ok: boolean; reason?: string }>;
+  /** Fully exits the app (trial-ended gate "Quit" action). Not exposed on web builds. */
+  quitApp?: () => Promise<{ ok: boolean }>;
   /** True only when this app's managed backend child responds on /health. */
   getBackendStatus: () => Promise<{
     ok: boolean;
@@ -167,6 +169,20 @@ export interface ElectronAPI {
     skipped?: string;
     expires_at?: number;
   }>;
+  /** Open Stripe Checkout in the system browser for the signed-in account. */
+  billingCheckout: (interval: "monthly" | "annual") => Promise<{ ok: boolean; error?: string }>;
+  /** Open the Stripe Customer Portal (manage card / cancel) in the system browser. */
+  billingOpenPortal: () => Promise<{ ok: boolean; error?: string }>;
+  /** Public billing config (enabled flag + display prices) from the cloud API. */
+  billingGetConfig: () => Promise<{
+    ok: boolean;
+    error?: string;
+    enabled?: boolean;
+    priceMonthly?: string | null;
+    priceAnnual?: string | null;
+  }>;
+  /** Fired after the exo://billing/* deep link returns from Stripe. Returns unsubscribe. */
+  onBillingEvent: (handler: (event: { kind: "complete" | "cancelled" }) => void) => () => void;
   activateLicense: (licenseKey: string) => Promise<{ ok: boolean; reason?: string }>;
   clearLicense: () => Promise<{ ok: boolean }>;
   cloudAuthRegister: (

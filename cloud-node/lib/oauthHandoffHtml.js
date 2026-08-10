@@ -221,4 +221,31 @@ function oauthHandoffPageHtml({ deepLink, error = "" }) {
   });
 }
 
-module.exports = { oauthHandoffPageHtml, escapeHtml, ERROR_COPY };
+/**
+ * HTML for /v1/billing/done and /v1/billing/cancelled — Stripe Checkout/Portal
+ * cannot redirect to exo:// directly (https-only), so this page hands off.
+ * @param {{ kind: "success" | "cancelled" | "portal" }} opts
+ */
+function billingHandoffPageHtml({ kind }) {
+  if (kind === "cancelled") {
+    return brandedShell({
+      variant: "error",
+      headline: "Checkout not completed",
+      bodyHtml: `<p>No payment was made. You can close this tab and subscribe any time from ${escapeHtml(APP_NAME)}.</p>`,
+      footerHtml: openAppButton("exo://billing/cancelled", `Return to ${APP_NAME}`),
+    });
+  }
+  const headline = kind === "portal" ? "Billing updated" : "You're subscribed";
+  const body =
+    kind === "portal"
+      ? `Any billing changes are saved. Open ${APP_NAME} to continue.`
+      : `Payment received — open ${APP_NAME} to unlock full access.`;
+  return brandedShell({
+    variant: "success",
+    headline,
+    bodyHtml: `<p>${escapeHtml(body)}</p>`,
+    footerHtml: openAppButton("exo://billing/complete", `Open ${APP_NAME}`),
+  });
+}
+
+module.exports = { oauthHandoffPageHtml, billingHandoffPageHtml, escapeHtml, ERROR_COPY };

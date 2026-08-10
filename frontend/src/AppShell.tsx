@@ -9,6 +9,8 @@ import UpdateModal from "./components/UpdateModal";
 import AssistantReplyToolBridge from "./components/AssistantReplyToolBridge";
 import AssistantAccessGuidanceModalHost from "./components/AssistantAccessGuidanceModalHost";
 import AssistantPermissionsModalHost from "./components/AssistantPermissionsModalHost";
+import TrialLifecycleModalHost from "./components/TrialLifecycleModalHost";
+import BillingPastDueBanner from "./components/BillingPastDueBanner";
 import AppAccountGate from "./components/AppAccountGate";
 import ModelDownloadModal from "./components/settings/ModelDownloadModal";
 import GeminiApiKeySetupModal from "./components/settings/GeminiApiKeySetupModal";
@@ -16,6 +18,7 @@ import { useAppSettings } from "./hooks/useAppSettings";
 import { useFolderTree } from "./hooks/useFolderTree";
 import type { MainNavTab } from "./hooks/useMainNavItems";
 import { useAppShellChrome } from "./apps/shared/useAppShellChrome";
+import { useBillingEvents } from "./hooks/useBillingEvents";
 import { useWorkspaceController } from "./apps/workspace/useWorkspaceController";
 import { useAssistantVoiceActions } from "./apps/assistant/useAssistantVoiceActions";
 import type { UiLocale } from "./i18n/locale";
@@ -72,6 +75,8 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
     reassignFile,
     setReassignFile,
   });
+
+  useBillingEvents({ uiLocale, refreshEntitlement: chrome.refreshEntitlement });
 
   const assistantVoice = useAssistantVoiceActions({
     uiLocale,
@@ -132,6 +137,12 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
             onOpenAssistantSettings={() => chrome.openPrimarySettings("assistantTools")}
             onOpenExternalSources={() => chrome.requestTab("sources")}
           />
+          <TrialLifecycleModalHost
+            entitlement={chrome.entitlement}
+            activeTab={tab}
+            openPrimarySettings={chrome.openPrimarySettings}
+          />
+          <BillingPastDueBanner entitlement={chrome.entitlement} />
           <AppLayout
             workspace={
               <AppMainWorkspace
@@ -161,7 +172,6 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
                 backendHealthProbing={chrome.backendHealthProbing}
                 backendServiceStarting={chrome.backendServiceStarting}
                 backendStartupFailed={chrome.backendStartupFailed}
-                backendStartupPercent={chrome.backendStartupPercent}
                 backendAutoRecoveryExhausted={chrome.backendAutoRecoveryExhausted}
                 backendRetryBusy={chrome.backendRetryBusy}
                 handleRetryBackend={restartBackend}

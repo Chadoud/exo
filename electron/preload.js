@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openApplicationsFolder: () => ipcRenderer.invoke("app:openApplicationsFolder"),
   getOCRCapabilities: () => ipcRenderer.invoke("app:getOCRCapabilities"),
   restartBackend: () => ipcRenderer.invoke("app:restartBackend"),
+  quitApp: () => ipcRenderer.invoke("app:quit"),
   getBackendStatus: () => ipcRenderer.invoke("backend:getStatus"),
   getBackendEnvOverrides: () => ipcRenderer.invoke("backendEnv:getOverrides"),
   setBackendEnvOverrides: (overrides) =>
@@ -68,6 +69,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   isFullscreen: () => ipcRenderer.invoke("window:isFullscreen"),
   getEntitlementState: () => ipcRenderer.invoke("entitlement:getState"),
   syncSortCredentials: (opts) => ipcRenderer.invoke("entitlement:syncSortCredentials", opts),
+  billingCheckout: (interval) => ipcRenderer.invoke("billing:checkout", interval),
+  billingOpenPortal: () => ipcRenderer.invoke("billing:openPortal"),
+  billingGetConfig: () => ipcRenderer.invoke("billing:getConfig"),
+  onBillingEvent: (handler) => {
+    const fn = (_event, detail) => {
+      try {
+        handler(detail);
+      } catch (e) {
+        console.error("[preload] onBillingEvent", e);
+      }
+    };
+    ipcRenderer.on("billing:event", fn);
+    return () => {
+      ipcRenderer.removeListener("billing:event", fn);
+    };
+  },
   activateLicense: (licenseKey) =>
     ipcRenderer.invoke("entitlement:activateLicense", licenseKey),
   clearLicense: () => ipcRenderer.invoke("entitlement:clearLicense"),

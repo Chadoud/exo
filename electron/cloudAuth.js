@@ -557,6 +557,34 @@ async function getAuthProviders() {
   return fetchAuthProviders(cloudBaseUrl());
 }
 
+/**
+ * Ask the cloud for a Stripe Checkout URL (opened in the system browser).
+ * Server errors surface as Error(message=error code, e.g. "already_subscribed").
+ * @param {string} userData
+ * @param {"monthly" | "annual"} interval
+ * @returns {Promise<{ checkout_url: string }>}
+ */
+async function createBillingCheckoutSession(userData, interval) {
+  const sess = await ensureFreshSession(userData);
+  if (!sess?.access_token) {
+    throw new Error("not_logged_in");
+  }
+  return postJsonAuthed("/v1/billing/checkout-session", sess.access_token, { interval });
+}
+
+/**
+ * Ask the cloud for a Stripe Customer Portal URL (manage card / cancel).
+ * @param {string} userData
+ * @returns {Promise<{ portal_url: string }>}
+ */
+async function createBillingPortalSession(userData) {
+  const sess = await ensureFreshSession(userData);
+  if (!sess?.access_token) {
+    throw new Error("not_logged_in");
+  }
+  return postJsonAuthed("/v1/billing/portal-session", sess.access_token, {});
+}
+
 function logout(userData) {
   void (async () => {
     try {
@@ -592,6 +620,8 @@ module.exports = {
   getAuthProviders,
   migrateLegacyCloudSession,
   fetchProfile,
+  createBillingCheckoutSession,
+  createBillingPortalSession,
   fetchSortCredentials,
   fetchSortCredentialsConfig,
   exportAccountData,

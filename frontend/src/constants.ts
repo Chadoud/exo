@@ -125,6 +125,12 @@ export const ASSISTANT_ACCESS_GUIDANCE_MODAL_DISMISSED_SESSION_KEY =
 export const ASSISTANT_PERMISSION_MODAL_DISMISSED_SESSION_KEY =
   "exosites.assistant.permissionModal.dismissed.v1";
 
+/** Trial days remaining at/below which the one-time trial-ending nudge modal is eligible to show. */
+export const TRIAL_ENDING_NUDGE_WARNING_DAYS = 3;
+
+/** localStorage: the trial-ending nudge modal has been shown/decided once ever (never re-shown). */
+export const TRIAL_ENDING_NUDGE_SEEN_STORAGE_KEY = "exosites.trialEndingNudge.seen.v1";
+
 /** sessionStorage: Exo AI Manager full-bleed intro (shell + panel chrome) has completed once this session. */
 export const EXO_INTRO_STORAGE_KEY = "exo_panel_intro_done";
 /** @deprecated Legacy sessionStorage key — migrated on read. */

@@ -8,6 +8,7 @@ import os
 from typing import Any
 
 from license_verify import verify_license_key
+from subscription_state import get_subscription_status, is_subscription_entitled
 from trial_state import get_trial_status, is_trial_active
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,8 @@ def _may_use_paid_features() -> tuple[bool, str | None]:
     licensed, _ = _has_valid_license()
     if licensed:
         return True, None
+    if is_subscription_entitled():
+        return True, None
     if is_trial_active():
         return True, None
     return False, _TRIAL_EXPIRED
@@ -113,6 +116,7 @@ def get_entitlement_status() -> dict[str, Any]:
             "trialEndsAt": None,
             "trialDaysRemaining": 0,
             "trialExpired": False,
+            **get_subscription_status(),
             "licensed": False,
             "licenseReason": None,
             "unlimitedBuild": True,
@@ -126,14 +130,16 @@ def get_entitlement_status() -> dict[str, Any]:
             **_sort_service_status(),
         }
     trial = get_trial_status()
+    subscription = get_subscription_status()
     licensed, license_reason = _has_valid_license()
     bypass = _dev_entitlement_bypass_enabled()
-    trial_active = bypass or licensed or trial["trialActive"]
-    can_analyze = trial_active
-    can_use_proactive = trial_active
-    can_use_sync = trial_active
+    paid_access = bypass or licensed or subscription["subscriptionEntitled"] or trial["trialActive"]
+    can_analyze = paid_access
+    can_use_proactive = paid_access
+    can_use_sync = paid_access
     return {
         **trial,
+        **subscription,
         "licensed": licensed,
         "licenseReason": license_reason,
         "canAnalyze": can_analyze,

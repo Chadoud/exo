@@ -151,6 +151,44 @@ async function assertAccountActive(accountId) {
   }
 }
 
+const SUBSCRIPTION_ENTITLED_STATUSES = new Set(["active", "trialing", "past_due"]);
+
+/**
+ * Newest relevant subscription row, preferring live ones. Tolerates the table
+ * not existing yet (pre-migration-024 deploys).
+ * @param {import("mysql2/promise").Pool} pool
+ * @param {string} accountId
+ */
+async function latestSubscriptionForProfile(pool, accountId) {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT status, current_period_end, cancel_at_period_end
+       FROM subscriptions WHERE account_id = ?
+       ORDER BY (status IN ('active','trialing','past_due')) DESC, updated_at DESC, id DESC
+       LIMIT 1`,
+      [accountId],
+    );
+    return rows[0] || null;
+  } catch (e) {
+    if (e?.code === "ER_NO_SUCH_TABLE") return null;
+    throw e;
+  }
+}
+
+/**
+ * @param {{ status?: string } | null} subscription
+ * @param {boolean} trialActive
+ * @returns {"trial" | "pro" | "past_due" | "canceled" | "expired"}
+ */
+function computePlan(subscription, trialActive) {
+  const status = subscription?.status;
+  if (status === "past_due") return "past_due";
+  if (status && SUBSCRIPTION_ENTITLED_STATUSES.has(status)) return "pro";
+  if (trialActive) return "trial";
+  if (subscription) return "canceled";
+  return "expired";
+}
+
 async function getProfile(accountId) {
   const pool = getPool();
   const [accounts] = await pool.execute(
@@ -179,6 +217,10 @@ async function getProfile(accountId) {
     trialEndsMs == null ? 0 : Math.max(0, Math.ceil((trialEndsMs - nowMs) / (24 * 60 * 60 * 1000)));
   const trialActive = trialEndsMs != null && nowMs < trialEndsMs;
   const isProductAdmin = await isAccountProductAdmin(accountId);
+  const subscription = await latestSubscriptionForProfile(pool, accountId);
+  const subscriptionActive = Boolean(
+    subscription && SUBSCRIPTION_ENTITLED_STATUSES.has(subscription.status),
+  );
 
   return {
     account_id: accounts[0].id,
@@ -190,7 +232,11 @@ async function getProfile(accountId) {
     trial_days_remaining: trialDaysRemaining,
     trial_active: trialActive,
     is_product_admin: isProductAdmin,
-    plan: trialActive ? "trial" : "expired",
+    plan: computePlan(subscription, trialActive),
+    subscription_active: subscriptionActive,
+    subscription_status: subscription?.status ?? null,
+    subscription_current_period_end: subscription?.current_period_end ?? null,
+    subscription_cancel_at_period_end: Boolean(subscription?.cancel_at_period_end),
     profile: profiles[0] || { display_name: null, locale: "en" },
     bytes_balance: wallets[0]?.bytes_balance ?? 0,
     entitlements: ents.map((e) => ({
@@ -208,4 +254,5 @@ module.exports = {
   getProfile,
   assertAccountActive,
   provisionAccount,
+  computePlan,
 };

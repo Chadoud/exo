@@ -5,6 +5,7 @@
 const crypto = require("crypto");
 const { getPool } = require("./db");
 const { getProfile } = require("./accounts");
+const { cancelSubscriptionsForAccountDeletion } = require("./stripeBilling");
 
 /**
  * Export cloud-held metadata for an account (no plaintext sync payloads).
@@ -49,6 +50,12 @@ async function exportAccountData(accountId) {
  */
 async function deleteAccount(accountId) {
   const pool = getPool();
+  // A deleted account must never keep getting billed (no refund by default).
+  try {
+    await cancelSubscriptionsForAccountDeletion(accountId);
+  } catch (e) {
+    console.error("[account-delete] subscription cancel step failed:", e?.message || e);
+  }
   const conn = await pool.getConnection();
   const accountHash = crypto.createHash("sha256").update(String(accountId)).digest("hex");
   try {
@@ -71,6 +78,8 @@ async function deleteAccount(accountId) {
       }
     }
     const tables = [
+      "DELETE FROM stripe_events_processed WHERE account_id = ?",
+      "DELETE FROM subscriptions WHERE account_id = ?",
       "DELETE FROM whatsapp_events WHERE account_id = ?",
       "DELETE FROM whatsapp_phone_bindings WHERE account_id = ?",
       "DELETE FROM sync_blobs WHERE account_id = ?",
@@ -88,7 +97,7 @@ async function deleteAccount(accountId) {
       try {
         await conn.execute(sql, [accountId]);
       } catch (e) {
-        if (/whatsapp_/.test(sql) && e?.code === "ER_NO_SUCH_TABLE") {
+        if (/whatsapp_|stripe_events_processed|FROM subscriptions/.test(sql) && e?.code === "ER_NO_SUCH_TABLE") {
           continue;
         }
         throw e;

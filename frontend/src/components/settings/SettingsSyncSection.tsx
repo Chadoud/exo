@@ -9,6 +9,7 @@ import ProUpgradeCard from "../ProUpgradeCard";
 interface SyncStatus {
   enabled?: boolean;
   lastRunAt?: string | null;
+  lastSuccessfulSyncAt?: string | null;
   lastError?: string | null;
   pendingCount?: number;
   conflictCount?: number;
@@ -22,10 +23,27 @@ interface Props {
 function pairingErrorMessage(
   result: unknown,
   fallback: string,
+  keyUnreadable?: string,
+  sessionExpired?: string,
 ): string {
   if (result && typeof result === "object" && "error" in result) {
     const err = (result as { error?: unknown }).error;
-    if (typeof err === "string" && err.trim()) return `${fallback} (${err.trim()})`;
+    if (typeof err === "string" && err.trim()) {
+      if (err.includes("sync_master_key_unreadable") && keyUnreadable) {
+        return keyUnreadable;
+      }
+      // Cloud JWT rejected when minting a pairing grant.
+      if (
+        sessionExpired &&
+        (err.includes("invalid_token") ||
+          err.includes("missing_token") ||
+          err.includes("not_logged_in") ||
+          err.includes("401"))
+      ) {
+        return sessionExpired;
+      }
+      return `${fallback} (${err.trim()})`;
+    }
   }
   return fallback;
 }
@@ -50,11 +68,19 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
     void refresh();
   }, [refresh]);
 
+  const hasSyncedOnce = Boolean(status.lastSuccessfulSyncAt);
+
   useEffect(() => {
     if (!status.enabled) {
       setPairQrDataUrl(null);
       setPairError(null);
       setCopyHint(null);
+      return;
+    }
+    // Do not mint a pairing QR until desktop has synced at least once.
+    if (!hasSyncedOnce) {
+      setPairQrDataUrl(null);
+      setPairError(null);
       return;
     }
     const api = window.electronAPI;
@@ -73,22 +99,49 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
           return;
         }
         setPairQrDataUrl(null);
-        setPairError(pairingErrorMessage(result, t("sync.pairQrError")));
+        setPairError(
+          pairingErrorMessage(
+            result,
+            t("sync.pairQrError"),
+            t("sync.pairKeyUnreadable"),
+            t("sync.pairSessionExpired"),
+          ),
+        );
       } catch {
         setPairQrDataUrl(null);
         setPairError(t("sync.pairQrError"));
       }
     })();
-  }, [status.enabled, t, pairRetryTick]);
+  }, [status.enabled, hasSyncedOnce, t, pairRetryTick]);
 
   const toggle = async () => {
     if (!canUseSync) return;
     const api = window.electronAPI;
     if (!api?.syncSetEnabled) return;
     setBusy(true);
+    setCopyHint(null);
+    setPairError(null);
     try {
-      await api.syncSetEnabled(!status.enabled);
+      const result = await api.syncSetEnabled(!status.enabled);
+      if (
+        result &&
+        typeof result === "object" &&
+        "ok" in result &&
+        (result as { ok?: unknown }).ok === false
+      ) {
+        setPairError(
+          pairingErrorMessage(
+            result,
+            t("sync.pairQrError"),
+            t("sync.pairKeyUnreadable"),
+            t("sync.pairSessionExpired"),
+          ),
+        );
+        return;
+      }
       await refresh();
+    } catch {
+      setPairError(t("sync.pairQrError"));
     } finally {
       setBusy(false);
     }
@@ -107,6 +160,10 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
   };
 
   const copyPairing = async () => {
+    if (!hasSyncedOnce) {
+      setCopyHint(t("sync.pairSyncFirst"));
+      return;
+    }
     const api = window.electronAPI;
     if (!api?.syncCopyPairingPayload) {
       setCopyHint(t("sync.pairCopyError"));
@@ -120,7 +177,14 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
         setCopyHint(t("sync.pairCopied"));
         return;
       }
-      setCopyHint(pairingErrorMessage(result, t("sync.pairCopyError")));
+      setCopyHint(
+        pairingErrorMessage(
+          result,
+          t("sync.pairCopyError"),
+          t("sync.pairKeyUnreadable"),
+          t("sync.pairSessionExpired"),
+        ),
+      );
     } catch {
       setCopyHint(t("sync.pairCopyError"));
     } finally {
@@ -173,25 +237,30 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
           </button>
           <div className="rounded-lg border border-border bg-bg-primary/40 p-3">
             <p className="text-xs font-medium text-text-primary">{t("sync.pairTitle")}</p>
-            <p className="mt-1 text-[11px] text-muted">{t("sync.pairHint")}</p>
+            <p className="mt-1 text-[11px] text-muted">
+              {hasSyncedOnce ? t("sync.pairHint") : t("sync.pairSyncFirst")}
+            </p>
             {pairError ? <p className="mt-2 text-[11px] text-red-500">{pairError}</p> : null}
-            {pairQrDataUrl ? (
+            {hasSyncedOnce && pairQrDataUrl ? (
               <img src={pairQrDataUrl} alt="" className="mt-3 h-[220px] w-[220px] rounded-md bg-white p-2" />
             ) : null}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !hasSyncedOnce}
                 onClick={() => void copyPairing()}
                 className="inline-flex min-h-10 items-center rounded-lg border border-border bg-bg-card px-3 py-2 text-xs font-medium text-text-primary hover:bg-hover-overlay disabled:opacity-50"
               >
                 {t("sync.pairCopy")}
               </button>
-              {pairError || !pairQrDataUrl ? (
+              {hasSyncedOnce ? (
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => setPairRetryTick((n) => n + 1)}
+                  onClick={() => {
+                    setCopyHint(null);
+                    setPairRetryTick((n) => n + 1);
+                  }}
                   className="inline-flex min-h-10 items-center rounded-lg border border-border bg-bg-card px-3 py-2 text-xs font-medium text-text-primary hover:bg-hover-overlay disabled:opacity-50"
                 >
                   {t("sync.pairRetry")}

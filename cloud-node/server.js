@@ -15,6 +15,7 @@ const publicConfigRouter = require("./routes/publicConfig");
 const syncRouter = require("./routes/sync");
 const sortCredentialsRouter = require("./routes/sortCredentials");
 const whatsappWebhookRouter = require("./routes/whatsappWebhook");
+const { createBillingRouter, createStripeWebhookRouter } = require("./routes/billing");
 const whatsappMeRouter = require("./routes/whatsappMe");
 const { router: whatsappOAuthCallbackRouter } = require("./routes/whatsappOAuthCallback");
 const { metricsMiddleware, prometheusText } = require("./lib/metrics");
@@ -82,6 +83,13 @@ app.use(
   whatsappWebhookRouter,
 );
 
+// Stripe webhook signature verification requires the raw body.
+app.use(
+  "/v1/webhooks/stripe",
+  express.raw({ type: "application/json", limit: "512kb" }),
+  createStripeWebhookRouter(),
+);
+
 app.use(express.json({ limit: "256kb" }));
 app.use(metricsMiddleware);
 
@@ -102,6 +110,7 @@ app.get("/health", async (_req, res) => {
         sync_relay: await syncRelayTablesReady(pool),
         product_analytics: await productAnalyticsReady(pool),
         whatsapp_webhooks: await whatsappWebhookReady(pool),
+        billing: config.stripe.enabled && Boolean(config.stripe.secretKey),
         sort_credentials: Boolean(
           sortLlm.mockToken || sortLlm.masterKey || sortLlm.allowMasterDelegation,
         ),
@@ -133,6 +142,7 @@ app.use("/v1", syncRouter);
 app.use("/v1", sortCredentialsRouter);
 app.use("/v1", whatsappMeRouter);
 app.use("/v1", whatsappOAuthCallbackRouter);
+app.use("/v1", createBillingRouter());
 app.use("/v1/public", publicConfigRouter);
 
 app.use((_req, res) => {

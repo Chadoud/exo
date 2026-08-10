@@ -26,6 +26,12 @@ router.get("/client-config", (_req, res) => {
     telemetry_ingest_enabled: true,
     feedback_ingest_enabled: true,
     crash_reports_ingest_enabled: Boolean(config.crashIngestToken),
+    billing: {
+      enabled: config.stripe.enabled && Boolean(config.stripe.secretKey),
+      // Display-only strings — actual charge amounts live in the Stripe prices.
+      price_monthly: config.stripe.displayPriceMonthly,
+      price_annual: config.stripe.displayPriceAnnual,
+    },
   });
 });
 

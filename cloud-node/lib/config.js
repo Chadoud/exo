@@ -18,6 +18,9 @@ const appBaseUrl = env("APP_BASE_URL", "https://api.exosites.ch").replace(/\/$/,
 const jwtSecretRaw = env("JWT_SECRET", "dev-change-me");
 const nodeEnv = env("NODE_ENV", "development");
 
+const stripeSecretKey = env("STRIPE_SECRET_KEY");
+const stripeWebhookSecret = env("STRIPE_WEBHOOK_SECRET");
+
 if (nodeEnv === "production") {
   if (!jwtSecretRaw || jwtSecretRaw === "dev-change-me" || jwtSecretRaw.length < 32) {
     console.error("[config] JWT_SECRET must be set to a strong value (32+ chars) in production");
@@ -28,6 +31,15 @@ if (nodeEnv === "production") {
       "[config] SORT_LLM_ALLOW_MASTER_DELEGATION=1 is forbidden in production — use virtual LiteLLM keys only",
     );
     process.exit(1);
+  }
+  if (stripeSecretKey && !stripeWebhookSecret) {
+    console.error(
+      "[config] STRIPE_SECRET_KEY is set without STRIPE_WEBHOOK_SECRET — refusing to run billing without webhook verification",
+    );
+    process.exit(1);
+  }
+  if (stripeSecretKey.startsWith("sk_test_")) {
+    console.warn("[config] WARNING: STRIPE_SECRET_KEY is a test-mode key in production");
   }
 }
 
@@ -87,6 +99,21 @@ module.exports = {
     allowMasterDelegation: env("SORT_LLM_ALLOW_MASTER_DELEGATION", "0") === "1",
     /** Local/tests: fixed token without calling LiteLLM. */
     mockToken: env("SORT_LLM_MOCK_TOKEN"),
+  },
+
+  // ─── Stripe billing (single Pro plan, CHF) ─────────────────────────────────
+  stripe: {
+    /** Master rollout switch — off keeps /v1/billing/* returning 503. */
+    enabled: env("STRIPE_BILLING_ENABLED", "0") === "1",
+    secretKey: stripeSecretKey,
+    webhookSecret: stripeWebhookSecret,
+    priceIdMonthly: env("STRIPE_PRICE_ID_MONTHLY"),
+    priceIdAnnual: env("STRIPE_PRICE_ID_ANNUAL"),
+    /** Stripe Tax at Checkout (Swiss VAT) — requires tax registration in the dashboard. */
+    automaticTax: env("STRIPE_AUTOMATIC_TAX", "1") === "1",
+    /** Display-only price strings served to clients (never used for charging). */
+    displayPriceMonthly: env("STRIPE_DISPLAY_PRICE_MONTHLY", "CHF 20"),
+    displayPriceAnnual: env("STRIPE_DISPLAY_PRICE_ANNUAL", "CHF 200"),
   },
 
   whatsapp: {

@@ -16,6 +16,7 @@ const { registerClapHandlers } = require("./ipc/clapHandlers");
 const { registerPttHandlers } = require("./ipc/pushToTalkHandlers");
 const { registerCodegenHandlers } = require("./ipc/codegenHandlers");
 const { registerSecretsHandlers } = require("./ipc/secretsHandlers");
+const { registerBillingHandlers } = require("./ipc/billingHandlers");
 const { registerUpdateHandlers } = require("./autoUpdater");
 const { registerVoiceHandlers } = require("./ipc/voiceHandlers");
 
@@ -33,6 +34,7 @@ function registerHandlers() {
   registerPttHandlers();
   registerCodegenHandlers();
   registerSecretsHandlers();
+  registerBillingHandlers();
   registerVoiceHandlers();
   registerUpdateHandlers();
 }

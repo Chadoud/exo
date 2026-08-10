@@ -37,6 +37,7 @@ const {
   registerSocialAuthProtocol,
   handleSocialAuthCallbackUrl,
 } = require("./socialAuthCallback");
+const { handleBillingDeepLinkUrl } = require("./billingDeepLink");
 const cloudSessionPrefs = require("./cloudSessionPrefs");
 const { registerAppLifecycleHooks, showMainWindow, setClapToLaunchMode } = require("./voiceWakeBackground");
 const { getClapToLaunchEnabled, launchedAsClapBackground, syncLoginItem } = require("./clapPrefs");
@@ -79,7 +80,9 @@ app.on("open-url", (event, url) => {
   event.preventDefault();
   if (handleSocialAuthCallbackUrl(url)) {
     showMainWindow();
+    return;
   }
+  handleBillingDeepLinkUrl(url, { showMainWindow });
 });
 
 // Register all IPC handlers before any window opens.
@@ -95,6 +98,9 @@ if (!gotLock) {
     const protocolUrl = commandLine.find((arg) => typeof arg === "string" && arg.startsWith("exo://"));
     if (protocolUrl && handleSocialAuthCallbackUrl(protocolUrl)) {
       showMainWindow();
+      return;
+    }
+    if (protocolUrl && handleBillingDeepLinkUrl(protocolUrl, { showMainWindow })) {
       return;
     }
     if (state.mainWindow) {

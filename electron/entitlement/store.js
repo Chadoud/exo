@@ -5,6 +5,7 @@ const cloudAuth = require("../cloudAuth");
 const { isUnlimitedEntitlementBuild } = require("../buildProfile");
 const { syncGoogleOauthClientIdForElectronMain } = require("../backendProcess");
 const { getTrialStatus, isTrialActive, syncCloudTrialEndsAt } = require("./trialState");
+const { getSubscriptionStatus, syncCloudSubscription } = require("./subscriptionState");
 const {
   syncSortCredentialsFromCloud,
   getSortServiceSurface,
@@ -50,13 +51,17 @@ function readJsonSafe(p, fallback) {
 }
 
 /**
- * Pull trial end from cloud account and persist locally for the Python backend.
+ * Pull trial end + subscription state from cloud account and persist locally
+ * for the Python backend (trial.json + subscription.json).
  * @param {string} userData
  */
 async function syncTrialFromCloudSession(userData) {
   const profile = await cloudAuth.fetchProfile(userData);
   if (profile?.trial_ends_at) {
     syncCloudTrialEndsAt(profileRootFor(userData), profile.trial_ends_at);
+  }
+  if (profile) {
+    syncCloudSubscription(profileRootFor(userData), profile);
   }
   return profile;
 }
@@ -120,6 +125,7 @@ async function getEntitlementState(userData) {
       trialEndsAt: null,
       trialDaysRemaining: 0,
       trialExpired: false,
+      ...getSubscriptionStatus(profileRootFor(userData)),
       licensed: false,
       licenseReason: null,
       unlimitedBuild: true,
@@ -192,11 +198,12 @@ async function getEntitlementState(userData) {
   }
 
   const trial = getTrialStatus(dataRoot);
+  const subscription = getSubscriptionStatus(dataRoot);
   const bypass = devEntitlementBypassEnabled();
-  const trialActive = bypass || licensed || trial.trialActive;
-  let canAnalyze = trialActive;
-  let canUseProactive = trialActive;
-  const canUseSync = trialActive;
+  const paidAccess = bypass || licensed || subscription.subscriptionEntitled || trial.trialActive;
+  let canAnalyze = paidAccess;
+  let canUseProactive = paidAccess;
+  const canUseSync = paidAccess;
 
   if (cloudAuthRequired && !cloudLoggedIn && !bypass) {
     canAnalyze = false;
@@ -207,6 +214,7 @@ async function getEntitlementState(userData) {
 
   return {
     ...trial,
+    ...subscription,
     licensed,
     licenseReason,
     canAnalyze,
@@ -232,6 +240,12 @@ function entitlementGateFallback() {
     trialEndsAt: null,
     trialDaysRemaining: 0,
     trialExpired: true,
+    subscriptionActive: false,
+    subscriptionStatus: null,
+    subscriptionCurrentPeriodEnd: null,
+    subscriptionCancelAtPeriodEnd: false,
+    subscriptionPlan: null,
+    subscriptionEntitled: false,
     licensed: false,
     licenseReason: null,
     canAnalyze: false,

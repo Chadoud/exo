@@ -2,7 +2,7 @@
 
 Use this list when publishing a downloadable release (GitHub Release or direct DMG/exe distribution).
 
-**Entitlement model:** 14-day free trial (cloud account), optional offline license key, payment in a future update. See [SECURITY.md](../SECURITY.md) and live policies at [exosites.ch/eng/app-privacy](https://exosites.ch/eng/app-privacy).
+**Entitlement model:** 30-day free trial (cloud account), Stripe subscription (CHF 20/month or CHF 200/year, behind `STRIPE_BILLING_ENABLED`), optional offline license key. Billing ops: [runbooks/billing-ops.md](runbooks/billing-ops.md). See [SECURITY.md](../SECURITY.md) and live policies at [exosites.ch/eng/app-privacy](https://exosites.ch/eng/app-privacy).
 
 ## Automated QA (before manual smoke)
 
@@ -17,7 +17,7 @@ Runs frontend lint, build, unit tests (Vitest **and** root `npm run test:electro
 ## Build artifacts
 
 - **Frontend:** `npm run build:frontend` with legal URLs set (see below).
-- **Backend binary:** PyInstaller output at `electron/resources/backend.exe` (Windows) or `electron/resources/backend` (macOS).
+- **Backend onedir:** PyInstaller output staged at `electron/resources/backend/` (Windows, contains `backend.exe`) or `electron/resources/backend-{arch}/` (macOS, contains `backend`).
 - **Windows:** `npm run package:win` → `dist-app/` or `dist-installer/` per [`package.json`](../package.json).
 - **macOS:** `npm run package:mac` → universal `.dmg` under `dist-installer/`.
 - Smoke-test a **clean install**: sign-in → trial countdown → drop folder → classify → review → apply.
