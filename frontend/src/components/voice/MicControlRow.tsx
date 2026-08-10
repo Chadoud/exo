@@ -27,6 +27,18 @@ function MicIcon({ className }: { className?: string }) {
   );
 }
 
+function RestartIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden="true">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+      />
+    </svg>
+  );
+}
+
 /**
  * Mic toggle (conversation) or PTT hints, plus the mic settings gear on the same row.
  */
@@ -123,6 +135,25 @@ export function MicControlRow({
     void voice.start();
   };
 
+  // Recovery path for a silently dead mic (e.g. macOS permission churn on
+  // reinstall): full stop + start without hunting through settings.
+  const restartButton = (variant: "rail" | "composer") => (
+    <button
+      type="button"
+      onClick={retryVoice}
+      disabled={notConfigured}
+      title={t("voice.micRestartTitle")}
+      aria-label={t("voice.micRestartTitle")}
+      className={
+        variant === "rail"
+          ? "exo-action-btn shrink-0 px-0 py-[0.55rem] min-w-[2.75rem] flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
+          : "shrink-0 rounded-xl border border-border bg-bg-secondary p-2.5 text-text-secondary transition-colors hover:bg-hover-overlay hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:opacity-50 disabled:pointer-events-none"
+      }
+    >
+      <RestartIcon className="h-4 w-4" />
+    </button>
+  );
+
   if (isExoRail) {
     return (
       <div className="flex flex-col gap-1.5">
@@ -139,6 +170,7 @@ export function MicControlRow({
                 ? t("voice.micReconnectingLabel")
                 : t("voice.micOffLabel")}
           </button>
+          {restartButton("rail")}
           {settingsPopover}
         </div>
         <VoiceMicIssueBanner
@@ -173,6 +205,7 @@ export function MicControlRow({
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
         ) : null}
       </div>
+      {restartButton("composer")}
       {settingsPopover}
     </div>
   );

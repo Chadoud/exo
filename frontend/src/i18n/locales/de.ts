@@ -3117,6 +3117,7 @@ Beispiele:
     micShortcutTitle: "F4 — Mikro ein/aus",
     micStartTitle: "Spracheingabe starten",
     micStopTitle: "Sprache stoppen",
+    micRestartTitle: "Mikrofon neu starten",
     micNotConfiguredTitle: "Sprache nicht konfiguriert — GEMINI_API_KEY in Einstellungen",
     micOnLabel: "MIKRO AN [F4]",
     micOffLabel: "MIKRO [F4]",

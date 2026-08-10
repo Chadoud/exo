@@ -3278,6 +3278,7 @@ Override examples:
     micShortcutTitle: "F4 — toggle voice",
     micStartTitle: "Start voice input",
     micStopTitle: "Stop voice",
+    micRestartTitle: "Restart microphone",
     micNotConfiguredTitle: "Voice not configured — add GEMINI_API_KEY in Settings",
     micOnLabel: "MIC ON [F4]",
     micOffLabel: "MIC [F4]",
