@@ -64,7 +64,7 @@ nothing.
 
 | Task | How |
 |---|---|
-| Nightly reconciliation | cron: `node scripts/reconcile-subscriptions.js` (add `--dry-run` to audit). Re-fetches every live-ish subscription from Stripe and heals drift from missed webhooks. |
+| Nightly reconciliation | Runs **in-process** automatically while billing is enabled (every `STRIPE_RECONCILE_INTERVAL_HOURS`, default 24; `0` disables). On demand: `node scripts/reconcile-subscriptions.js` (add `--dry-run` to audit). Re-fetches every live-ish subscription from Stripe and heals drift from missed webhooks. |
 | Check webhook health | Stripe Dashboard → Webhooks → endpoint delivery log. Failing deliveries retry ~3 days; reconciliation covers longer gaps. |
 | Refunds | Stripe Dashboard → Payments → refund. Status stays `active` unless you also cancel the subscription. |
 
@@ -80,8 +80,18 @@ All billing log lines are prefixed `[billing]`.
   the next webhook) to restore access.
 - `ALERT could not cancel … during account deletion` — account was deleted but
   Stripe cancellation failed; cancel manually to stop billing.
+- `ALERT reconcile drift` — a webhook was missed; state was re-applied from
+  Stripe. Occasional single drifts are normal; repeated drift means webhook
+  delivery is broken (check the endpoint + signing secret).
+- `ALERT … unknown customer` — a Stripe event referenced a customer no account
+  maps to; entitlement was NOT granted. Find the customer in the Stripe
+  dashboard and backfill `accounts.stripe_customer_id`, then resend the event.
+- `ALERT … livemode mismatch` — the Stripe endpoint mode (test/live) disagrees
+  with the server's key. Events are dropped until the two match.
 - `webhook processing failed` — handler error; the transaction rolled back and
   Stripe will retry. Investigate if it repeats.
+
+Quick daily check: `grep "\[billing\] ALERT" server.log | tail`.
 
 ## User-support playbook
 

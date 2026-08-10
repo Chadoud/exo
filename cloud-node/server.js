@@ -16,6 +16,7 @@ const syncRouter = require("./routes/sync");
 const sortCredentialsRouter = require("./routes/sortCredentials");
 const whatsappWebhookRouter = require("./routes/whatsappWebhook");
 const { createBillingRouter, createStripeWebhookRouter } = require("./routes/billing");
+const { startSubscriptionReconciliation } = require("./lib/reconcileSubscriptions");
 const whatsappMeRouter = require("./routes/whatsappMe");
 const { router: whatsappOAuthCallbackRouter } = require("./routes/whatsappOAuthCallback");
 const { metricsMiddleware, prometheusText } = require("./lib/metrics");
@@ -151,4 +152,6 @@ app.use((_req, res) => {
 
 app.listen(config.port, () => {
   console.log(`[exo-cloud-api] listening on port ${config.port}`);
+  // Nightly self-heal for missed Stripe webhooks (billing runbook).
+  startSubscriptionReconciliation();
 });

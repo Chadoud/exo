@@ -94,6 +94,19 @@ function createBillingMockPool() {
       return [rows.slice(0, 1)];
     }
 
+    if (q.startsWith("select account_id, stripe_subscription_id, status from subscriptions")) {
+      // Reconcile scan: entitled statuses plus 'incomplete'.
+      const SCAN = new Set([...ENTITLED, "incomplete"]);
+      const rows = state.subscriptions
+        .filter((s) => SCAN.has(s.status))
+        .map((s) => ({
+          account_id: s.account_id,
+          stripe_subscription_id: s.stripe_subscription_id,
+          status: s.status,
+        }));
+      return [rows];
+    }
+
     if (q.startsWith("select stripe_subscription_id from subscriptions")) {
       const [accountId] = params;
       const rows = state.subscriptions
