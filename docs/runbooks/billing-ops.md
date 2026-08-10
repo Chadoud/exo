@@ -68,6 +68,25 @@ nothing.
 | Check webhook health | Stripe Dashboard → Webhooks → endpoint delivery log. Failing deliveries retry ~3 days; reconciliation covers longer gaps. |
 | Refunds | Stripe Dashboard → Payments → refund. Status stays `active` unless you also cancel the subscription. |
 
+## Admin account lookup (support)
+
+Read-only, allowlist-gated. Grant yourself access once (DB console):
+
+```sql
+INSERT INTO product_admins (account_id) VALUES ('<your account uuid>');
+```
+
+Then look up any customer by email:
+
+```bash
+EXO_ADMIN_EMAIL=you@exosites.com EXO_ADMIN_PASSWORD=... \
+  node scripts/admin-lookup.js customer@example.com
+```
+
+Returns plan, trial state, subscription status/renewal, and the
+`stripe_customer_id` to paste into the Stripe dashboard. Non-admins get a 404;
+lookups are rate-limited and audit-logged (`[admin] account lookup by=…`).
+
 ## Alerts to watch in API logs
 
 All billing log lines are prefixed `[billing]`.

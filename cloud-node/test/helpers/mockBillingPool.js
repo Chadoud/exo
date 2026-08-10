@@ -15,9 +15,25 @@ function createBillingMockPool() {
   };
 
   let snapshot = null;
+  /** @type {Set<string>} */
+  const productAdmins = new Set();
 
-  function addAccount(id, email, stripeCustomerId = null) {
-    state.accounts[id] = { id, email, stripe_customer_id: stripeCustomerId };
+  function addAccount(id, email, stripeCustomerId = null, opts = {}) {
+    state.accounts[id] = {
+      id,
+      email,
+      stripe_customer_id: stripeCustomerId,
+      is_active: 1,
+      first_name: null,
+      last_name: null,
+      created_at: "2026-01-01T00:00:00.000Z",
+      trial_ends_at: null,
+      ...opts,
+    };
+  }
+
+  function addProductAdmin(id) {
+    productAdmins.add(id);
   }
 
   const ENTITLED = new Set(["active", "trialing", "past_due"]);
@@ -29,6 +45,38 @@ function createBillingMockPool() {
       const [id] = params;
       const row = state.accounts[id];
       return [row ? [row] : []];
+    }
+
+    if (q.startsWith("select id, is_active, stripe_customer_id from accounts where email")) {
+      const [email] = params;
+      const row = Object.values(state.accounts).find((a) => a.email === email);
+      return [
+        row ? [{ id: row.id, is_active: row.is_active, stripe_customer_id: row.stripe_customer_id }] : [],
+      ];
+    }
+
+    if (q.startsWith("select id, email, first_name, last_name, created_at, trial_ends_at from accounts")) {
+      const [id] = params;
+      const row = state.accounts[id];
+      return [row && row.is_active ? [row] : []];
+    }
+
+    if (q.startsWith("select display_name, locale from user_profiles")) {
+      return [[]];
+    }
+
+    if (q.startsWith("select bytes_balance from wallets")) {
+      return [[]];
+    }
+
+    if (q.startsWith("select feature, source, active, extra from entitlements")) {
+      const [accountId] = params;
+      return [state.entitlements.filter((e) => e.account_id === accountId)];
+    }
+
+    if (q.startsWith("select 1 from product_admins")) {
+      const [accountId] = params;
+      return [productAdmins.has(accountId) ? [{ 1: 1 }] : []];
     }
 
     if (q.startsWith("select id from accounts where stripe_customer_id")) {
@@ -175,6 +223,7 @@ function createBillingMockPool() {
     getConnection: async () => conn,
     state,
     addAccount,
+    addProductAdmin,
   };
 }
 

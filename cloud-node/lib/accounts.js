@@ -180,6 +180,20 @@ function computePlan(subscription, trialActive) {
   return "expired";
 }
 
+/**
+ * Exact-match account lookup (admin support tooling). Includes inactive accounts.
+ * @param {string} email already normalized (trimmed, lowercased)
+ * @returns {Promise<{ id: string; is_active: number; stripe_customer_id: string | null } | null>}
+ */
+async function findAccountByEmail(email) {
+  const pool = getPool();
+  const [rows] = await pool.execute(
+    "SELECT id, is_active, stripe_customer_id FROM accounts WHERE email = ? LIMIT 1",
+    [email],
+  );
+  return rows[0] ?? null;
+}
+
 async function getProfile(accountId) {
   const pool = getPool();
   const [accounts] = await pool.execute(
@@ -244,6 +258,7 @@ module.exports = {
   registerAccount,
   loginAccount,
   getProfile,
+  findAccountByEmail,
   assertAccountActive,
   provisionAccount,
   computePlan,

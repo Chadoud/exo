@@ -17,6 +17,7 @@ const sortCredentialsRouter = require("./routes/sortCredentials");
 const whatsappWebhookRouter = require("./routes/whatsappWebhook");
 const { createBillingRouter, createStripeWebhookRouter } = require("./routes/billing");
 const { startSubscriptionReconciliation } = require("./lib/reconcileSubscriptions");
+const adminRouter = require("./routes/admin");
 const whatsappMeRouter = require("./routes/whatsappMe");
 const { router: whatsappOAuthCallbackRouter } = require("./routes/whatsappOAuthCallback");
 const { metricsMiddleware, prometheusText } = require("./lib/metrics");
@@ -144,6 +145,7 @@ app.use("/v1", sortCredentialsRouter);
 app.use("/v1", whatsappMeRouter);
 app.use("/v1", whatsappOAuthCallbackRouter);
 app.use("/v1", createBillingRouter());
+app.use("/v1", adminRouter);
 app.use("/v1/public", publicConfigRouter);
 
 app.use((_req, res) => {
