@@ -12,6 +12,13 @@ const {
   dmgArtifactName,
 } = require("./mac-packaging.cjs");
 
+function writeOnedirSlice(dir, sliceName) {
+  const slice = path.join(dir, sliceName);
+  fs.mkdirSync(slice, { recursive: true });
+  fs.writeFileSync(path.join(slice, "backend"), "x");
+  return slice;
+}
+
 test("backendSliceName maps arch to resource name", () => {
   assert.equal(backendSliceName("x64"), "backend-x64");
   assert.equal(backendSliceName("arm64"), "backend-arm64");
@@ -27,19 +34,17 @@ test("dmgArtifactName is arch-specific unless universal", () => {
   assert.match(dmgArtifactName({ EXO_MAC_UNIVERSAL: "0" }), /^Exo-(x64|arm64)\.\$\{ext\}$/);
 });
 
-test("stageBackendSlices keeps one slice for native builds", () => {
+test("stageBackendSlices keeps one onedir slice for native builds", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-mac-pack-"));
-  const x64 = path.join(dir, "backend-x64");
-  const arm64 = path.join(dir, "backend-arm64");
-  fs.writeFileSync(x64, "x64");
-  fs.writeFileSync(arm64, "arm64");
+  writeOnedirSlice(dir, "backend-x64");
+  writeOnedirSlice(dir, "backend-arm64");
 
   const nativeArch = process.arch === "arm64" ? "arm64" : "x64";
   stageBackendSlices(dir, { EXO_MAC_UNIVERSAL: "0" });
 
   const kept = path.join(dir, backendSliceName(nativeArch));
   const removed = path.join(dir, backendSliceName(nativeArch === "arm64" ? "x64" : "arm64"));
-  assert.ok(fs.existsSync(kept));
+  assert.ok(fs.existsSync(path.join(kept, "backend")));
   assert.ok(!fs.existsSync(removed));
 
   fs.rmSync(dir, { recursive: true, force: true });
@@ -47,14 +52,17 @@ test("stageBackendSlices keeps one slice for native builds", () => {
 
 test("verifyBackendSlices rejects duplicate slices in native mode", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-mac-verify-"));
-  fs.writeFileSync(path.join(dir, "backend-x64"), "x");
-  fs.writeFileSync(path.join(dir, "backend-arm64"), "a");
+  writeOnedirSlice(dir, "backend-x64");
+  writeOnedirSlice(dir, "backend-arm64");
 
   const nativeArch = process.arch === "arm64" ? "arm64" : "x64";
   const env = { EXO_MAC_UNIVERSAL: "0" };
   assert.equal(verifyBackendSlices(dir, { env, strictArch: false }), false);
 
-  fs.unlinkSync(path.join(dir, backendSliceName(nativeArch === "arm64" ? "x64" : "arm64")));
+  fs.rmSync(path.join(dir, backendSliceName(nativeArch === "arm64" ? "x64" : "arm64")), {
+    recursive: true,
+    force: true,
+  });
   assert.equal(verifyBackendSlices(dir, { env, strictArch: false }), true);
 
   fs.rmSync(dir, { recursive: true, force: true });

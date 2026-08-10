@@ -29,9 +29,10 @@ void main() {
     expect(bannerActionFor(ExoStatusKind.info), isNull);
   });
 
-  test('shell tabs are Today Memory Search without Capture; Memory is default index 1', () {
-    expect(AdaptiveShell.tabLabels, ['Today', 'Memory', 'Search']);
+  test('shell tabs are Memory Tasks without Capture; Memory is default index 0', () {
+    expect(AdaptiveShell.tabLabels, ['Memory', 'Tasks']);
     expect(AdaptiveShell.tabLabels.contains('Capture'), isFalse);
-    expect(AdaptiveShell.tabLabels.indexOf('Memory'), 1);
+    expect(AdaptiveShell.tabLabels.indexOf('Memory'), 0);
   });
 }
+

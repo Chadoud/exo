@@ -4,7 +4,7 @@ Exo ships as a **`.dmg`** installer. **Public downloads** use one **universal** 
 
 **Local builds** default to a **native** installer for your Mac only (`Exo-arm64.dmg` or `Exo-x64.dmg`) — smaller, with a single Python backend slice.
 
-The Electron shell is either universal (release) or native (local default). The Python backend ships as separate PyInstaller builds per CPU (`backend-x64` and/or `backend-arm64`); Exo launches the correct one at runtime. (PyInstaller one-file bundles cannot be merged with `lipo` — that produces a broken “universal” backend on Intel.)
+The Electron shell is either universal (release) or native (local default). The Python backend ships as separate PyInstaller **onedir** builds per CPU (`backend-x64/` and/or `backend-arm64/`, each containing a `backend` launcher); Exo launches the correct one at runtime. (Arch-specific PyInstaller bundles cannot be merged with `lipo` — that produces a broken “universal” backend on Intel.)
 
 ## Download
 

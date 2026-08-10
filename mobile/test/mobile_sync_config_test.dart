@@ -44,6 +44,52 @@ void main() {
     expect(storage.contains('exosites_sync_master_key_b64'), isTrue);
   });
 
+  test('applyPairingPayload clears cursor, ever-synced, and local cache', () async {
+    await storage.write(SyncEngine.cursorStorageKey, '99');
+    await storage.write('has_ever_synced', '1');
+    await storage.write('last_sync_label', 'earlier');
+    await store.upsertRecord(
+      collection: 'memory_entries',
+      recordId: 'old',
+      payloadJson: '{"key":"x"}',
+      updatedAt: '2026-01-01T00:00:00Z',
+    );
+    expect(await store.countAll(), 1);
+
+    await config.applyPairingPayload({
+      'v': 1,
+      'master_key_b64': 'YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=',
+    });
+
+    expect(config.isPaired, isTrue);
+    expect(config.hasEverSynced, isFalse);
+    expect(storage.contains(SyncEngine.cursorStorageKey), isFalse);
+    expect(storage.contains('has_ever_synced'), isFalse);
+    expect(storage.contains('last_sync_label'), isFalse);
+    expect(await store.countAll(), 0);
+  });
+
+  test('hydrate migrates oversized legacy device id', () async {
+    await storage.write('device_id', 'mobile-${'a' * 36}');
+    final again = MobileSyncConfig(storage: storage, localStore: store);
+    await again.hydrate();
+    final id = await storage.read('device_id');
+    expect(id, isNotNull);
+    expect(id!.length, lessThanOrEqualTo(36));
+    expect(id.startsWith('mobile-'), isFalse);
+  });
+
+  test('clearPairing keeps sign-in and drops master key', () async {
+    await config.saveSession(accessToken: 'tok', refreshToken: 'ref');
+    await config.applyPairingPayload({
+      'master_key_b64': 'YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=',
+    });
+    await config.clearPairing();
+    expect(config.isSignedIn, isTrue);
+    expect(config.isPaired, isFalse);
+    expect(storage.contains('exosites_sync_master_key_b64'), isFalse);
+  });
+
   test('clearSession wipes tokens, pairing, cursor, and local cache', () async {
     await config.saveSession(accessToken: 'tok', refreshToken: 'ref');
     await config.applyPairingPayload({

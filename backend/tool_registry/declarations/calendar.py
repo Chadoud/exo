@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from google.genai import types as genai_types  # type: ignore[import]
+from typing import TYPE_CHECKING
 
 from tool_registry.declarations._common import decl
 
+if TYPE_CHECKING:
+    from google.genai import types as genai_types  # type: ignore[import]
 
-def build_declarations() -> list[genai_types.FunctionDeclaration]:
+
+def build_declarations() -> list["genai_types.FunctionDeclaration"]:
     return [
                 decl(
             "schedule_reminder",

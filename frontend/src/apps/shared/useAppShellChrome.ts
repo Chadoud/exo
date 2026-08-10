@@ -75,7 +75,7 @@ export function useAppShellChrome(opts: {
     reassignFile,
   } = opts;
 
-  const { backendOnline, lastHealthOkAt, backendHealthProbing, backendServiceStarting, backendStartupFailed, backendStartupPercent, beginBackendStartupProbe } =
+  const { backendOnline, lastHealthOkAt, backendHealthProbing, backendServiceStarting, backendStartupFailed, beginBackendStartupProbe } =
     useBackendHealth();
   const { theme, toggleTheme } = useTheme();
   const {
@@ -455,7 +455,6 @@ export function useAppShellChrome(opts: {
     backendHealthProbing,
     backendServiceStarting,
     backendStartupFailed,
-    backendStartupPercent,
     backendRetryBusy,
     backendAutoRecoveryExhausted: autoRecoveryExhausted,
     theme,

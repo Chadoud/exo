@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../app/exo_config.dart';
 import '../../app/mobile_sync_config.dart';
 import '../../design/exo_spacing.dart';
 import '../../design/exo_status_banner.dart';
 import '../../design/exo_widgets.dart';
-import '../../sync/sync_errors.dart';
+import '../../sync/sync_banner_actions.dart';
+import '../../sync/sync_failure.dart';
 import '../../sync/user_messages.dart';
 import '../auth/mobile_auth_service.dart';
-import '../settings/pairing_screen.dart';
+import 'setup_link_step.dart';
 import 'setup_sign_in_panel.dart';
 
 /// Full-screen guided setup until sign-in, pair, and first-sync step complete.
@@ -34,6 +34,7 @@ class _SetupGateState extends State<SetupGate> {
   String? _signInError;
   bool _syncing = false;
   String? _syncError;
+  ExoStatusKind _syncErrorKind = ExoStatusKind.error;
   bool _wasSignedIn = false;
 
   @override
@@ -60,6 +61,8 @@ class _SetupGateState extends State<SetupGate> {
         _signInError = null;
         _wasSignedIn = true;
       });
+    } else if (_wasSignedIn && !widget.config.isSignedIn && mounted) {
+      setState(() => _wasSignedIn = false);
     } else if (mounted) {
       setState(() {});
     }
@@ -148,40 +151,33 @@ class _SetupGateState extends State<SetupGate> {
     }
   }
 
-  Future<void> _pair() async {
-    final paired = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => PairingScreen(config: widget.config)),
-    );
-    if (paired == true && mounted) {
-      try {
-        await widget.config.registerDeviceIfNeeded();
-      } catch (_) {}
-      setState(() {});
-    }
-  }
-
-  Future<void> _skipPairDev() async {
-    await widget.config.completeOnboardingSkippingPair();
-  }
-
   Future<void> _runFirstSync() async {
     setState(() {
       _syncing = true;
       _syncError = null;
+      _syncErrorKind = ExoStatusKind.error;
     });
     try {
       await widget.config.syncNow();
       await widget.config.completeOnboarding();
-    } on SyncAuthException {
-      setState(() => _syncError = SyncUserMessages.authExpired);
-    } on SyncNetworkException {
-      setState(() => _syncError = SyncUserMessages.networkFailed);
-    } on SyncDecryptException {
-      setState(() => _syncError = SyncUserMessages.decryptFailed);
-    } catch (_) {
-      setState(() => _syncError = SyncUserMessages.firstSyncFailed);
+    } catch (e) {
+      final described = describeSyncFailure(e);
+      setState(() {
+        _syncError = described.message;
+        _syncErrorKind = described.kind;
+      });
     } finally {
       if (mounted) setState(() => _syncing = false);
+    }
+  }
+
+  Future<void> _pairAgain() async {
+    await widget.config.clearPairing();
+    if (mounted) {
+      setState(() {
+        _syncError = null;
+        _syncErrorKind = ExoStatusKind.error;
+      });
     }
   }
 
@@ -205,15 +201,14 @@ class _SetupGateState extends State<SetupGate> {
         onEmailRegister: _emailRegister,
       );
     } else if (!cfg.isPaired) {
-      body = _PairBody(
-        onPair: _pair,
-        onSkipDev: ExoConfig.allowDevSkipPair ? _skipPairDev : null,
-      );
+      body = SetupLinkStep(config: cfg);
     } else {
       body = _FirstSyncBody(
         syncing: _syncing,
         error: _syncError,
+        errorKind: _syncErrorKind,
         onRetry: _runFirstSync,
+        onPairAgain: _pairAgain,
         onContinue: _continueWithoutSync,
         autoStart: _syncError == null && !_syncing,
         onAutoStart: _runFirstSync,
@@ -236,60 +231,13 @@ class _SetupGateState extends State<SetupGate> {
   }
 }
 
-class _PairBody extends StatelessWidget {
-  const _PairBody({required this.onPair, this.onSkipDev});
-
-  final VoidCallback onPair;
-  final Future<void> Function()? onSkipDev;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const ExoMark(),
-        const SizedBox(height: ExoSpacing.xxl),
-        const ExoSectionLabel(SyncUserMessages.stepPair),
-        const SizedBox(height: ExoSpacing.sm),
-        Text(SyncUserMessages.pairStepTitle, style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: ExoSpacing.sm),
-        Text(SyncUserMessages.pairStepSubtitle, style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: ExoSpacing.xl),
-        ExoSurface(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'On desktop open Settings → Sync → Pair mobile device, then scan the code here.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: ExoSpacing.lg),
-              ExoPrimaryButton(label: SyncUserMessages.scanDesktopCode, onPressed: onPair),
-              if (onSkipDev != null) ...[
-                const SizedBox(height: ExoSpacing.md),
-                Text(
-                  SyncUserMessages.skipPairingDevHint,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: ExoSpacing.sm),
-                OutlinedButton(
-                  onPressed: () => onSkipDev!(),
-                  child: const Text(SyncUserMessages.skipPairingDev),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _FirstSyncBody extends StatefulWidget {
   const _FirstSyncBody({
     required this.syncing,
     required this.error,
+    required this.errorKind,
     required this.onRetry,
+    required this.onPairAgain,
     required this.onContinue,
     required this.autoStart,
     required this.onAutoStart,
@@ -297,7 +245,9 @@ class _FirstSyncBody extends StatefulWidget {
 
   final bool syncing;
   final String? error;
+  final ExoStatusKind errorKind;
   final VoidCallback onRetry;
+  final Future<void> Function() onPairAgain;
   final Future<void> Function() onContinue;
   final bool autoStart;
   final VoidCallback onAutoStart;
@@ -333,14 +283,24 @@ class _FirstSyncBodyState extends State<_FirstSyncBody> {
       );
     }
     if (widget.error != null) {
+      final action = bannerActionFor(widget.errorKind);
+      final primaryLabel = action?.$1 ?? SyncUserMessages.tryAgain;
+      final primary = action?.$2 == SyncBannerAction.pair
+          ? () => widget.onPairAgain()
+          : widget.onRetry;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const ExoMark(compact: true),
           const SizedBox(height: ExoSpacing.xl),
-          ExoStatusBanner(kind: ExoStatusKind.networkError, message: widget.error!),
+          ExoStatusBanner(kind: widget.errorKind, message: widget.error!),
           const SizedBox(height: ExoSpacing.lg),
-          ExoPrimaryButton(label: SyncUserMessages.tryAgain, onPressed: widget.onRetry),
+          ExoPrimaryButton(label: primaryLabel, onPressed: primary),
+          if (action?.$2 == SyncBannerAction.pair)
+            TextButton(
+              onPressed: widget.onRetry,
+              child: const Text(SyncUserMessages.tryAgain),
+            ),
           TextButton(
             onPressed: () => widget.onContinue(),
             child: const Text(SyncUserMessages.continueToMemories),

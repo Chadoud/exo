@@ -78,13 +78,9 @@ try:
 except Exception:
     devices = []
 ios = [d for d in devices if d.get("targetPlatform") == "ios"]
-# Prefer already-booted simulator
+# Simulator only — physical devices need Developer Mode and break local QR-less pairing DX.
 for d in ios:
     if d.get("emulator") and d.get("id"):
-        print(d["id"])
-        sys.exit(0)
-for d in ios:
-    if d.get("id"):
         print(d["id"])
         sys.exit(0)
 sys.exit(1)

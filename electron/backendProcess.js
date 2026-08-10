@@ -365,16 +365,28 @@ function preparePackagedBackendBinary(backendBin) {
 /** Clear quarantine on every macOS backend slice shipped in the app bundle. */
 function preparePackagedMacBackendSlices(resourcesPath) {
   if (IS_DEV || !IS_MAC || !resourcesPath) return;
+  const sliceDirs = [
+    path.join(resourcesPath, "backend-x64"),
+    path.join(resourcesPath, "backend-arm64"),
+    path.join(resourcesPath, "backend"),
+  ].filter((p) => p && fs.existsSync(p));
+
+  // Quarantine on any nested dylib/so breaks spawn — clear the whole slice tree.
+  for (const slice of sliceDirs) {
+    try {
+      execFileSync("xattr", ["-cr", slice], { stdio: "ignore" });
+    } catch (err) {
+      console.warn("[backend] xattr -cr slice failed:", err && err.message);
+    }
+  }
+
   const candidates = new Set(
-    [
-      resolvePackagedBackendBin(resourcesPath),
-      path.join(resourcesPath, "backend-x64"),
-      path.join(resourcesPath, "backend-arm64"),
-      path.join(resourcesPath, "backend"),
-    ].filter((p) => p && fs.existsSync(p))
+    [resolvePackagedBackendBin(resourcesPath), ...sliceDirs].filter((p) => p && fs.existsSync(p))
   );
   for (const bin of candidates) {
-    preparePackagedBackendBinary(bin);
+    if (fs.existsSync(bin) && fs.statSync(bin).isFile()) {
+      preparePackagedBackendBinary(bin);
+    }
   }
 }
 

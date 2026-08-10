@@ -11,7 +11,7 @@ Run on branch `incubating/mobile`. Manual device steps need a human with desktop
 | **0** Tooling | `npm run mobile:quality`; iOS `--no-codesign` build; manifests (OAuth + camera, no mic) | **PASS** (automated) |
 | **1** Auth | Email login/register, OAuth callback, Apple URI, 401 refresh-once, sign-out wipe | **PASS** (unit: `mobile_auth_service_test`, `cloud_api_auth_test`, `mobile_sync_config_test`). Device OAuth/Apple still manual before store beta. |
 | **2** Pair + first sync | Desktop QR → scan → Memory list | **Unit PASS** (`applyPairingPayload`, `SyncEngine.pullUntilCaughtUp`). **Device E2E still required** — follow [`runbooks/go-sync-e2e-smoke.md`](runbooks/go-sync-e2e-smoke.md). No blockers found in code review of pairing/sync paths. |
-| **3** Surface | Today / Memory / Search / offline banner / crash opt-out | **Widget PASS** (empty Memory/Today, shell tabs, banner CTA). Offline + crash toggle: unit (`mobile_crash_reporter_test`) + copy (`youreOffline` / `networkFailed`). Physical airplane-mode smoke still manual. |
+| **3** Surface | Memory / Tasks / offline banner / crash opt-out | **Widget PASS** (empty Memory/Tasks, shell tabs, banner CTA). Offline + crash toggle: unit (`mobile_crash_reporter_test`) + copy (`youreOffline` / `networkFailed`). Physical airplane-mode smoke still manual. |
 | **4** Hardening | Thin widget tests for setup + shell + banner | **DONE** — `mobile/test/setup_shell_banner_widget_test.dart` |
 
 ### Blockers found
@@ -48,6 +48,12 @@ Until Capture ships, mobile is **pull-only**. Desktop is the writer for memories
 - [ ] Offline indicators; background sync policy (if product wants it)
 - [ ] Cert pinning decision vs threat model
 - [ ] Performance budgets: cold start, sync of N blobs
+
+## Tasks — AI draft / review / execute
+
+- [ ] Cloud-LLM suggestions on synced memories/tasks (email draft: to, subject, body; other useful actions)
+- [ ] Review UI before any outbound side effect — never auto-send email/message
+- [ ] Safe allowlists for any local metadata writes; no blind `pushLocalRecords` from the model
 
 ## Product polish
 

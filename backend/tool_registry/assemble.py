@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from google.genai import types as genai_types  # type: ignore[import]
+from typing import TYPE_CHECKING, Any
 
 from tool_registry.declarations.calendar import build_declarations as calendar_decls
 from tool_registry.declarations.integrations import build_declarations as integration_decls
 from tool_registry.declarations.memory import build_declarations as memory_decls
 from tool_registry.declarations.system import build_declarations as system_decls
 
+if TYPE_CHECKING:
+    from google.genai import types as genai_types  # type: ignore[import]
 
-def _all_declarations() -> list[genai_types.FunctionDeclaration]:
+
+def _all_declarations() -> list["genai_types.FunctionDeclaration"]:
     return [
         *system_decls(),
         *memory_decls(),
@@ -21,8 +22,12 @@ def _all_declarations() -> list[genai_types.FunctionDeclaration]:
     ]
 
 
-def build_live_tools() -> list[genai_types.Tool]:
+def build_live_tools() -> list["genai_types.Tool"]:
     """Tool definitions for Gemini LiveConnectConfig."""
+    # Deferred: google.genai adds ~3s to backend boot; only needed once a Live
+    # session is actually started, not at import.
+    from google.genai import types as genai_types  # type: ignore[import]
+
     return [genai_types.Tool(function_declarations=_all_declarations())]
 
 

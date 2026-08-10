@@ -1,11 +1,11 @@
+import 'package:exosites_mobile/design/exo_cube_draw.dart';
 import 'package:exosites_mobile/design/exo_cube_svg.dart';
 import 'package:exosites_mobile/design/exo_widgets.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('ExoCubeSvg loads the asset SVG', (tester) async {
+  testWidgets('ExoCubeSvg is the stroke mark (not a PNG)', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -14,10 +14,11 @@ void main() {
       ),
     );
     expect(find.byType(ExoCubeSvg), findsOneWidget);
-    expect(find.byType(SvgPicture), findsOneWidget);
+    expect(find.byType(ExoCubeDraw), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
   });
 
-  testWidgets('ExoMark uses SVG cube not CustomPaint', (tester) async {
+  testWidgets('ExoMark uses brand stroke cube', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -25,7 +26,8 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(ExoCubeSvg), findsOneWidget);
+    expect(find.byType(ExoCubeDraw), findsOneWidget);
     expect(find.text('EXO'), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
   });
 }

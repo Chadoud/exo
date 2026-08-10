@@ -529,10 +529,16 @@ export const itSecondBrainLocaleSlice = {
     pairTitle: "Associa dispositivo mobile",
     pairHint:
       "Sul telefono: Impostazioni → Associa al desktop, poi scansiona questo QR — oppure copia il codice e incollalo sul telefono (Simulator / senza fotocamera).",
+    pairSyncFirst:
+      "Sincronizza una volta su questo computer, poi copia un nuovo codice di associazione. Il telefono ha bisogno di dati sul relay prima del primo pull.",
     pairQrError: "Impossibile creare il codice di associazione. Controlla URL cloud e sync.",
     pairCopy: "Copia codice di associazione",
     pairCopied: "Copiato — incolla sul telefono",
     pairCopyError: "Impossibile copiare il codice. Riprova.",
+    pairSessionExpired:
+      "Accesso Exo scaduto. Accedi di nuovo (menu profilo), poi tocca Riprova QR e copia un codice nuovo.",
+    pairKeyUnreadable:
+      "Impossibile leggere la chiave sync dal Portachiavi. Sblocca il Portachiavi macOS, oppure disattiva e riattiva Sync dopo un reset dati — poi copia un codice nuovo.",
     pairRetry: "Riprova QR",
   },
 } as const;

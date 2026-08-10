@@ -86,10 +86,10 @@ export const deWelcomeLocaleSlice = {
     leaveSave: "Änderungen behalten & schließen",
     localServiceStartingTitle: "Exo startet auf diesem Mac",
     localServiceStartingBody:
-      "Beim ersten Start bereitet Exo im Hintergrund alles vor — meist ein bis vier Minuten. Es ist nichts extra zu installieren.",
+      "Exo bereitet sich im Hintergrund vor. Das dauert normalerweise nur einen Moment.",
     localServiceOfflineTitle: "Exo konnte auf diesem Mac nicht starten",
     localServiceOfflineBody:
-      "Alles ist in der App enthalten — kein Python nötig. Exo beenden (Cmd+Q), aus Programme neu öffnen und einige Minuten warten.",
+      "Exo beenden (Cmd+Q) und aus Programme neu öffnen. Falls das weiterhin passiert, wenden Sie sich an den Support.",
     localServiceRetry: "Dienst neu starten",
     localServiceRetryBusy: "Wird neu gestartet…",
     localServiceSkipSetup: "Einrichtung überspringen",

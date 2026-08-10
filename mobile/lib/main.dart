@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app/exo_config.dart';
-import 'design/exo_colors.dart';
 import 'design/exo_cube_draw.dart';
-import 'design/exo_cube_svg.dart';
 import 'design/exo_theme.dart';
 import 'features/auth/mobile_auth_service.dart';
 import 'app/mobile_sync_config.dart';
@@ -71,17 +69,6 @@ class _ExositesMobileAppState extends State<ExositesMobileApp> {
     setState(() => _introDone = true);
   }
 
-  Widget _bootHome() {
-    // Hold completed cube if hydrate is still running — do not restart the draw.
-    if (_introDone) {
-      return const Scaffold(
-        backgroundColor: ExoColors.bgPrimary,
-        body: Center(child: ExoCubeSvg(size: 168)),
-      );
-    }
-    return ExoBootScreen(onIntroComplete: _onIntroComplete);
-  }
-
   @override
   Widget build(BuildContext context) {
     final title = ExoConfig.displayFlavor.isEmpty ? 'Exo' : 'Exo (${ExoConfig.displayFlavor})';
@@ -91,8 +78,12 @@ class _ExositesMobileAppState extends State<ExositesMobileApp> {
       title: title,
       theme: ExoTheme.dark(),
       scaffoldMessengerKey: _scaffoldMessengerKey,
+      // One stable boot tree: purple stroke draws once and holds — never swap to PNG.
       home: !ready
-          ? _bootHome()
+          ? ExoBootScreen(
+              key: const ValueKey('exo-boot'),
+              onIntroComplete: _onIntroComplete,
+            )
           : ListenableBuilder(
               listenable: _config,
               builder: (context, _) {

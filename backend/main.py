@@ -5,12 +5,15 @@ Provides REST endpoints consumed by the Electron/React frontend.
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import sys
 
 # ── Dependency pre-flight ─────────────────────────────────────────────────────
 # Check critical optional packages early so the error message is actionable
-# instead of a buried ImportError deep inside a route handler.
+# instead of a buried ImportError deep inside a route handler. Uses find_spec
+# (locate only) rather than a real import — actually importing google.genai
+# here would add ~3s to every backend boot just to prove it's installed.
 _REQUIRED_PACKAGES: list[tuple[str, str]] = [
     ("google.genai", "google-genai>=1.0"),
     ("psutil", "psutil>=5.9.0"),
@@ -18,8 +21,10 @@ _REQUIRED_PACKAGES: list[tuple[str, str]] = [
 _missing: list[str] = []
 for _mod, _pip in _REQUIRED_PACKAGES:
     try:
-        __import__(_mod)
+        found = importlib.util.find_spec(_mod) is not None
     except ImportError:
+        found = False
+    if not found:
         _missing.append(_pip)
 
 if _missing:

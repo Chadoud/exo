@@ -1,54 +1,107 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app/mobile_sync_config.dart';
 import '../design/exo_colors.dart';
 import '../features/auth/mobile_auth_service.dart';
 import '../features/memory/memory_screen.dart';
-import '../features/search/search_screen.dart';
-import '../app/mobile_sync_config.dart';
 import '../features/settings/pairing_screen.dart';
 import '../features/settings/settings_screen.dart';
-import '../features/today/today_screen.dart';
-import '../sync/sync_errors.dart';
+import '../features/tasks/tasks_screen.dart';
 import '../sync/user_messages.dart';
 import 'window_size.dart';
 
-/// Adaptive navigation: 3 tabs — Today, Memory (default), Search.
+/// Shell destinations — Capture is never a tab.
+enum ShellTab { memory, tasks }
+
+class _TabSpec {
+  const _TabSpec({
+    required this.id,
+    required this.label,
+    required this.title,
+    required this.icon,
+    required this.selectedIcon,
+  });
+
+  final ShellTab id;
+  final String label;
+  final String title;
+  final IconData icon;
+  final IconData selectedIcon;
+}
+
+/// Adaptive navigation: Memory (default) + Tasks.
 class AdaptiveShell extends StatefulWidget {
   const AdaptiveShell({
     super.key,
     required this.config,
     this.auth,
-    this.initialTab = 1,
+    this.initialTab = ShellTab.memory,
   });
 
   final MobileSyncConfig config;
   final MobileAuthService? auth;
+  final ShellTab initialTab;
 
-  /// Default Memory (index 1). Capture is never a tab.
-  final int initialTab;
+  static const _tabs = <_TabSpec>[
+    _TabSpec(
+      id: ShellTab.memory,
+      label: 'Memory',
+      title: SyncUserMessages.memoriesTitle,
+      icon: Icons.psychology_outlined,
+      selectedIcon: Icons.psychology,
+    ),
+    _TabSpec(
+      id: ShellTab.tasks,
+      label: SyncUserMessages.tasksTitle,
+      title: SyncUserMessages.tasksTitle,
+      icon: Icons.task_alt_outlined,
+      selectedIcon: Icons.task_alt,
+    ),
+  ];
 
   /// Tab labels for tests / docs — Capture must not appear.
-  static const tabLabels = ['Today', 'Memory', 'Search'];
+  static List<String> get tabLabels => [for (final t in _tabs) t.label];
 
   @override
   State<AdaptiveShell> createState() => _AdaptiveShellState();
 }
 
 class _AdaptiveShellState extends State<AdaptiveShell> {
-  late int _tab = widget.initialTab;
-  bool _syncing = false;
+  late ShellTab _tab = widget.initialTab;
+  bool _didAutoPull = false;
 
-  static const _icons = [
-    Icons.wb_sunny_outlined,
-    Icons.psychology_outlined,
-    Icons.search,
-  ];
-  static const _selectedIcons = [
-    Icons.wb_sunny,
-    Icons.psychology,
-    Icons.search,
-  ];
+  int get _tabIndex {
+    final i = AdaptiveShell._tabs.indexWhere((t) => t.id == _tab);
+    return i < 0 ? 0 : i;
+  }
+
+  _TabSpec get _current => AdaptiveShell._tabs[_tabIndex];
+
+  @override
+  void initState() {
+    super.initState();
+    widget.config.addListener(_onConfig);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoPullOnce());
+  }
+
+  @override
+  void dispose() {
+    widget.config.removeListener(_onConfig);
+    super.dispose();
+  }
+
+  void _onConfig() {
+    if (mounted) setState(() {});
+  }
+
+  /// One pull when a paired session enters the shell — no AppBar-only surprise empty.
+  Future<void> _autoPullOnce() async {
+    if (!mounted || _didAutoPull) return;
+    if (!widget.config.isConfigured) return;
+    _didAutoPull = true;
+    await _sync();
+  }
 
   void _openSettings() {
     Navigator.of(context).push(
@@ -81,18 +134,11 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   }
 
   Future<void> _sync() async {
-    if (_syncing) return;
-    setState(() => _syncing = true);
+    if (widget.config.syncInFlight) return;
     try {
       await widget.config.syncNow();
-    } on SyncAuthException {
-      _snack(SyncUserMessages.authExpired);
-    } on SyncNetworkException {
-      _snack(SyncUserMessages.networkFailed);
     } catch (_) {
-      _snack(SyncUserMessages.syncFailed);
-    } finally {
-      if (mounted) setState(() => _syncing = false);
+      // [MobileSyncConfig.lastError] drives tab banners; snack is redundant.
     }
   }
 
@@ -101,38 +147,35 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  Widget _bodyForTab(int index) {
-    switch (index) {
-      case 0:
-        return TodayScreen(
-          config: widget.config,
-          onSignInAgain: _signInAgain,
-          onPairAgain: _pairAgain,
-        );
-      case 1:
+  Widget _bodyFor(ShellTab tab) {
+    switch (tab) {
+      case ShellTab.memory:
         return MemoryScreen(
           config: widget.config,
           onSignInAgain: _signInAgain,
           onPairAgain: _pairAgain,
         );
-      case 2:
-        return SearchScreen(config: widget.config);
-      default:
-        return const SizedBox.shrink();
+      case ShellTab.tasks:
+        return TasksScreen(
+          config: widget.config,
+          onSignInAgain: _signInAgain,
+          onPairAgain: _pairAgain,
+        );
     }
   }
 
-  List<Widget> _actions() {
+  List<Widget> _appBarActions() {
+    final busy = widget.config.syncInFlight;
     return [
       IconButton(
-        icon: _syncing
+        icon: busy
             ? const SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.sync, size: 22),
-        onPressed: _syncing ? null : _sync,
+        onPressed: busy ? null : _sync,
         tooltip: SyncUserMessages.syncNow,
       ),
       IconButton(
@@ -143,72 +186,66 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     ];
   }
 
+  void _selectIndex(int i) {
+    if (i < 0 || i >= AdaptiveShell._tabs.length) return;
+    setState(() => _tab = AdaptiveShell._tabs[i].id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final useRail = exoUseNavigationRail(context);
-    const labels = AdaptiveShell.tabLabels;
-    final title = _tab == 1 ? SyncUserMessages.memoriesTitle : labels[_tab];
-    final body = _bodyForTab(_tab);
-
-    if (useRail) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(title),
-          actions: _actions(),
-          bottom: const PreferredSize(
-            preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1),
-          ),
-        ),
-        body: Row(
-          children: [
-            NavigationRail(
-              selectedIndex: _tab,
-              onDestinationSelected: (i) => setState(() => _tab = i),
-              destinations: [
-                for (var i = 0; i < labels.length; i++)
-                  NavigationRailDestination(
-                    icon: Icon(_icons[i]),
-                    selectedIcon: Icon(_selectedIcons[i]),
-                    label: Text(labels[i]),
-                  ),
-              ],
-            ),
-            const VerticalDivider(width: 1),
-            Expanded(child: body),
-          ],
-        ),
-      );
-    }
+    final body = _bodyFor(_tab);
+    const tabs = AdaptiveShell._tabs;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
-        actions: _actions(),
+        title: Text(_current.title),
+        actions: _appBarActions(),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1),
         ),
       ),
-      body: body,
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Divider(height: 1),
-          NavigationBar(
-            selectedIndex: _tab,
-            onDestinationSelected: (i) => setState(() => _tab = i),
-            destinations: [
-              for (var i = 0; i < labels.length; i++)
-                NavigationDestination(
-                  icon: Icon(_icons[i]),
-                  selectedIcon: Icon(_selectedIcons[i], color: ExoColors.brandPrimary),
-                  label: labels[i],
+      body: useRail
+          ? Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _tabIndex,
+                  onDestinationSelected: _selectIndex,
+                  destinations: [
+                    for (final t in tabs)
+                      NavigationRailDestination(
+                        icon: Icon(t.icon),
+                        selectedIcon: Icon(t.selectedIcon),
+                        label: Text(t.label),
+                      ),
+                  ],
                 ),
-            ],
-          ),
-        ],
-      ),
+                const VerticalDivider(width: 1),
+                Expanded(child: body),
+              ],
+            )
+          : body,
+      bottomNavigationBar: useRail
+          ? null
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Divider(height: 1),
+                NavigationBar(
+                  selectedIndex: _tabIndex,
+                  onDestinationSelected: _selectIndex,
+                  destinations: [
+                    for (final t in tabs)
+                      NavigationDestination(
+                        icon: Icon(t.icon),
+                        selectedIcon: Icon(t.selectedIcon, color: ExoColors.brandPrimary),
+                        label: t.label,
+                      ),
+                  ],
+                ),
+              ],
+            ),
     );
   }
 }

@@ -530,10 +530,16 @@ export const frSecondBrainLocaleSlice = {
     pairTitle: "Apparier un appareil mobile",
     pairHint:
       "Sur le téléphone : Réglages → Apparier avec l’ordinateur, puis scannez ce QR — ou copiez le code et collez-le sur le téléphone (Simulateur / sans caméra).",
+    pairSyncFirst:
+      "Synchronisez une fois sur cet ordinateur, puis copiez un nouveau code d’appariement. Le téléphone a besoin de données sur le relais avant le premier pull.",
     pairQrError: "Impossible de créer le code d’appariement. Vérifiez l’URL cloud et la sync.",
     pairCopy: "Copier le code d’appariement",
     pairCopied: "Copié — collez-le sur le téléphone",
     pairCopyError: "Impossible de copier le code. Réessayez.",
+    pairSessionExpired:
+      "Votre connexion Exo a expiré. Reconnectez-vous (menu profil), puis appuyez sur Réessayer le QR et copiez un nouveau code.",
+    pairKeyUnreadable:
+      "Impossible de lire la clé de sync dans le trousseau. Déverrouillez le trousseau macOS, ou désactivez puis réactivez Sync après une réinitialisation — puis copiez un nouveau code.",
     pairRetry: "Réessayer le QR",
   },
 } as const;

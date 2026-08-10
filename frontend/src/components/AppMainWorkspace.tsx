@@ -3,7 +3,6 @@ import { cloneElement, isValidElement, useEffect, useRef } from "react";
 import type { AppMainWorkspaceProps } from "./appMainWorkspaceTypes";
 import OfflineConnectionStrip from "./OfflineConnectionStrip";
 import AppServiceStartupOverlay from "./AppServiceStartupOverlay";
-import TrialEndingBanner, { openTrialSettings } from "./TrialEndingBanner";
 import SidebarNav from "./SidebarNav";
 import SidebarProfileTab from "./SidebarProfileTab";
 import BrainSearchModal from "./BrainSearchModal";
@@ -52,7 +51,6 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
     backendHealthProbing,
     backendServiceStarting = false,
     backendStartupFailed = false,
-    backendStartupPercent = 0,
     backendAutoRecoveryExhausted = false,
     backendRetryBusy = false,
     handleRetryBackend,
@@ -246,7 +244,6 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
           failed={backendStartupFailed}
           autoRecoveryExhausted={backendAutoRecoveryExhausted}
           retryBusy={backendRetryBusy}
-          startupPercent={backendStartupPercent}
         />
       ) : null}
       {shouldShowOfflineConnectionStrip({
@@ -262,11 +259,6 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
       }) ? (
         <OfflineConnectionStrip onRetryBackend={handleRetryBackend} />
       ) : null}
-      <TrialEndingBanner
-        entitlement={entitlement}
-        onOpenTrialSettings={() => openTrialSettings(jumpToSettingsSection)}
-      />
-
       <div
         className={`app-shell grid flex-1 min-h-0 w-full min-w-0 grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden ${
           tab === "exo" && !exoChromeRevealed ? "app-shell--exo-intro" : ""

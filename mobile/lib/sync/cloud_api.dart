@@ -60,11 +60,37 @@ class CloudApi {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> pullBlobs({int cursor = 0, int limit = 200}) async {
+  Future<Map<String, dynamic>> pullBlobs({
+    int cursor = 0,
+    int limit = 200,
+    int snapshotOffset = 0,
+  }) async {
     final uri = Uri.parse('$baseUrl/v1/sync/blobs/pull').replace(
-      queryParameters: {'cursor': '$cursor', 'limit': '$limit'},
+      queryParameters: {
+        'cursor': '$cursor',
+        'limit': '$limit',
+        'snapshot_offset': '$snapshotOffset',
+      },
     );
     final res = await _send(() => _http.get(uri, headers: _headers));
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  /// Redeem a desktop pairing grant (JWT account + key fingerprint must match).
+  Future<Map<String, dynamic>> redeemPairingGrant({
+    required String grantToken,
+    required String keyFingerprint,
+  }) async {
+    final res = await _send(
+      () => _http.post(
+        Uri.parse('$baseUrl/v1/sync/pairing/redeem'),
+        headers: _headers,
+        body: jsonEncode({
+          'grant_token': grantToken,
+          'key_fingerprint': keyFingerprint,
+        }),
+      ),
+    );
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 

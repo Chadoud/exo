@@ -10,7 +10,7 @@ import '../auth/mobile_auth_service.dart';
 import '../../app/mobile_sync_config.dart';
 import 'pairing_screen.dart';
 
-/// Account, pairing, privacy — post-setup.
+/// Account, pairing, privacy — post-setup hub (no Profile tab).
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
@@ -28,6 +28,22 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    widget.config.addListener(_onConfig);
+  }
+
+  @override
+  void dispose() {
+    widget.config.removeListener(_onConfig);
+    super.dispose();
+  }
+
+  void _onConfig() {
+    if (mounted) setState(() {});
+  }
+
   Future<void> _pair() async {
     final paired = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => PairingScreen(config: widget.config)),
@@ -70,6 +86,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final cfg = widget.config;
+    final lastUpdate = cfg.hasEverSynced && cfg.lastSyncLabel != null
+        ? SyncUserMessages.settingsLastUpdate(cfg.lastSyncLabel!)
+        : SyncUserMessages.settingsLastUpdateNever;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -89,10 +109,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(cfg.syncReadyLabel, style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        cfg.isSignedIn
+                            ? SyncUserMessages.settingsAccountSignedIn
+                            : SyncUserMessages.settingsAccountSignedOut,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: ExoSpacing.xs),
                       Text(
-                        cfg.isSignedIn ? 'Signed in' : SyncUserMessages.notSignedIn,
+                        lastUpdate,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -102,9 +127,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const ExoSectionLabel('Desktop link'),
                 const SizedBox(height: ExoSpacing.sm),
                 ExoSyncStatusBanner(
-                  message: cfg.isPaired
-                      ? 'Paired — memories can sync to this phone.'
-                      : SyncUserMessages.notPaired,
+                  message: !cfg.isPaired
+                      ? SyncUserMessages.settingsLinkUnpaired
+                      : cfg.hasEverSynced
+                          ? SyncUserMessages.settingsLinkPaired
+                          : SyncUserMessages.settingsLinkPairedPendingPull,
                   isError: !cfg.isPaired,
                 ),
                 const SizedBox(height: ExoSpacing.md),

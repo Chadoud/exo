@@ -1,14 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <!-- Exo isometric cube — filled faces + thin stroke (wordmark / static mark) -->
-  <!-- Top -->
-  <path fill="#3A3758" d="M24 5 41 15 24 24 7 15z"/>
-  <!-- Right -->
-  <path fill="#1C1A2E" d="M24 24 41 15v18L24 43z"/>
-  <!-- Left -->
-  <path fill="#161522" d="M24 24 7 15v18L24 43z"/>
-  <!-- Edges -->
-  <path stroke="#F2F1F8" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round"
-        d="M24 5 41 15v18L24 43 7 33V15z"/>
-  <path stroke="#F2F1F8" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round"
-        d="M24 5v19M7 15l17 9 17-9M24 24v19"/>
+<svg width="133" height="150" viewBox="0 0 133 150" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Exosites cube one-path outline">
+  <path d="M2.6107 108.464L8.12761 40.2283L74.0402 3.06177L125.144 49.2296L130.371 116.884L60.3931 146.792L2.6107 108.464Z" fill="#0F0B2E"/>
+  <path
+    id="cube-draw-path"
+    d="M74.0402 3.06177 L8.12761 40.2283 L2.6107 108.464 L74.9112 72.4587 L74.0402 3.06177 L125.144 49.2296 L130.371 116.884 L60.3931 146.792 L2.6107 108.464 L74.9112 72.4587 L130.371 116.884"
+    fill="none"
+    stroke="#6366F1"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    vector-effect="non-scaling-stroke"/>
 </svg>

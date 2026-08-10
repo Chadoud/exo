@@ -5,7 +5,7 @@ Measured on macOS universal build (2026-06). Re-run `bash scripts/report-app-wei
 | Component | Approx. size | Share | Notes |
 |-----------|--------------|-------|--------|
 | Electron (Chromium) | ~412 MB | ~67% | Universal binary in `Frameworks/` |
-| PyInstaller `backend` | ~196 MB | ~32% | Sort, OCR, integrations, automation |
+| PyInstaller `backend` onedir | ~196 MB | ~32% | Sort, OCR, integrations, automation (no one-file extract on launch) |
 | Renderer (`app.asar` + JS) | ~8 MB | <2% | React UI; code-split by tab + locale |
 
 **DMG:** ~**294 MB** native x64 (was ~368 MB universal); **arm64 builds should be similar**. Universal: `npm run build:mac:universal`.

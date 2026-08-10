@@ -2,8 +2,8 @@ import 'package:exosites_mobile/app/mobile_sync_config.dart';
 import 'package:exosites_mobile/design/exo_status_banner.dart';
 import 'package:exosites_mobile/design/exo_theme.dart';
 import 'package:exosites_mobile/features/memory/memory_screen.dart';
+import 'package:exosites_mobile/features/tasks/tasks_screen.dart';
 import 'package:exosites_mobile/features/setup/setup_sign_in_panel.dart';
-import 'package:exosites_mobile/features/today/today_screen.dart';
 import 'package:exosites_mobile/layout/adaptive_shell.dart';
 import 'package:exosites_mobile/sync/key_value_store.dart';
 import 'package:exosites_mobile/sync/local_store.dart';
@@ -20,6 +20,22 @@ Widget _app(Widget child, {Size size = const Size(390, 844)}) {
       child: Scaffold(body: child),
     ),
   );
+}
+
+Future<void> _settleStore(WidgetTester tester) async {
+  await tester.runAsync(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  });
+  await tester.pump();
+}
+
+Future<MobileSyncConfig> _hydratedConfig(WidgetTester tester) async {
+  final config = MobileSyncConfig(
+    storage: MemoryKeyValueStore(),
+    localStore: LocalBrainStore(databasePath: ':memory:'),
+  );
+  await tester.runAsync(config.hydrate);
+  return config;
 }
 
 void main() {
@@ -111,17 +127,8 @@ void main() {
   });
 
   group('AdaptiveShell', () {
-    late MobileSyncConfig config;
-
-    setUp(() async {
-      config = MobileSyncConfig(
-        storage: MemoryKeyValueStore(),
-        localStore: LocalBrainStore(databasePath: ':memory:'),
-      );
-      await config.hydrate();
-    });
-
-    testWidgets('phone shell shows Today Memory Search destinations', (tester) async {
+    testWidgets('phone shell shows Memory and Tasks destinations', (tester) async {
+      final config = await _hydratedConfig(tester);
       await tester.pumpWidget(
         MaterialApp(
           theme: ExoTheme.dark(),
@@ -131,57 +138,80 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await _settleStore(tester);
 
-      expect(find.text('Today'), findsWidgets);
+      expect(AdaptiveShell.tabLabels, ['Memory', 'Tasks']);
       expect(find.text('Memory'), findsWidgets);
-      expect(find.text('Search'), findsWidgets);
+      expect(find.text('Tasks'), findsWidgets);
+      expect(find.text('Today'), findsNothing);
       expect(find.text('Capture'), findsNothing);
-      // Default tab is Memory.
       expect(find.text(SyncUserMessages.memoriesTitle), findsOneWidget);
+      // Inline search field label (not a Search tab).
+      expect(find.text(SyncUserMessages.searchMemoriesLabel), findsOneWidget);
     });
 
-    testWidgets('switching to Today shows sync CTA and empty recent', (tester) async {
+    testWidgets('Tasks tab shows unpaired empty without AI suggestions', (tester) async {
+      final config = await _hydratedConfig(tester);
       await tester.pumpWidget(
         MaterialApp(
           theme: ExoTheme.dark(),
           home: MediaQuery(
             data: const MediaQueryData(size: Size(390, 844)),
-            child: AdaptiveShell(config: config, initialTab: 0),
+            child: AdaptiveShell(config: config, initialTab: ShellTab.tasks),
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await _settleStore(tester);
 
-      expect(find.text(SyncUserMessages.syncNow), findsWidgets);
-      expect(find.text(SyncUserMessages.memoryEmptyTitle), findsOneWidget);
+      expect(find.text(SyncUserMessages.tasksTitle), findsWidgets);
+      expect(find.text(SyncUserMessages.syncEmptyUnpairedTitle), findsOneWidget);
+      expect(find.text('Suggested by EXO'), findsNothing);
+    });
+
+    testWidgets('tapping Tasks destination switches body', (tester) async {
+      final config = await _hydratedConfig(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ExoTheme.dark(),
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(390, 844)),
+            child: AdaptiveShell(config: config),
+          ),
+        ),
+      );
+      await _settleStore(tester);
+
+      expect(find.text(SyncUserMessages.memoriesTitle), findsOneWidget);
+      expect(find.text(SyncUserMessages.searchMemoriesLabel), findsOneWidget);
+      expect(find.text(SyncUserMessages.syncEmptyUnpairedTitle), findsOneWidget);
+
+      await tester.tap(find.text('Tasks').last);
+      await _settleStore(tester);
+
+      expect(find.text(SyncUserMessages.tasksTitle), findsWidgets);
+      expect(find.text(SyncUserMessages.searchMemoriesLabel), findsNothing);
+      expect(find.text('Suggested by EXO'), findsNothing);
     });
   });
 
-  group('Empty Memory / Today', () {
-    late MobileSyncConfig config;
-
-    setUp(() async {
-      config = MobileSyncConfig(
-        storage: MemoryKeyValueStore(),
-        localStore: LocalBrainStore(databasePath: ':memory:'),
-      );
-      await config.hydrate();
-    });
-
+  group('Empty Memory / Tasks', () {
     testWidgets('MemoryScreen empty state copy', (tester) async {
+      final config = await _hydratedConfig(tester);
       await tester.pumpWidget(
-        _app(MemoryScreen(config: config, showAppBarBanner: false)),
+        _app(MemoryScreen(config: config)),
       );
-      await tester.pumpAndSettle();
+      await _settleStore(tester);
 
-      expect(find.text(SyncUserMessages.memoryEmptyTitle), findsOneWidget);
-      expect(find.text(SyncUserMessages.memoryEmptySubtitle), findsOneWidget);
+      expect(find.text(SyncUserMessages.syncEmptyUnpairedTitle), findsOneWidget);
+      expect(find.text(SyncUserMessages.searchMemoriesLabel), findsOneWidget);
     });
 
-    testWidgets('TodayScreen loads without crash when unsigned', (tester) async {
-      await tester.pumpWidget(_app(TodayScreen(config: config)));
-      await tester.pumpAndSettle();
+    testWidgets('TasksScreen empty state', (tester) async {
+      final config = await _hydratedConfig(tester);
+      await tester.pumpWidget(_app(TasksScreen(config: config)));
+      await _settleStore(tester);
+      expect(find.text(SyncUserMessages.syncEmptyUnpairedTitle), findsOneWidget);
+      expect(find.text('Suggested by EXO'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

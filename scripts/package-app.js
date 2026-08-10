@@ -13,7 +13,7 @@ const { execFileSync, execSync } = require("child_process");
 
 const IS_WIN = process.platform === "win32";
 const ELECTRON_EXE = IS_WIN ? "electron.exe" : "Electron";
-const BACKEND_BIN = IS_WIN ? "backend.exe" : "backend";
+const { stageOnedirDirectory, resolveBackendInSlice } = require("./lib/backend-onedir.cjs");
 
 const ROOT = path.join(__dirname, "..");
 const PKG_PATH = path.join(ROOT, "package.json");
@@ -96,15 +96,14 @@ for (const preloadFile of ["preload.js", "preload-setup.js"]) {
   }
 }
 
-// ── 5. Copy backend binary into resources ────────────────────────────────
-const backendSrc = path.join(ROOT, "electron", "resources", BACKEND_BIN);
-if (fs.existsSync(backendSrc)) {
-  fs.copyFileSync(backendSrc, path.join(resourcesDir, BACKEND_BIN));
-  // Ensure the binary is executable on Unix
-  if (!IS_WIN) fs.chmodSync(path.join(resourcesDir, BACKEND_BIN), 0o755);
-  console.log(`✓ ${BACKEND_BIN} copied to resources`);
+// ── 5. Copy backend onedir into resources ────────────────────────────────
+const backendSrcDir = path.join(ROOT, "electron", "resources", "backend");
+const backendDestDir = path.join(resourcesDir, "backend");
+if (resolveBackendInSlice(backendSrcDir, "win32")) {
+  stageOnedirDirectory(backendSrcDir, backendDestDir);
+  console.log("✓ backend/ onedir copied to resources");
 } else {
-  console.warn(`⚠ ${BACKEND_BIN} not found — run PyInstaller first`);
+  console.warn("⚠ electron/resources/backend/ not found — run PyInstaller first");
 }
 
 const gmailOAuthSrc = path.join(ROOT, "electron", "resources", "gmail_oauth_client.json");

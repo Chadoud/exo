@@ -256,6 +256,14 @@ function registerAppHandlers() {
 
   ipcMain.handle("app:restartBackend", () => restartBackend());
 
+  // Trial-ended gate "Quit" action — deliberate full exit, not window close.
+  ipcMain.handle("app:quit", (event) => {
+    const denied = rejectUntrustedSender(event);
+    if (denied) return denied;
+    app.quit();
+    return { ok: true };
+  });
+
   ipcMain.handle("backend:getStatus", () => getManagedBackendStatus());
 
   ipcMain.handle("entitlement:getState", async () => {
@@ -505,10 +513,14 @@ function registerAppHandlers() {
     }
   });
 
-  ipcMain.handle("sync:getStatus", () => syncWorker.getSyncStatus());
+  ipcMain.handle("sync:getStatus", () => syncWorker.getSyncStatus(app.getPath("userData")));
   ipcMain.handle("sync:setEnabled", (_event, enabled) => {
     const userData = app.getPath("userData");
-    return syncWorker.setSyncEnabled(userData, enabled);
+    try {
+      return syncWorker.setSyncEnabled(userData, enabled);
+    } catch (err) {
+      return { ok: false, error: String(err?.message ?? err) };
+    }
   });
   ipcMain.handle("sync:runNow", async () => {
     const userData = app.getPath("userData");

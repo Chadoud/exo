@@ -86,10 +86,10 @@ export const frWelcomeLocaleSlice = {
     leaveSave: "Conserver et fermer",
     localServiceStartingTitle: "Démarrage d’Exo sur cet ordinateur",
     localServiceStartingBody:
-      "Au premier lancement, Exo se prépare en arrière-plan — comptez une à quatre minutes. Rien d’autre à installer.",
+      "Exo se prépare en arrière-plan. Cela ne prend généralement qu’un instant.",
     localServiceOfflineTitle: "Exo n’a pas pu démarrer sur cet ordinateur",
     localServiceOfflineBody:
-      "Tout est inclus dans l’app — pas de Python requis. Quittez Exo (Cmd+Q), rouvrez-le depuis Applications et attendez quelques minutes.",
+      "Quittez Exo (Cmd+Q) et rouvrez-le depuis Applications. Si cela persiste, contactez le support.",
     localServiceRetry: "Redémarrer le service",
     localServiceRetryBusy: "Redémarrage…",
     localServiceSkipSetup: "Passer la configuration",

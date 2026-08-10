@@ -29,7 +29,8 @@ Push-Location backend
 python -m PyInstaller backend.spec
 Pop-Location
 New-Item -ItemType Directory -Force -Path electron/resources | Out-Null
-Copy-Item backend/dist/backend.exe electron/resources/backend.exe -Force
+if (Test-Path electron/resources/backend) { Remove-Item electron/resources/backend -Recurse -Force }
+Copy-Item backend/dist/backend electron/resources/backend -Recurse -Force
 
 Write-Host "==> Release resources"
 bash scripts/prepare-release-resources.sh

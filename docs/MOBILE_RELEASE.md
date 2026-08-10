@@ -60,7 +60,7 @@ Full checklist: [`runbooks/mobile-pairing-smoke.md`](./runbooks/mobile-pairing-s
 1. Desktop: Settings → Sync → enable GO SYNC.
 2. **Device / camera:** Mobile Settings → Pair with desktop → scan the QR.
 3. **Simulator / no camera:** Desktop → **Copy pairing code** → Mobile → **Paste from clipboard** (or paste into the field → Use pasted code).
-4. Confirm memories appear on the Today tab after sync.
+4. Confirm memories appear on the Memory tab after sync.
 
 ## 7. Rollback
 

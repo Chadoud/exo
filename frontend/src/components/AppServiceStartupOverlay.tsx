@@ -7,7 +7,6 @@ interface AppServiceStartupOverlayProps {
   failed?: boolean;
   autoRecoveryExhausted?: boolean;
   retryBusy?: boolean;
-  startupPercent?: number;
   /** Full-screen gate (default) or inline card for welcome / workspace. */
   variant?: "overlay" | "inline";
 }
@@ -35,14 +34,11 @@ export default function AppServiceStartupOverlay({
   failed = false,
   autoRecoveryExhausted = false,
   retryBusy = false,
-  startupPercent = 0,
   variant = "overlay",
 }: AppServiceStartupOverlayProps) {
   const { t } = useI18n();
   const showFailure = failed && autoRecoveryExhausted && !retryBusy;
   const showRecovery = retryBusy || (failed && !autoRecoveryExhausted);
-  const clampedPercent = Math.max(0, Math.min(100, startupPercent));
-  const progressLabel = `${clampedPercent}%`;
 
   const card = (
     <div
@@ -52,23 +48,11 @@ export default function AppServiceStartupOverlay({
       <div className="flex flex-col items-center gap-2">
         {!showFailure ? (
           <>
-            <div className="flex w-full max-w-xs items-center gap-3">
-              <div
-                className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-border-soft"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={clampedPercent}
-                aria-valuetext={progressLabel}
-              >
-                <span
-                  className="absolute inset-y-0 left-0 rounded-full bg-accent transition-[width] duration-500 ease-out"
-                  style={{ width: `${clampedPercent}%` }}
-                />
-              </div>
-              <span className="min-w-[3ch] text-sm font-semibold tabular-nums text-accent">
-                {progressLabel}
-              </span>
+            <div
+              className="relative h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-border-soft"
+              aria-hidden
+            >
+              <span className="absolute inset-y-0 w-[30%] animate-prepIndeterminate rounded-full bg-accent" />
             </div>
             {showRecovery ? (
               <p className="text-sm font-medium text-accent">{t("welcome.localServiceRetryBusy")}</p>

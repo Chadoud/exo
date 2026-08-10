@@ -27,3 +27,9 @@ class SyncDecryptException implements Exception {
   @override
   String toString() => 'SyncDecryptException: decrypt failed';
 }
+
+/// Envelope schema is newer than this app supports — user must update.
+class SyncSchemaException implements Exception {
+  @override
+  String toString() => 'SyncSchemaException: update app';
+}

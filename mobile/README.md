@@ -10,7 +10,7 @@ GO SYNC mobile client for **iOS** and **Android**. Requires **Flutter 3.24.5** (
 | Sync | `lib/sync/` | Crypto, cloud API, pull engine, SQLite cache, user-facing messages |
 | Session | `lib/app/mobile_sync_config.dart` | App-wide auth/sync session (secure storage + local DB) |
 | Settings | `lib/features/settings/` | Pairing QR, crash opt-in, sign-out |
-| UI | `lib/features/{today,memory,search,capture}/` + `lib/layout/` | Adaptive shell + tabs |
+| UI | `lib/features/{memory,actions,capture}/` + `lib/layout/` | Adaptive shell + tabs |
 | Telemetry | `lib/telemetry/` | Opt-in crash ingest |
 | Config | `lib/app/exo_config.dart` + `env/*.json` | Flavors (URLs only — no secrets) |
 
@@ -76,12 +76,13 @@ Optional: `--dart-define=APP_VERSION=0.2.0` (defaults match `pubspec.yaml`). Cra
 4. **Pull to refresh** on Memories (or AppBar sync) updates the local SQLite cache.
 5. **Sign out** confirms, then clears tokens, master key, pairing, cursor, and local DB.
 
-Tabs after setup: **Today · Memory · Search** (Capture is deferred — not in the tab bar).
+Tabs after setup: **Memory · Tasks** (Tasks lists GO SYNC `tasks` from desktop; AI draft/review execute is not shipped yet. Capture is deferred — not in the tab bar).
 
 ## Deferred (post-beta / Store GA)
 
 Tracked for a later release — do not declare mic/camera beyond pairing until shipped:
 
+- Tasks AI draft/review execute (cloud LLM; e.g. email to/body — user confirms before send)
 - Voice **Capture** + outbound `pushLocalRecords`
 - `flutter_localizations` / ARB (copy is centralized in `lib/sync/user_messages.dart` for extraction)
 - Background sync policy, cert pinning decision, a11y audit, memory filters

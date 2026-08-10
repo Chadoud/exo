@@ -35,7 +35,6 @@ export interface AppMainWorkspaceProps {
   backendHealthProbing: boolean;
   backendServiceStarting?: boolean;
   backendStartupFailed?: boolean;
-  backendStartupPercent?: number;
   backendAutoRecoveryExhausted?: boolean;
   backendRetryBusy?: boolean;
   handleRetryBackend?: (opts?: { silent?: boolean }) => void | Promise<void>;

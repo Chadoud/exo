@@ -5,7 +5,7 @@ import 'exo_cube_svg.dart';
 import 'exo_spacing.dart';
 import 'exo_theme.dart';
 
-/// Compact wordmark — SVG cube + EXO (boot draw uses [ExoCubeIntro] instead).
+/// Compact wordmark — brand cube (same stroke as boot) + EXO.
 class ExoMark extends StatelessWidget {
   const ExoMark({super.key, this.compact = false});
 
@@ -126,12 +126,15 @@ class ExoSecondaryButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon,
+    this.leading,
     this.busy = false,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
+  /// Prefer over [icon] for brand marks (e.g. PNG social glyphs).
+  final Widget? leading;
   final bool busy;
 
   @override
@@ -143,12 +146,13 @@ class ExoSecondaryButton extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         : Text(label);
-    if (icon == null || busy) {
+    final leadingWidget = leading ?? (icon != null ? Icon(icon, size: 20) : null);
+    if (leadingWidget == null || busy) {
       return OutlinedButton(onPressed: busy ? null : onPressed, child: child);
     }
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 20),
+      icon: leadingWidget,
       label: Text(label),
     );
   }

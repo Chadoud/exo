@@ -84,18 +84,17 @@ else
   echo "==> verify:packaged-app"
   npm run verify:packaged-app
 
-  NATIVE_SLICE="electron/resources/backend-arm64"
+  NATIVE_SLICE="electron/resources/backend-arm64/backend"
   if [[ "$(uname -m)" != "arm64" ]]; then
-    NATIVE_SLICE="electron/resources/backend-x64"
+    NATIVE_SLICE="electron/resources/backend-x64/backend"
   fi
   if [[ ! -f "$NATIVE_SLICE" ]]; then
-    # stage-mac-backend-slices may use a single name; fall back
-    if [[ -f electron/resources/backend-arm64 ]]; then
-      NATIVE_SLICE="electron/resources/backend-arm64"
-    elif [[ -f electron/resources/backend-x64 ]]; then
-      NATIVE_SLICE="electron/resources/backend-x64"
+    if [[ -f electron/resources/backend-arm64/backend ]]; then
+      NATIVE_SLICE="electron/resources/backend-arm64/backend"
+    elif [[ -f electron/resources/backend-x64/backend ]]; then
+      NATIVE_SLICE="electron/resources/backend-x64/backend"
     else
-      echo "ERROR: native backend slice not found under electron/resources/" >&2
+      echo "ERROR: native backend onedir executable not found under electron/resources/" >&2
       exit 1
     fi
   fi

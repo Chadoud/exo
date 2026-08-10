@@ -86,10 +86,10 @@ export const enWelcomeLocaleSlice = {
     leaveSave: "Keep changes & close",
     localServiceStartingTitle: "Starting Exo on this computer",
     localServiceStartingBody:
-      "First launch prepares Exo in the background — this usually takes one to four minutes.",
+      "Exo is getting ready in the background. This usually only takes a moment.",
     localServiceOfflineTitle: "Exo couldn't start on this computer",
     localServiceOfflineBody:
-      "Everything is bundled with the app. Quit Exo (Cmd+Q), reopen it from Applications, and wait a few minutes. If this keeps happening, contact support.",
+      "Quit Exo (Cmd+Q) and reopen it from Applications. If this keeps happening, contact support.",
     localServiceRetry: "Restart service",
     localServiceRetryBusy: "Restarting…",
     localServiceSkipSetup: "Skip setup for now",

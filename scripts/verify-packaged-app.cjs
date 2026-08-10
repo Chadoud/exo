@@ -109,12 +109,14 @@ for (const file of recommended) {
 
 if (!verifyGmailOAuthBundled(resourcesDir)) failed = true;
 
-const backendExe = path.join(resourcesDir, "backend.exe");
-if (fs.existsSync(backendExe)) {
+const { resolveBackendInSlice } = require("./lib/backend-onedir.cjs");
+const winBackend = resolveBackendInSlice(path.join(resourcesDir, "backend"), "win32");
+const legacyWinExe = path.join(resourcesDir, "backend.exe");
+if (winBackend || fs.existsSync(legacyWinExe)) {
   console.log("[verify-packaged-app] OK backend.exe");
 } else if (process.platform === "darwin" || (arg && arg.endsWith(".app"))) {
   if (!verifyMacBackendSlices(resourcesDir)) failed = true;
-} else if (!fs.existsSync(path.join(resourcesDir, "backend"))) {
+} else if (!resolveBackendInSlice(path.join(resourcesDir, "backend"))) {
   console.warn("[verify-packaged-app] WARN missing backend binary");
 }
 

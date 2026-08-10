@@ -293,10 +293,13 @@ jobs:
           mkdir -p electron/resources
           ARCH=$(uname -m)
           if [ "$ARCH" = "arm64" ]; then
-            cp backend/dist/backend electron/resources/backend-arm64
+            SLICE=electron/resources/backend-arm64
           else
-            cp backend/dist/backend electron/resources/backend-x64
+            SLICE=electron/resources/backend-x64
           fi
+          rm -rf "$SLICE"
+          cp -R backend/dist/backend "$SLICE"
+          chmod +x "$SLICE/backend"
           bash scripts/prepare-release-resources.sh
           npm run package:mac
           node scripts/verify-packaged-app.cjs
@@ -346,10 +349,11 @@ jobs:
         working-directory: backend
         run: python -m PyInstaller backend.spec
 
-      - name: Move backend.exe to resources
+      - name: Stage backend onedir to resources
         run: |
           New-Item -ItemType Directory -Force -Path electron/resources
-          Copy-Item backend/dist/backend.exe electron/resources/backend.exe
+          if (Test-Path electron/resources/backend) { Remove-Item electron/resources/backend -Recurse -Force }
+          Copy-Item backend/dist/backend electron/resources/backend -Recurse -Force
 
       - name: Bundle release resources (integration config + optional Gmail OAuth)
         shell: bash
@@ -403,25 +407,26 @@ jobs:
         working-directory: backend
         run: pip install --prefer-binary -r requirements.txt pyinstaller
 
-      - name: Build backend binary (x86_64 native)
+      - name: Build backend onedir (x86_64 native)
         working-directory: backend
         run: |
           python -m PyInstaller backend.spec
-          file dist/backend
-          if ! file dist/backend | grep -q x86_64; then
+          test -f dist/backend/backend
+          file dist/backend/backend
+          if ! file dist/backend/backend | grep -q x86_64; then
             echo "::error::Intel runner did not produce x86_64 backend"
             exit 1
           fi
 
       - name: Smoke-test x86_64 backend (/health)
-        run: bash scripts/verify-mac-backend-health.sh backend/dist/backend
+        run: bash scripts/verify-mac-backend-health.sh backend/dist/backend/backend
         env:
           VERIFY_BACKEND_HEALTH_TIMEOUT_SEC: "180"
 
       - uses: actions/upload-artifact@v4
         with:
           name: backend-macos-x64
-          path: backend/dist/backend
+          path: backend/dist/backend/
           retention-days: 3
 
   # ── macOS installer (.dmg) ───────────────────────────────────────────────
@@ -478,42 +483,43 @@ jobs:
           name: backend-macos-x64
           path: /tmp/backend-x64
 
-      - name: Build backend binaries (macOS — separate arch slices, no lipo)
+      - name: Build backend binaries (macOS — separate arch onedir slices, no lipo)
         working-directory: backend
-        # PyInstaller one-file bundles embed arch-specific Python — lipo produces a
-        # broken "universal" Mach-O (x86_64 bootloader extracts arm64 Python). Ship
-        # backend-x64 and backend-arm64 side by side; Electron picks at runtime.
+        # PyInstaller onedir bundles are arch-specific — lipo cannot merge them.
+        # Ship backend-x64/ and backend-arm64/ side by side; Electron picks at runtime.
         run: |
           set -e
           test -f /tmp/backend-x64/backend || (echo "::error::Intel backend artifact missing" && exit 1)
-          rm -rf build dist
+          rm -rf build dist /tmp/backend_arm64
           PYINSTALLER_TARGET_ARCH=arm64 python -m PyInstaller backend.spec
-          cp dist/backend /tmp/backend_arm64
-          file /tmp/backend_arm64
+          cp -R dist/backend /tmp/backend_arm64
+          chmod +x /tmp/backend_arm64/backend
+          file /tmp/backend_arm64/backend
           file /tmp/backend-x64/backend
           if ! file /tmp/backend-x64/backend | grep -q x86_64; then
             echo "::error::Intel backend artifact is not x86_64"
             exit 1
           fi
-          if ! file /tmp/backend_arm64 | grep -q arm64; then
+          if ! file /tmp/backend_arm64/backend | grep -q arm64; then
             echo "::error::Apple Silicon backend build is not arm64"
             exit 1
           fi
 
       - name: Smoke-test arm64 backend (/health)
-        run: bash scripts/verify-mac-backend-health.sh /tmp/backend_arm64
+        run: bash scripts/verify-mac-backend-health.sh /tmp/backend_arm64/backend
         env:
           VERIFY_BACKEND_HEALTH_TIMEOUT_SEC: "180"
 
       - name: Stage macOS backend slices for packaging
         run: |
           mkdir -p electron/resources
-          cp /tmp/backend-x64/backend electron/resources/backend-x64
-          cp /tmp/backend_arm64 electron/resources/backend-arm64
-          chmod +x electron/resources/backend-x64 electron/resources/backend-arm64
+          rm -rf electron/resources/backend-x64 electron/resources/backend-arm64
+          cp -R /tmp/backend-x64 electron/resources/backend-x64
+          cp -R /tmp/backend_arm64 electron/resources/backend-arm64
+          chmod +x electron/resources/backend-x64/backend electron/resources/backend-arm64/backend
           EXO_MAC_UNIVERSAL=1 node scripts/stage-mac-backend-slices.cjs
-          file electron/resources/backend-x64
-          file electron/resources/backend-arm64
+          file electron/resources/backend-x64/backend
+          file electron/resources/backend-arm64/backend
 
       - name: Generate macOS app icon (.icns)
         run: node scripts/generate-mac-icns.js
@@ -580,14 +586,14 @@ jobs:
             echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}"
           } >> "$GITHUB_ENV"
 
-      - name: Codesign PyInstaller backend (signed releases)
+      - name: Codesign PyInstaller backend onedir (signed releases)
         if: env.MAC_CSC_LINK != '' && env.MAC_SIGN_IDENTITY != ''
         run: |
-          for bin in electron/resources/backend-x64 electron/resources/backend-arm64; do
-            codesign --force --options runtime --timestamp \
-              --entitlements electron/entitlements.mac.plist \
-              --sign "$MAC_SIGN_IDENTITY" "$bin"
-            codesign --verify --strict --verbose=2 "$bin"
+          for slice in electron/resources/backend-x64 electron/resources/backend-arm64; do
+            node -e "
+              const { codesignMacOnedirSlice } = require('./scripts/lib/backend-onedir.cjs');
+              codesignMacOnedirSlice(process.argv[1], process.argv[2], process.argv[3]);
+            " "$slice" "$MAC_SIGN_IDENTITY" "electron/entitlements.mac.plist"
           done
 
       - name: Package universal app (.dmg)

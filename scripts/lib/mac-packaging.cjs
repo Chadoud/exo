@@ -6,7 +6,10 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const {
+  resolveBackendInSlice,
+  fileOutputMatches,
+} = require("./backend-onedir.cjs");
 
 /** @typedef {'x64' | 'arm64'} MacArch */
 
@@ -125,9 +128,9 @@ function stageBackendSlices(resourcesDir, env = process.env) {
   const legacy = path.join(resourcesDir, "backend");
 
   if (isUniversalBuild(env)) {
-    if (!fs.existsSync(x64) || !fs.existsSync(arm64)) {
+    if (!resolveBackendInSlice(x64, "darwin") || !resolveBackendInSlice(arm64, "darwin")) {
       throw new Error(
-        "Universal macOS build requires electron/resources/backend-x64 and backend-arm64"
+        "Universal macOS build requires electron/resources/backend-x64 and backend-arm64 onedir slices"
       );
     }
     return;
@@ -137,25 +140,21 @@ function stageBackendSlices(resourcesDir, env = process.env) {
   const target = path.join(resourcesDir, backendSliceName(native));
   const unused = path.join(resourcesDir, backendSliceName(native === "arm64" ? "x64" : "arm64"));
 
-  if (!fs.existsSync(target) && fs.existsSync(legacy)) {
-    fs.copyFileSync(legacy, target);
+  if (!resolveBackendInSlice(target, "darwin") && fs.existsSync(legacy)) {
+    fs.rmSync(target, { recursive: true, force: true });
+    if (fs.statSync(legacy).isDirectory()) {
+      fs.cpSync(legacy, target, { recursive: true });
+    } else {
+      fs.mkdirSync(target, { recursive: true });
+      fs.copyFileSync(legacy, path.join(target, "backend"));
+    }
   }
-  if (!fs.existsSync(target)) {
+  if (!resolveBackendInSlice(target, "darwin")) {
     throw new Error(`Missing native backend slice: ${path.basename(target)}`);
   }
   if (fs.existsSync(unused)) {
-    fs.unlinkSync(unused);
+    fs.rmSync(unused, { recursive: true, force: true });
   }
-}
-
-/**
- * @param {string} binPath
- * @param {string} pattern
- * @returns {boolean}
- */
-function fileOutputMatches(binPath, pattern) {
-  const out = execSync(`file "${binPath}"`, { encoding: "utf8" });
-  return out.includes(pattern);
 }
 
 /**
@@ -171,8 +170,8 @@ function verifyBackendSlices(resourcesDir, options = {}) {
   const mode = packagingMode(env);
   const x64 = path.join(resourcesDir, "backend-x64");
   const arm64 = path.join(resourcesDir, "backend-arm64");
-  const hasX64 = fs.existsSync(x64);
-  const hasArm64 = fs.existsSync(arm64);
+  const x64Exe = resolveBackendInSlice(x64, "darwin");
+  const arm64Exe = resolveBackendInSlice(arm64, "darwin");
   const log = (msg) => console.log(`[mac-packaging] ${msg}`);
   const fail = (msg) => {
     console.error(`[mac-packaging] ${msg}`);
@@ -180,30 +179,30 @@ function verifyBackendSlices(resourcesDir, options = {}) {
   };
 
   if (mode === "native-x64" || mode === "native-arm64") {
-    const expected = mode === "native-arm64" ? arm64 : x64;
-    const unexpected = mode === "native-arm64" ? x64 : arm64;
-    const label = path.basename(expected);
-    if (!fs.existsSync(expected)) return fail(`Missing ${label} (native build)`);
+    const expectedExe = mode === "native-arm64" ? arm64Exe : x64Exe;
+    const unexpectedPath = mode === "native-arm64" ? x64 : arm64;
+    const label = mode === "native-arm64" ? "backend-arm64" : "backend-x64";
+    if (!expectedExe) return fail(`Missing ${label} (native build)`);
     log(`OK ${label}`);
-    if (fs.existsSync(unexpected)) {
-      return fail(`Unexpected ${path.basename(unexpected)} in native build`);
+    if (fs.existsSync(unexpectedPath)) {
+      return fail(`Unexpected ${path.basename(unexpectedPath)} in native build`);
     }
     if (strictArch) {
       const pattern = mode === "native-arm64" ? "arm64" : "x86_64";
-      if (!fileOutputMatches(expected, pattern)) return fail(`${label} arch mismatch`);
+      if (!fileOutputMatches(expectedExe, pattern)) return fail(`${label} arch mismatch`);
     }
     return true;
   }
 
-  if (!hasX64 || !hasArm64) {
+  if (!x64Exe || !arm64Exe) {
     return fail("Missing backend-x64 and/or backend-arm64 (universal build)");
   }
   log("OK backend-x64");
   log("OK backend-arm64");
   if (strictArch) {
-    if (!fileOutputMatches(x64, "x86_64")) return fail("backend-x64 arch mismatch");
-    if (!fileOutputMatches(arm64, "arm64")) return fail("backend-arm64 arch mismatch");
-    if (fileOutputMatches(x64, "universal binary")) {
+    if (!fileOutputMatches(x64Exe, "x86_64")) return fail("backend-x64 arch mismatch");
+    if (!fileOutputMatches(arm64Exe, "arm64")) return fail("backend-arm64 arch mismatch");
+    if (fileOutputMatches(x64Exe, "universal binary")) {
       return fail("backend-x64 must be thin x86_64, not lipo universal");
     }
   }

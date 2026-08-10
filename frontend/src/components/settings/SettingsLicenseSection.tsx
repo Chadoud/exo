@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import type { EntitlementStatus } from "../../api";
 import { useI18n } from "../../i18n/I18nContext";
 import { trialBarPercent, trialDurationDays, trialLineVars } from "../../utils/entitlementUi";
+import SettingsBillingStatusCard from "./SettingsBillingStatusCard";
 
 interface SettingsLicenseSectionProps {
   entitlement: EntitlementStatus | null;
@@ -70,6 +71,7 @@ export default function SettingsLicenseSection({
 
   return (
     <div id="license-usage" className="space-y-4 scroll-mt-28">
+      <SettingsBillingStatusCard entitlement={entitlement} />
       <div className="rounded-xl border border-border bg-bg-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-medium text-text-primary">{t("settings.licenseQuotaHeading")}</p>

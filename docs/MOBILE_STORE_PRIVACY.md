@@ -24,7 +24,7 @@ Relay is **zero-knowledge**: cloud stores ciphertext only.
 - **Privacy Nutrition Labels:** Data Linked to You → User Content (encrypted sync), Identifiers (device id), Contact Info (email if OAuth).
 - **Permission strings (beta):** `NSCameraUsageDescription` for QR pairing only. Do **not** declare `NSMicrophoneUsageDescription` until Capture ships.
 - **Encryption export:** App uses standard HTTPS + on-device crypto — declare exempt category in App Store Connect questionnaire unless legal advises otherwise.
-- **Screenshots:** iPhone 6.7", 6.1", iPad 12.9" — dark Exo theme, Today + Memory tabs.
+- **Screenshots:** iPhone 6.7", 6.1", iPad 12.9" — dark Exo theme, Memory + Tasks tabs.
 
 ## Google Play
 
@@ -44,8 +44,8 @@ Before public listing:
 
 | Device | Orientation | Screens |
 |--------|-------------|---------|
-| iPhone SE | Portrait | Today, Memory, Settings pairing |
-| iPhone 15 Pro Max | Portrait | Today synced state |
+| iPhone SE | Portrait | Memory, Tasks, Settings pairing |
+| iPhone 15 Pro Max | Portrait | Memory synced state |
 | iPad Mini | Landscape | Navigation rail + Memory split |
 | Pixel 6 | Portrait | Search, Settings |
 | 10" tablet emulator | Landscape | Rail layout |

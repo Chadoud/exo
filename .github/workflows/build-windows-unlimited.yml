@@ -42,7 +42,8 @@ jobs:
           python -m PyInstaller backend.spec
           cd ..
           New-Item -ItemType Directory -Force -Path electron/resources | Out-Null
-          Copy-Item backend/dist/backend.exe electron/resources/backend.exe -Force
+          if (Test-Path electron/resources/backend) { Remove-Item electron/resources/backend -Recurse -Force }
+          Copy-Item backend/dist/backend electron/resources/backend -Recurse -Force
           bash scripts/prepare-release-resources.sh
           $env:EXO_UNLIMITED_BUILD = "1"
           npm run package:win:unlimited

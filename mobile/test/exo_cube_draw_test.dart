@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('cube path geometry has measurable stroke length', () {
-    expect(exoCubeOuterPathLength(), greaterThan(80));
-    expect(exoCubeInnerPathLength(), greaterThan(40));
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('cube one-path has measurable stroke length', () {
+    expect(exoCubeDrawPathLength(), greaterThan(400));
   });
 
   testWidgets('ExoCubeDraw paints at progress 0 and 1', (tester) async {
@@ -29,31 +30,68 @@ void main() {
     expect(find.byType(ExoCubeDraw), findsOneWidget);
   });
 
-  testWidgets('ExoCubeIntro completes and calls onComplete', (tester) async {
+  testWidgets('ExoCubeIntro completes after stroke draw + settle', (tester) async {
     var done = false;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: ExoCubeIntro(
             duration: const Duration(milliseconds: 200),
-            crossfadeDuration: const Duration(milliseconds: 100),
+            settleDuration: const Duration(milliseconds: 100),
             onComplete: () => done = true,
           ),
         ),
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(milliseconds: 80));
     expect(done, isFalse);
-    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(done, isFalse);
+    await tester.pump(const Duration(milliseconds: 100));
     expect(done, isTrue);
-    expect(find.byType(ExoCubeSvg), findsOneWidget);
+    expect(find.byType(ExoCubeIntro), findsOneWidget);
+    // Hold is the same stroke painter — never a PNG brand mark.
+    expect(find.byType(ExoCubeDraw), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
   });
 
-  test('stroke geometry matches SVG face vertices', () {
-    // Outer hex matches filled SVG paths in assets/exo_cube.svg (viewBox 48×48).
-    expect(exoCubeOuterPathLength(), closeTo(114.0, 8.0));
-    expect(exoCubeInnerPathLength(), closeTo(76.0, 8.0));
+  testWidgets('ExoBootScreen does not show PNG mark while holding', (tester) async {
+    var done = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ExoBootScreen(
+          introDuration: const Duration(milliseconds: 200),
+          settleDuration: const Duration(milliseconds: 100),
+          onIntroComplete: () => done = true,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(done, isFalse);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(done, isTrue);
+    expect(find.byType(ExoCubeDraw), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+    expect(find.byType(ExoCubeSvg), findsNothing);
+  });
+
+  test('stroke geometry matches brand one-path proportions', () {
+    // Full `#cube-draw-path` length in viewBox units (133×150).
+    expect(exoCubeDrawPathLength(), closeTo(728.0, 20.0));
+  });
+
+  testWidgets('ExoCubeSvg mark matches full stroke draw', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(child: ExoCubeSvg(size: 48)),
+        ),
+      ),
+    );
+    expect(find.byType(ExoCubeDraw), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
   });
 }
-

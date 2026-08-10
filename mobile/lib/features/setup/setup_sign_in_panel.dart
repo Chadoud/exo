@@ -75,6 +75,11 @@ class _SetupSignInPanelState extends State<SetupSignInPanel> {
         ),
         const SizedBox(height: ExoSpacing.sm),
         Text(SyncUserMessages.setupSubtitle, style: textTheme.bodyMedium),
+        const SizedBox(height: ExoSpacing.sm),
+        Text(
+          SyncUserMessages.setupPairingHint,
+          style: textTheme.bodySmall?.copyWith(color: ExoColors.textMuted),
+        ),
         const SizedBox(height: ExoSpacing.xl),
         if (widget.waitingBrowser) ...[
           ExoStatusBanner(
@@ -159,27 +164,29 @@ class _SetupSignInPanelState extends State<SetupSignInPanel> {
           ],
         ),
         const SizedBox(height: ExoSpacing.lg),
-        // Secondary: social — equal weight, side by side.
-        Row(
-          children: [
-            Expanded(
-              child: ExoSecondaryButton(
-                label: SyncUserMessages.signInWithApple,
-                icon: Icons.apple,
-                busy: widget.launchingBrowser,
-                onPressed: busy ? null : widget.onApple,
-              ),
-            ),
-            const SizedBox(width: ExoSpacing.sm),
-            Expanded(
-              child: ExoSecondaryButton(
-                label: SyncUserMessages.signInWithGoogle,
-                icon: Icons.g_mobiledata_rounded,
-                busy: widget.launchingBrowser,
-                onPressed: busy ? null : widget.onGoogle,
-              ),
-            ),
-          ],
+        // Secondary: social — stacked full-width (matches desktop CloudAuthScreen).
+        ExoSecondaryButton(
+          label: SyncUserMessages.signInWithGoogle,
+          leading: Image.asset(
+            'assets/brands/google-sign-in.png',
+            width: 20,
+            height: 20,
+            filterQuality: FilterQuality.medium,
+          ),
+          busy: widget.launchingBrowser,
+          onPressed: busy ? null : widget.onGoogle,
+        ),
+        const SizedBox(height: ExoSpacing.sm),
+        ExoSecondaryButton(
+          label: SyncUserMessages.signInWithApple,
+          leading: Image.asset(
+            'assets/brands/apple-sign-in.png',
+            width: 20,
+            height: 20,
+            filterQuality: FilterQuality.medium,
+          ),
+          busy: widget.launchingBrowser,
+          onPressed: busy ? null : widget.onApple,
         ),
         const SizedBox(height: ExoSpacing.xl),
         Text(

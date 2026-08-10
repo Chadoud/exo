@@ -29,7 +29,16 @@ for candidate in \
     break
   fi
 done
-BACKEND_RES="$ROOT/electron/resources/backend"
+BACKEND_RES=""
+for candidate in \
+  "$ROOT/electron/resources/backend-arm64" \
+  "$ROOT/electron/resources/backend-x64" \
+  "$ROOT/electron/resources/backend"; do
+  if [ -e "$candidate" ]; then
+    BACKEND_RES="$candidate"
+    break
+  fi
+done
 FRONTEND_DIST="$ROOT/frontend/dist/assets"
 
 echo "## Installer"
@@ -40,14 +49,24 @@ echo
 if [ -d "$APP/Contents" ]; then
   echo "## macOS .app breakdown ($APP)"
   printf "  Electron Framework: %s\n" "$(human "$APP/Contents/Frameworks/Electron Framework.framework")"
-  printf "  Python backend:     %s\n" "$(human "$APP/Contents/Resources/backend")"
+  BACKEND_IN_APP=""
+  for candidate in \
+    "$APP/Contents/Resources/backend-arm64" \
+    "$APP/Contents/Resources/backend-x64" \
+    "$APP/Contents/Resources/backend"; do
+    if [ -e "$candidate" ]; then
+      BACKEND_IN_APP="$candidate"
+      break
+    fi
+  done
+  printf "  Python backend:     %s\n" "$(human "$BACKEND_IN_APP")"
   printf "  app.asar:           %s\n" "$(human "$APP/Contents/Resources/app.asar")"
   echo
 fi
 
-if [ -f "$BACKEND_RES" ]; then
-  echo "## Dev backend binary (pre-package)"
-  printf "  electron/resources/backend: %s\n" "$(human "$BACKEND_RES")"
+if [ -n "$BACKEND_RES" ]; then
+  echo "## Dev backend onedir (pre-package)"
+  printf "  %s: %s\n" "${BACKEND_RES#"$ROOT"/}" "$(human "$BACKEND_RES")"
   echo
 fi
 

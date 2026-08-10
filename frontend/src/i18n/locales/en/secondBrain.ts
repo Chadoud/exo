@@ -523,11 +523,17 @@ export const enSecondBrainLocaleSlice = {
     runNow: "Sync now",
     pairTitle: "Pair mobile device",
     pairHint:
-      "On your phone: Settings → Pair with desktop, then scan this QR — or copy the code and paste it on the phone (Simulator / no camera).",
+      "On your phone: Settings → Pair with desktop, then scan this QR — or Copy pairing code and paste the whole JSON on the phone (starts with {\"v\":2}). Simulator / no camera.",
+    pairSyncFirst:
+      "Sync once on this computer, then copy a fresh pairing code. Your phone needs data on the relay before the first pull.",
     pairQrError: "Couldn't create the pairing code. Check cloud URL and sync settings.",
     pairCopy: "Copy pairing code",
     pairCopied: "Copied — paste on your phone",
     pairCopyError: "Couldn't copy the pairing code. Try again.",
+    pairSessionExpired:
+      "Your Exo sign-in expired. Sign in again (profile menu), then tap Retry QR and copy a fresh code.",
+    pairKeyUnreadable:
+      "Can't read the sync key from Keychain. Unlock macOS Keychain, or turn Sync off and on after a data reset — then copy a fresh code.",
     pairRetry: "Retry QR",
   },
 } as const;

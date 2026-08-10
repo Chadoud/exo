@@ -529,10 +529,16 @@ export const deSecondBrainLocaleSlice = {
     pairTitle: "Mobilgerät koppeln",
     pairHint:
       "Am Telefon: Einstellungen → Mit Desktop koppeln, dann diesen QR scannen — oder Code kopieren und am Telefon einfügen (Simulator / ohne Kamera).",
+    pairSyncFirst:
+      "Einmal auf diesem Computer synchronisieren, dann einen neuen Kopplungscode kopieren. Das Telefon braucht Daten auf dem Relay vor dem ersten Pull.",
     pairQrError: "Kopplungscode konnte nicht erstellt werden. Cloud-URL und Sync prüfen.",
     pairCopy: "Kopplungscode kopieren",
     pairCopied: "Kopiert — am Telefon einfügen",
     pairCopyError: "Code konnte nicht kopiert werden. Erneut versuchen.",
+    pairSessionExpired:
+      "Ihre Exo-Anmeldung ist abgelaufen. Melden Sie sich erneut an (Profilmenü), tippen Sie auf QR erneut und kopieren Sie einen neuen Code.",
+    pairKeyUnreadable:
+      "Sync-Schlüssel im Schlüsselbund nicht lesbar. Schlüsselbund entsperren oder Sync nach Datenreset aus- und wieder einschalten — dann neuen Code kopieren.",
     pairRetry: "QR erneut laden",
   },
 } as const;

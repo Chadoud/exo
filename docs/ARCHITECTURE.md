@@ -72,9 +72,9 @@ flowchart LR
 | Gmail-specific override | `refresh_gmail_oauth_env_from_dotenv` on `/gmail/status` so parent placeholders do not block `backend/.env` |
 | Client credentials + token flow | [`backend/gmail_google_oauth.py`](../backend/gmail_google_oauth.py) |
 
-**Dev vs packaged:** Electron dev spawns `python -m uvicorn main:app` with `cwd` = `backend/` ([`electron/backendProcess.js`](../electron/backendProcess.js)). Packaged app runs `backend.exe` with `EXOSITES_USER_DATA` set to Electron userData; prefer user-level `.env` or `~/.ai-file-sorter/gmail_oauth_client.json` when the extracted app dir has no project `backend/.env`.
+**Dev vs packaged:** Electron dev spawns `python -m uvicorn main:app` with `cwd` = `backend/` ([`electron/backendProcess.js`](../electron/backendProcess.js)). Packaged app runs the PyInstaller **onedir** launcher (`Resources/backend/backend.exe` on Windows; `Resources/backend-{arch}/backend` on macOS) with `EXOSITES_USER_DATA` set to Electron userData; prefer user-level `.env` or `~/.ai-file-sorter/gmail_oauth_client.json` when the app bundle has no project `backend/.env`.
 
-**Bundled Gmail client (releases):** If `gmail_oauth_client.json` sits next to `backend.exe` under `process.resourcesPath`, Electron sets `EXOSITES_GOOGLE_OAUTH_CLIENT_JSON` for the child (unless the user already set client id/secret or a JSON path). The manual packager copies `electron/resources/gmail_oauth_client.json` when that file exists before packaging. End users then open **External sources**, click **Connect Gmail**, approve in the system browser, and tokens are stored under `~/.ai-file-sorter/` on the machine.
+**Bundled Gmail client (releases):** If `gmail_oauth_client.json` sits under `process.resourcesPath` (resources root, beside the backend onedir), Electron sets `EXOSITES_GOOGLE_OAUTH_CLIENT_JSON` for the child (unless the user already set client id/secret or a JSON path). The manual packager copies `electron/resources/gmail_oauth_client.json` when that file exists before packaging. End users then open **External sources**, click **Connect Gmail**, approve in the system browser, and tokens are stored under `~/.ai-file-sorter/` on the machine.
 
 ## Ports and constants
 

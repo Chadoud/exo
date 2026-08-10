@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from google.genai import types as genai_types  # type: ignore[import]
+if TYPE_CHECKING:
+    from google.genai import types as genai_types  # type: ignore[import]
 
 
 def decl(
@@ -12,7 +13,11 @@ def decl(
     description: str,
     properties: dict[str, Any],
     required: list[str] | None = None,
-) -> genai_types.FunctionDeclaration:
+) -> "genai_types.FunctionDeclaration":
+    # Deferred: google.genai adds ~3s to backend boot; only needed once a tool
+    # declaration is actually assembled (first voice/assistant request), not at import.
+    from google.genai import types as genai_types  # type: ignore[import]
+
     schema = {"type": "object", "properties": properties}
     if required:
         schema["required"] = required
