@@ -189,8 +189,14 @@ app.whenReady().then(async () => {
   try {
     session.defaultSession.setPermissionRequestHandler((wc, permission, callback, details) => {
       const url = typeof details?.requestingUrl === "string" ? details.requestingUrl : "";
-      const allowed = isMediaPermission(permission) && isAppContentUrl(url);
-      callback(allowed);
+      if (!isMediaPermission(permission) || !isAppContentUrl(url)) {
+        return callback(false);
+      }
+      // macOS: trigger the OS-level TCC prompt before letting capture proceed
+      // (Chromium alone never prompts, leaving a silently dead mic).
+      const { systemPreferences } = require("electron");
+      const { ensureMacMicrophoneAccess } = require("./macMediaAccess");
+      void ensureMacMicrophoneAccess(systemPreferences).then(callback);
     });
   } catch (err) {
     console.warn("[main] setPermissionRequestHandler failed:", err);
