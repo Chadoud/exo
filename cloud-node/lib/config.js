@@ -38,7 +38,7 @@ if (nodeEnv === "production") {
     );
     process.exit(1);
   }
-  if (stripeSecretKey.startsWith("sk_test_")) {
+  if (stripeSecretKey && stripeSecretKey.startsWith("sk_test_")) {
     console.warn("[config] WARNING: STRIPE_SECRET_KEY is a test-mode key in production");
   }
 }
@@ -107,6 +107,12 @@ module.exports = {
     enabled: env("STRIPE_BILLING_ENABLED", "0") === "1",
     secretKey: stripeSecretKey,
     webhookSecret: stripeWebhookSecret,
+    /**
+     * Whether we expect live-mode Stripe events, derived from the key itself
+     * (not NODE_ENV — a production server may intentionally run sandbox keys
+     * during rollout). Guards the webhook against cross-mode writes.
+     */
+    liveMode: Boolean(stripeSecretKey && stripeSecretKey.startsWith("sk_live_")),
     priceIdMonthly: env("STRIPE_PRICE_ID_MONTHLY"),
     priceIdAnnual: env("STRIPE_PRICE_ID_ANNUAL"),
     /** Stripe Tax at Checkout (Swiss VAT) — requires tax registration in the dashboard. */

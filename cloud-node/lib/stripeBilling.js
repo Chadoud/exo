@@ -13,6 +13,9 @@ const config = require("./config");
 /** Stripe statuses that keep paid access (past_due rides Stripe Smart Retries). */
 const ENTITLED_STATUSES = new Set(["active", "trialing", "past_due"]);
 
+/** The same list as a SQL IN-list — single source for every subscriptions query. */
+const ENTITLED_STATUS_SQL_LIST = [...ENTITLED_STATUSES].map((s) => `'${s}'`).join(",");
+
 let stripeSingleton = null;
 
 /** Lazily construct the real Stripe client (tests inject a mock instead). */
@@ -80,7 +83,7 @@ async function latestSubscriptionRow(db, accountId) {
   const [rows] = await db.execute(
     `SELECT stripe_subscription_id, stripe_price_id, status, current_period_end, cancel_at_period_end
      FROM subscriptions WHERE account_id = ?
-     ORDER BY (status IN ('active','trialing','past_due')) DESC, updated_at DESC, id DESC
+     ORDER BY (status IN (${ENTITLED_STATUS_SQL_LIST})) DESC, updated_at DESC, id DESC
      LIMIT 1`,
     [accountId],
   );
@@ -258,7 +261,7 @@ async function applySubscriptionState(conn, accountId, sub, eventCreated) {
 async function resolveDuplicateSubscriptions(conn, stripe, accountId, eventCreated) {
   const [rows] = await conn.execute(
     `SELECT stripe_subscription_id FROM subscriptions
-     WHERE account_id = ? AND status IN ('active','trialing','past_due')
+     WHERE account_id = ? AND status IN (${ENTITLED_STATUS_SQL_LIST})
      ORDER BY created_at ASC, id ASC`,
     [accountId],
   );
@@ -290,7 +293,7 @@ async function cancelSubscriptionsForAccountDeletion(accountId, deps = null) {
   const stripe = deps?.stripe || getStripe();
   const [rows] = await pool.execute(
     `SELECT stripe_subscription_id FROM subscriptions
-     WHERE account_id = ? AND status IN ('active','trialing','past_due')`,
+     WHERE account_id = ? AND status IN (${ENTITLED_STATUS_SQL_LIST})`,
     [accountId],
   );
   for (const row of rows) {
@@ -308,6 +311,7 @@ async function cancelSubscriptionsForAccountDeletion(accountId, deps = null) {
 
 module.exports = {
   ENTITLED_STATUSES,
+  ENTITLED_STATUS_SQL_LIST,
   getStripe,
   billingEnabled,
   priceIdForInterval,

@@ -66,58 +66,65 @@ async function syncTrialFromCloudSession(userData) {
   return profile;
 }
 
+/** @param {unknown} value */
+function trimmedOrNull(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/**
+ * Cloud-session slice of the entitlement state, shared by both build profiles:
+ * session freshness, profile/trial/subscription sync, sort-credential refresh,
+ * display name, and admin flag. Sync failures degrade to cached state.
+ * @param {string} userData
+ */
+async function resolveCloudAccountState(userData) {
+  const state = {
+    cloudAuthRequired: false,
+    cloudLoggedIn: false,
+    cloudEmail: null,
+    cloudFirstName: null,
+    cloudLastName: null,
+    isProductAdmin: false,
+    sortSyncLastError: null,
+  };
+  if (!cloudAuth.isAuthGateEnabled()) return state;
+  state.cloudAuthRequired = true;
+
+  const sess = await cloudAuth.ensureFreshSession(userData);
+  state.cloudLoggedIn = Boolean(sess?.access_token);
+  state.cloudEmail = typeof sess?.email === "string" ? sess.email : null;
+  if (!state.cloudLoggedIn) return state;
+
+  let profile = null;
+  try {
+    profile = await syncTrialFromCloudSession(userData);
+  } catch (err) {
+    console.warn("[entitlement] cloud trial sync failed:", err && err.message);
+  }
+  if (sortCredentialsNeedRefresh(userData)) {
+    try {
+      await syncSortCredentialsFromCloud(userData);
+    } catch (err) {
+      console.warn("[entitlement] cloud sort credentials sync failed:", err && err.message);
+    }
+  }
+
+  state.cloudFirstName = trimmedOrNull(profile?.first_name) ?? trimmedOrNull(sess?.first_name);
+  state.cloudLastName = trimmedOrNull(profile?.last_name) ?? trimmedOrNull(sess?.last_name);
+  state.isProductAdmin = Boolean(profile?.is_product_admin);
+  state.sortSyncLastError = getSortSyncLastError(userData);
+  return state;
+}
+
 /**
  * @param {string} userData device userData root (cloud session); profile files use profiles/<id>/
  */
 async function getEntitlementState(userData) {
   syncGoogleOauthClientIdForElectronMain();
   const dataRoot = profileRootFor(userData);
+  const cloud = await resolveCloudAccountState(userData);
 
   if (isUnlimitedEntitlementBuild()) {
-    let cloudAuthRequired = false;
-    let cloudLoggedIn = false;
-    let cloudEmail = null;
-    let cloudFirstName = null;
-    let cloudLastName = null;
-    let isProductAdmin = false;
-    let sortSyncLastError = null;
-    if (cloudAuth.isAuthGateEnabled()) {
-      cloudAuthRequired = true;
-      const sess = await cloudAuth.ensureFreshSession(userData);
-      cloudLoggedIn = Boolean(sess?.access_token);
-      cloudEmail = typeof sess?.email === "string" ? sess.email : null;
-      if (cloudLoggedIn) {
-        try {
-          const profile = await syncTrialFromCloudSession(userData);
-          if (sortCredentialsNeedRefresh(userData)) {
-            try {
-              await syncSortCredentialsFromCloud(userData);
-            } catch (syncErr) {
-              console.warn(
-                "[entitlement] cloud sort credentials sync failed (unlimited build):",
-                syncErr && syncErr.message,
-              );
-            }
-          }
-          cloudFirstName =
-            typeof profile?.first_name === "string" && profile.first_name.trim()
-              ? profile.first_name.trim()
-              : typeof sess?.first_name === "string" && sess.first_name.trim()
-                ? sess.first_name.trim()
-                : null;
-          cloudLastName =
-            typeof profile?.last_name === "string" && profile.last_name.trim()
-              ? profile.last_name.trim()
-              : typeof sess?.last_name === "string" && sess.last_name.trim()
-                ? sess.last_name.trim()
-                : null;
-          isProductAdmin = Boolean(profile?.is_product_admin);
-          sortSyncLastError = getSortSyncLastError(userData);
-        } catch (err) {
-          console.warn("[entitlement] cloud sync failed (unlimited build):", err && err.message);
-        }
-      }
-    }
     const sortSurface = getSortServiceSurface(userData);
     return {
       trialActive: false,
@@ -125,7 +132,7 @@ async function getEntitlementState(userData) {
       trialEndsAt: null,
       trialDaysRemaining: 0,
       trialExpired: false,
-      ...getSubscriptionStatus(profileRootFor(userData)),
+      ...getSubscriptionStatus(dataRoot),
       licensed: false,
       licenseReason: null,
       unlimitedBuild: true,
@@ -133,13 +140,7 @@ async function getEntitlementState(userData) {
       canUseProactive: true,
       canUseSync: true,
       hasLicenseKey: false,
-      cloudAuthRequired,
-      cloudLoggedIn,
-      cloudEmail,
-      cloudFirstName,
-      cloudLastName,
-      isProductAdmin,
-      sortSyncLastError,
+      ...cloud,
       ...sortSurface,
     };
   }
@@ -154,49 +155,6 @@ async function getEntitlementState(userData) {
     licenseReason = v.ok ? null : v.reason ?? "invalid";
   }
 
-  let cloudAuthRequired = false;
-  let cloudLoggedIn = false;
-  let cloudEmail = null;
-  let cloudFirstName = null;
-  let cloudLastName = null;
-  let isProductAdmin = false;
-  let sortSyncLastError = null;
-  if (cloudAuth.isAuthGateEnabled()) {
-    cloudAuthRequired = true;
-    const sess = await cloudAuth.ensureFreshSession(userData);
-    cloudLoggedIn = Boolean(sess?.access_token);
-    cloudEmail = typeof sess?.email === "string" ? sess.email : null;
-    if (cloudLoggedIn) {
-      let profile = null;
-      try {
-        profile = await syncTrialFromCloudSession(userData);
-      } catch (err) {
-        console.warn("[entitlement] cloud trial sync failed:", err && err.message);
-      }
-      if (sortCredentialsNeedRefresh(userData)) {
-        try {
-          await syncSortCredentialsFromCloud(userData);
-        } catch (err) {
-          console.warn("[entitlement] cloud sort credentials sync failed:", err && err.message);
-        }
-      }
-      cloudFirstName =
-        typeof profile?.first_name === "string" && profile.first_name.trim()
-          ? profile.first_name.trim()
-          : typeof sess?.first_name === "string" && sess.first_name.trim()
-            ? sess.first_name.trim()
-            : null;
-      cloudLastName =
-        typeof profile?.last_name === "string" && profile.last_name.trim()
-          ? profile.last_name.trim()
-          : typeof sess?.last_name === "string" && sess.last_name.trim()
-            ? sess.last_name.trim()
-            : null;
-      isProductAdmin = Boolean(profile?.is_product_admin);
-      sortSyncLastError = getSortSyncLastError(userData);
-    }
-  }
-
   const trial = getTrialStatus(dataRoot);
   const subscription = getSubscriptionStatus(dataRoot);
   const bypass = devEntitlementBypassEnabled();
@@ -205,7 +163,7 @@ async function getEntitlementState(userData) {
   let canUseProactive = paidAccess;
   const canUseSync = paidAccess;
 
-  if (cloudAuthRequired && !cloudLoggedIn && !bypass) {
+  if (cloud.cloudAuthRequired && !cloud.cloudLoggedIn && !bypass) {
     canAnalyze = false;
     canUseProactive = false;
   }
@@ -221,13 +179,7 @@ async function getEntitlementState(userData) {
     canUseProactive,
     canUseSync,
     hasLicenseKey: Boolean(key),
-    cloudAuthRequired,
-    cloudLoggedIn,
-    cloudEmail,
-    cloudFirstName,
-    cloudLastName,
-    isProductAdmin,
-    sortSyncLastError,
+    ...cloud,
     ...sortSurface,
   };
 }

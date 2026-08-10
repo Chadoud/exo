@@ -452,12 +452,12 @@ export const enSecondBrainLocaleSlice = {
   pro: {
     badge: "Pro",
     title: "Trial ended",
-    cta: "Enter a license",
+    cta: "Subscribe",
     tasksFeature:
-      "Automatic task collection from your inbox and calendar is included during your free trial. Enter a license in Settings to turn it back on.",
-    digestFeature: "Your automatic daily digest is included during your free trial. Enter a license to turn it back on.",
-    meetingFeature: "Hands-free meeting notes are included during your free trial. Enter a license to turn it back on.",
-    activityFeature: "Activity timeline capture is included during your free trial. Enter a license to turn it back on.",
+      "Automatic task collection from your inbox and calendar is included during your free trial. Subscribe in Settings to turn it back on.",
+    digestFeature: "Your automatic daily digest is included during your free trial. Subscribe to turn it back on.",
+    meetingFeature: "Hands-free meeting notes are included during your free trial. Subscribe to turn it back on.",
+    activityFeature: "Activity timeline capture is included during your free trial. Subscribe to turn it back on.",
   },
   recall: {
     title: "Search your brain",

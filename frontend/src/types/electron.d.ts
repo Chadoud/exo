@@ -181,8 +181,14 @@ export interface ElectronAPI {
     priceMonthly?: string | null;
     priceAnnual?: string | null;
   }>;
-  /** Fired after the exo://billing/* deep link returns from Stripe. Returns unsubscribe. */
-  onBillingEvent: (handler: (event: { kind: "complete" | "cancelled" }) => void) => () => void;
+  /**
+   * Fired after the exo://billing/* deep link returns from Stripe. Returns unsubscribe.
+   * "complete" carries whether the cloud already confirmed the subscription;
+   * "entitled" follows once a delayed webhook lands.
+   */
+  onBillingEvent: (
+    handler: (event: { kind: "complete" | "cancelled" | "entitled"; subscribed?: boolean }) => void,
+  ) => () => void;
   activateLicense: (licenseKey: string) => Promise<{ ok: boolean; reason?: string }>;
   clearLicense: () => Promise<{ ok: boolean }>;
   cloudAuthRegister: (

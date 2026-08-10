@@ -38,12 +38,12 @@ function subObject(id, status, overrides = {}) {
   };
 }
 
-function buildApp({ pool, stripe, webhookSecret = SECRET, isProduction = false }) {
+function buildApp({ pool, stripe, webhookSecret = SECRET, expectLivemode = false }) {
   const app = express();
   app.use(
     "/v1/webhooks/stripe",
     express.raw({ type: "application/json", limit: "512kb" }),
-    createStripeWebhookRouter({ pool, stripe, webhookSecret, isProduction }),
+    createStripeWebhookRouter({ pool, stripe, webhookSecret, expectLivemode }),
   );
   return app;
 }
@@ -158,7 +158,7 @@ test("livemode mismatch is acknowledged but ignored", async () => {
   const pool = createBillingMockPool();
   pool.addAccount(ACCOUNT, "user@test.ch", CUSTOMER);
   const stripe = createMockStripe();
-  const server = await listenApp(buildApp({ pool, stripe, isProduction: false }));
+  const server = await listenApp(buildApp({ pool, stripe, expectLivemode: false }));
   try {
     const event = makeEvent("customer.subscription.updated", subObject("sub_live", "active"), {
       livemode: true,
@@ -170,6 +170,40 @@ test("livemode mismatch is acknowledged but ignored", async () => {
     assert.equal((await res.json()).ignored, "livemode_mismatch");
     assert.equal(pool.state.subscriptions.length, 0);
   } finally {
+    await server.close();
+  }
+});
+
+test("test-mode event is processed under NODE_ENV=production with a test key", async () => {
+  // Regression: the guard used to compare against NODE_ENV, silently dropping
+  // every sandbox event on the production server during test-mode rollout.
+  const pool = createBillingMockPool();
+  pool.addAccount(ACCOUNT, "user@test.ch", CUSTOMER);
+  const stripe = createMockStripe();
+  stripe._setSubscription(subObject("sub_sandbox", "active"));
+  const prevNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  // expectLivemode deliberately NOT overridden — resolveDeps must fall back to
+  // the configured key's mode (no live key in the test env → test mode).
+  const app = express();
+  app.use(
+    "/v1/webhooks/stripe",
+    express.raw({ type: "application/json", limit: "512kb" }),
+    createStripeWebhookRouter({ pool, stripe, webhookSecret: SECRET }),
+  );
+  const server = await listenApp(app);
+  try {
+    const event = makeEvent("customer.subscription.updated", subObject("sub_sandbox", "active"), {
+      livemode: false,
+    });
+    const { payload, header } = signedWebhook(event, SECRET);
+    const res = await postWebhook(server, payload, header);
+
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).handled, "customer.subscription.updated");
+    assert.equal(pool.state.subscriptions[0].status, "active");
+  } finally {
+    process.env.NODE_ENV = prevNodeEnv;
     await server.close();
   }
 });

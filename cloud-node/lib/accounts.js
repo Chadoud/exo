@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require("uuid");
 const config = require("./config");
 const { getPool } = require("./db");
 const { isAccountProductAdmin } = require("./productAdmins");
+const { latestSubscriptionRow, isEntitledSubscriptionRow } = require("./stripeBilling");
 
 const BCRYPT_ROUNDS = 12;
 const NAME_MAX_LENGTH = 120;
@@ -151,24 +152,15 @@ async function assertAccountActive(accountId) {
   }
 }
 
-const SUBSCRIPTION_ENTITLED_STATUSES = new Set(["active", "trialing", "past_due"]);
-
 /**
- * Newest relevant subscription row, preferring live ones. Tolerates the table
- * not existing yet (pre-migration-024 deploys).
+ * Canonical latest-subscription lookup, tolerating the table not existing yet
+ * (pre-migration-024 deploys must not break /v1/me).
  * @param {import("mysql2/promise").Pool} pool
  * @param {string} accountId
  */
 async function latestSubscriptionForProfile(pool, accountId) {
   try {
-    const [rows] = await pool.execute(
-      `SELECT status, current_period_end, cancel_at_period_end
-       FROM subscriptions WHERE account_id = ?
-       ORDER BY (status IN ('active','trialing','past_due')) DESC, updated_at DESC, id DESC
-       LIMIT 1`,
-      [accountId],
-    );
-    return rows[0] || null;
+    return await latestSubscriptionRow(pool, accountId);
   } catch (e) {
     if (e?.code === "ER_NO_SUCH_TABLE") return null;
     throw e;
@@ -181,9 +173,8 @@ async function latestSubscriptionForProfile(pool, accountId) {
  * @returns {"trial" | "pro" | "past_due" | "canceled" | "expired"}
  */
 function computePlan(subscription, trialActive) {
-  const status = subscription?.status;
-  if (status === "past_due") return "past_due";
-  if (status && SUBSCRIPTION_ENTITLED_STATUSES.has(status)) return "pro";
+  if (subscription?.status === "past_due") return "past_due";
+  if (isEntitledSubscriptionRow(subscription)) return "pro";
   if (trialActive) return "trial";
   if (subscription) return "canceled";
   return "expired";
@@ -218,9 +209,7 @@ async function getProfile(accountId) {
   const trialActive = trialEndsMs != null && nowMs < trialEndsMs;
   const isProductAdmin = await isAccountProductAdmin(accountId);
   const subscription = await latestSubscriptionForProfile(pool, accountId);
-  const subscriptionActive = Boolean(
-    subscription && SUBSCRIPTION_ENTITLED_STATUSES.has(subscription.status),
-  );
+  const subscriptionActive = isEntitledSubscriptionRow(subscription);
 
   return {
     account_id: accounts[0].id,
@@ -235,7 +224,10 @@ async function getProfile(accountId) {
     plan: computePlan(subscription, trialActive),
     subscription_active: subscriptionActive,
     subscription_status: subscription?.status ?? null,
-    subscription_current_period_end: subscription?.current_period_end ?? null,
+    // Explicit ISO 8601 — clients must never see driver-dependent date shapes.
+    subscription_current_period_end: subscription?.current_period_end
+      ? new Date(subscription.current_period_end).toISOString()
+      : null,
     subscription_cancel_at_period_end: Boolean(subscription?.cancel_at_period_end),
     profile: profiles[0] || { display_name: null, locale: "en" },
     bytes_balance: wallets[0]?.bytes_balance ?? 0,

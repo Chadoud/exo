@@ -1616,7 +1616,8 @@ export default {
     trialExpiredLine: "Essai terminé le {date}",
     trialExpiredBadge: "Essai terminé",
     licenseBlockedHint:
-      "Votre essai gratuit est terminé. Collez une clé de licence valide ci-dessous pour continuer à trier.",
+      "Votre essai gratuit est terminé. Abonnez-vous ci-dessus pour continuer à trier.",
+    licenseHaveKeyLink: "J'ai une clé de licence",
     licenseUnlimitedDesc: "Votre licence est active sur cet appareil — traitement illimité.",
     licenseKeyLabel: "Clé de licence",
     licensePastePlaceholder: "Collez votre chaîne exo1.…",
@@ -2477,8 +2478,8 @@ export default {
     offlineBanner:
       "Le service de l’app est en pause. Utilisez Réessayer dans la barre de titre (relance le service en arrière-plan), puis réessayez.",
     entitlementBanner:
-      "Votre essai gratuit est terminé. Ouvrez Réglages → Essai & licence et saisissez votre clé.",
-    entitlementDisabledHint: "Essai terminé — ajoutez une licence dans les réglages",
+      "Votre essai gratuit est terminé. Abonnez-vous dans Réglages → Essai & licence pour continuer à trier.",
+    entitlementDisabledHint: "Essai terminé — abonnez-vous dans les réglages",
     cloudAccountBanner: "Connectez-vous d'abord à votre compte Exo.",
     cloudAccountRequiredHint: "Connectez-vous sur cet écran ou sous Réglages → Compte et profil",
     retryInline: "Réessayer",
@@ -3019,6 +3020,7 @@ Exemples :
     subscribedToast: "Abonnement activé — accès complet débloqué",
     subscribedToastDesc: "Merci de soutenir Exo. Gérez votre abonnement à tout moment dans Réglages → Essai & licence.",
     checkoutCancelledToast: "Paiement annulé — aucun montant prélevé",
+    subscriptionPendingToast: "Paiement reçu — activation de votre abonnement…",
     pastDueBanner: "Votre dernier paiement a échoué. Mettez à jour votre moyen de paiement pour conserver l'accès complet.",
     pastDueUpdateCta: "Mettre à jour le paiement",
     dismiss: "Masquer",
@@ -3050,7 +3052,7 @@ Exemples :
       "Le service de l’app démarre en arrière-plan — réessayez dans un instant.",
     entitlementBlockedTitle: "Traitement en pause — essai terminé",
     entitlementBlockedDesc:
-      "Ouvrez Réglages → Essai & licence pour saisir une clé de licence, ou contactez-nous à studio@exosites.com.",
+      "Ouvrez Réglages → Essai & licence pour vous abonner, ou contactez-nous à studio@exosites.com.",
     chooseOutputFolderTitle: "Choisissez d’abord un dossier de sortie",
     chooseOutputFolderDesc:
       "Ouverture des Réglages — sous Tri et sortie, choisissez où écrire les fichiers triés.",

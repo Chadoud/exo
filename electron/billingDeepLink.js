@@ -11,6 +11,24 @@
 const { app, BrowserWindow } = require("electron");
 
 /**
+ * Stripe's webhook usually lands a few seconds AFTER the browser redirects the
+ * user back, so the first profile sync often races it. Re-sync on this
+ * schedule until the cloud reports the subscription.
+ */
+const SUBSCRIPTION_SYNC_RETRY_DELAYS_MS = [3000, 5000, 8000];
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Re-sync the cloud profile; true when it reports an entitling subscription. */
+async function syncProfileIsSubscribed() {
+  const { syncTrialFromCloudSession } = require("./entitlement/store");
+  const profile = await syncTrialFromCloudSession(app.getPath("userData"));
+  return Boolean(profile?.subscription_active);
+}
+
+/**
  * @param {string} rawUrl
  * @returns {{ kind: "complete" | "cancelled" } | null}
  */
@@ -52,13 +70,28 @@ function handleBillingDeepLinkUrl(rawUrl, opts = {}) {
 
   if (parsed.kind === "complete") {
     void (async () => {
+      let subscribed = false;
       try {
-        const { syncTrialFromCloudSession } = require("./entitlement/store");
-        await syncTrialFromCloudSession(app.getPath("userData"));
+        subscribed = await syncProfileIsSubscribed();
       } catch (err) {
         console.warn("[billing] post-checkout profile sync failed:", err && err.message);
       }
-      broadcastBillingEvent({ kind: "complete" });
+      // Give immediate feedback either way; keep polling if the webhook hasn't
+      // written the subscription yet and confirm with a follow-up event.
+      broadcastBillingEvent({ kind: "complete", subscribed });
+      if (subscribed) return;
+      for (const delayMs of SUBSCRIPTION_SYNC_RETRY_DELAYS_MS) {
+        await sleep(delayMs);
+        try {
+          if (await syncProfileIsSubscribed()) {
+            broadcastBillingEvent({ kind: "entitled" });
+            return;
+          }
+        } catch (err) {
+          console.warn("[billing] post-checkout profile re-sync failed:", err && err.message);
+        }
+      }
+      console.warn("[billing] subscription still not visible after checkout — webhook delayed or failing");
     })();
   } else {
     broadcastBillingEvent({ kind: "cancelled" });

@@ -1617,7 +1617,8 @@ export default {
     trialExpiredLine: "Prova terminata il {date}",
     trialExpiredBadge: "Prova terminata",
     licenseBlockedHint:
-      "La prova gratuita è terminata. Incolla una chiave di licenza valida qui sotto per continuare a ordinare.",
+      "La prova gratuita è terminata. Abbonati sopra per continuare a ordinare.",
+    licenseHaveKeyLink: "Ho una chiave di licenza",
     licenseUnlimitedDesc: "La licenza Ã¨ attiva su questo dispositivo â€” elaborazione illimitata.",
     licenseKeyLabel: "Chiave di licenza",
     licensePastePlaceholder: "Incolla la stringa exo1.â€¦",
@@ -2476,8 +2477,8 @@ export default {
     offlineBanner:
       "Il servizio dellâ€™app Ã¨ in pausa. Usa Riprova nella barra del titolo (riavvia il servizio in background), poi riprova.",
     entitlementBanner:
-      "La prova gratuita è terminata. Apri Impostazioni → Prova & licenza e inserisci la chiave.",
-    entitlementDisabledHint: "Prova terminata — aggiungi una licenza in Impostazioni",
+      "La prova gratuita è terminata. Abbonati in Impostazioni → Prova & licenza per continuare a ordinare.",
+    entitlementDisabledHint: "Prova terminata — abbonati in Impostazioni",
     cloudAccountBanner: "Accedi prima al tuo account Exo.",
     cloudAccountRequiredHint: "Accedi da questa schermata o in Impostazioni â†’ Account e profilo",
     retryInline: "Riprova",
@@ -3019,6 +3020,7 @@ Esempi:
     subscribedToast: "Abbonamento attivo — accesso completo sbloccato",
     subscribedToastDesc: "Grazie per sostenere Exo. Gestisci il tuo piano in qualsiasi momento in Impostazioni → Prova e licenza.",
     checkoutCancelledToast: "Pagamento annullato — nessun addebito effettuato",
+    subscriptionPendingToast: "Pagamento ricevuto — attivazione dell'abbonamento in corso…",
     pastDueBanner: "L'ultimo pagamento non è andato a buon fine. Aggiorna il metodo di pagamento per mantenere l'accesso completo.",
     pastDueUpdateCta: "Aggiorna metodo di pagamento",
     dismiss: "Nascondi",
@@ -3050,7 +3052,7 @@ Esempi:
       "Il servizio si sta avviando in background — riprova tra un momento.",
     entitlementBlockedTitle: "Elaborazione in pausa — prova terminata",
     entitlementBlockedDesc:
-      "Apri Impostazioni → Prova & licenza per inserire una chiave di licenza, o contattaci a studio@exosites.com.",
+      "Apri Impostazioni → Prova & licenza per abbonarti, o contattaci a studio@exosites.com.",
     chooseOutputFolderTitle: "Scegli prima una cartella di output",
     chooseOutputFolderDesc:
       "Apertura di Impostazioni — sotto Ordinamento e output, scegli dove scrivere i file ordinati.",

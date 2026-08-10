@@ -1786,7 +1786,8 @@ export default {
     trialExpiredLine: "Trial ended on {date}",
     trialExpiredBadge: "Trial ended",
     licenseBlockedHint:
-      "Your free trial has ended. Paste a valid license key below to continue sorting.",
+      "Your free trial has ended. Subscribe above to continue sorting.",
+    licenseHaveKeyLink: "I have a license key",
     licenseUnlimitedDesc: "Your license is active on this device — unlimited processing.",
     licenseKeyLabel: "License key",
     licensePastePlaceholder: "Paste your exo1.… license string",
@@ -2640,8 +2641,8 @@ export default {
     offlineBanner:
       "The app service is paused. Use Retry in the title bar (restarts the background service), then try again.",
     entitlementBanner:
-      "Your free trial has ended. Open Settings → Trial & license and enter your license key.",
-    entitlementDisabledHint: "Trial ended — add a license in Settings",
+      "Your free trial has ended. Subscribe in Settings → Trial & license to keep sorting.",
+    entitlementDisabledHint: "Trial ended — subscribe in Settings",
     cloudAccountBanner: "Sign in to your Exo account first.",
     cloudAccountRequiredHint: "Sign in on this screen or under Settings → Account & profile",
     retryInline: "Retry",
@@ -3174,6 +3175,7 @@ Override examples:
     subscribedToast: "You're subscribed — full access unlocked",
     subscribedToastDesc: "Thanks for supporting Exo. Manage your plan any time in Settings → Trial & license.",
     checkoutCancelledToast: "Checkout cancelled — no payment was made",
+    subscriptionPendingToast: "Payment received — activating your subscription…",
     pastDueBanner: "Your last payment didn't go through. Update your payment method to keep full access.",
     pastDueUpdateCta: "Update payment method",
     dismiss: "Dismiss",
@@ -3205,7 +3207,7 @@ Override examples:
       "We're starting the app service in the background — try again in a moment.",
     entitlementBlockedTitle: "Processing paused — trial ended",
     entitlementBlockedDesc:
-      "Open Settings → Trial & license to enter a license key, or contact us at studio@exosites.com.",
+      "Open Settings → Trial & license to subscribe, or contact us at studio@exosites.com.",
     chooseOutputFolderTitle: "Choose an output folder first",
     chooseOutputFolderDesc:
       "Opening Settings — under Sorting & output, pick where sorted files should go.",

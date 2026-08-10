@@ -3,9 +3,9 @@ import { useI18n } from "../../i18n/I18nContext";
 import { useBillingActions, billingErrorKey, hasBillingIpc } from "../../hooks/useBillingActions";
 import { useBillingConfig } from "../../hooks/useBillingConfig";
 
+/** The cloud API contract is ISO 8601 (see accounts.getProfile). */
 function formatPeriodEnd(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const ms = Date.parse(iso.includes("T") ? iso : `${iso.replace(" ", "T")}Z`);
+  const ms = iso ? Date.parse(iso) : NaN;
   if (!Number.isFinite(ms)) return "—";
   return new Date(ms).toLocaleDateString(undefined, {
     year: "numeric",

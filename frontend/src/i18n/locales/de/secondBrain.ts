@@ -456,12 +456,12 @@ export const deSecondBrainLocaleSlice = {
   pro: {
     badge: "Pro",
     title: "Testphase beendet",
-    cta: "Lizenz eingeben",
+    cta: "Abonnieren",
     tasksFeature:
-      "Automatisches Sammeln von Aufgaben aus Posteingang und Kalender ist in der kostenlosen Testphase enthalten. Lizenz unter Einstellungen eingeben, um es wieder zu aktivieren.",
-    digestFeature: "Deine automatische Tageszusammenfassung ist in der Testphase enthalten. Lizenz eingeben, um sie wieder zu aktivieren.",
-    meetingFeature: "Freihändige Meeting-Notizen sind in der Testphase enthalten. Lizenz eingeben, um sie wieder zu aktivieren.",
-    activityFeature: "Aktivitäts-Timeline ist in der Testphase enthalten. Lizenz eingeben, um sie wieder zu aktivieren.",
+      "Automatisches Sammeln von Aufgaben aus Posteingang und Kalender ist in der kostenlosen Testphase enthalten. In den Einstellungen abonnieren, um es wieder zu aktivieren.",
+    digestFeature: "Deine automatische Tageszusammenfassung ist in der Testphase enthalten. Abonnieren, um sie wieder zu aktivieren.",
+    meetingFeature: "Freihändige Meeting-Notizen sind in der Testphase enthalten. Abonnieren, um sie wieder zu aktivieren.",
+    activityFeature: "Aktivitäts-Timeline ist in der Testphase enthalten. Abonnieren, um sie wieder zu aktivieren.",
   },
   recall: {
     title: "Gedächtnis durchsuchen",

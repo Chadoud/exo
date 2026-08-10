@@ -63,7 +63,10 @@ async function dispatchEvent(conn, stripe, event) {
       );
     }
     if (!accountId) {
-      console.warn("[billing] checkout.session.completed with unknown customer:", customerId);
+      console.error(
+        "[billing] ALERT checkout.session.completed with unknown customer (entitlement not granted):",
+        customerId,
+      );
       return { handled: "unresolved_customer", accountId: null };
     }
     if (!object.subscription) {
@@ -80,7 +83,7 @@ async function dispatchEvent(conn, stripe, event) {
     const customerId = typeof object.customer === "string" ? object.customer : object.customer?.id;
     const accountId = await accountIdForStripeCustomer(conn, customerId);
     if (!accountId) {
-      console.warn(`[billing] ${type} with unknown customer:`, customerId);
+      console.error(`[billing] ALERT ${type} with unknown customer (state not applied):`, customerId);
       return { handled: "unresolved_customer", accountId: null };
     }
     const sub =
@@ -122,16 +125,20 @@ async function dispatchEvent(conn, stripe, event) {
 
 /**
  * Process one verified Stripe event inside a single transaction.
- * @param {object} deps { pool, stripe, isProduction }
+ * @param {object} deps { pool, stripe, expectLivemode }
  * @param {object} event verified Stripe event
  * @returns {Promise<{ ok: true; deduped?: boolean; ignored?: string; handled?: string }>}
  */
 async function processStripeEvent(deps, event) {
-  const { pool, stripe, isProduction } = deps;
+  const { pool, stripe, expectLivemode } = deps;
 
-  // A test-mode event must never mutate live state (and vice versa).
-  if (Boolean(event.livemode) !== Boolean(isProduction)) {
-    console.warn(`[billing] ignoring ${event.type}: livemode mismatch (livemode=${event.livemode})`);
+  // A test-mode event must never mutate state written by live-mode keys (and
+  // vice versa). Compared against the configured key's mode, not NODE_ENV —
+  // a mismatch means the Stripe endpoint and server key disagree: alert.
+  if (Boolean(event.livemode) !== Boolean(expectLivemode)) {
+    console.error(
+      `[billing] ALERT ignoring ${event.type}: livemode mismatch (event livemode=${event.livemode}, key expects ${expectLivemode ? "live" : "test"})`,
+    );
     return { ok: true, ignored: "livemode_mismatch" };
   }
 

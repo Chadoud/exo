@@ -1612,7 +1612,8 @@ export default {
     trialExpiredLine: "Testphase endete am {date}",
     trialExpiredBadge: "Testphase beendet",
     licenseBlockedHint:
-      "Ihre kostenlose Testphase ist abgelaufen. Fügen Sie unten einen gültigen Lizenzschlüssel ein, um weiterzusortieren.",
+      "Ihre kostenlose Testphase ist abgelaufen. Abonnieren Sie oben, um weiterzusortieren.",
+    licenseHaveKeyLink: "Ich habe einen Lizenzschlüssel",
     licenseUnlimitedDesc: "Ihre Lizenz ist auf diesem Gerät aktiv — unbegrenzte Verarbeitung.",
     licenseKeyLabel: "Lizenzschlüssel",
     licensePastePlaceholder: "exo1.…-Lizenzzeichenfolge einfügen",
@@ -2471,8 +2472,8 @@ export default {
     offlineBanner:
       "Der App-Dienst ist pausiert. \"Erneut\" in der Titelleiste (startet den Hintergrunddienst neu), dann erneut versuchen.",
     entitlementBanner:
-      "Ihre kostenlose Testphase ist abgelaufen. Öffnen Sie Einstellungen → Testphase & Lizenz und geben Sie Ihren Schlüssel ein.",
-    entitlementDisabledHint: "Testphase beendet — Lizenz in den Einstellungen hinzufügen",
+      "Ihre kostenlose Testphase ist abgelaufen. Abonnieren Sie unter Einstellungen → Testphase & Lizenz, um weiterzusortieren.",
+    entitlementDisabledHint: "Testphase beendet — in den Einstellungen abonnieren",
     cloudAccountBanner: "Melden Sie sich zuerst bei Ihrem Exo-Konto an.",
     cloudAccountRequiredHint: "Hier anmelden oder unter Einstellungen → Konto & Profil",
     retryInline: "Erneut versuchen",
@@ -3013,6 +3014,7 @@ Beispiele:
     subscribedToast: "Abonniert — voller Zugriff freigeschaltet",
     subscribedToastDesc: "Danke für Ihre Unterstützung. Verwalten Sie Ihr Abo jederzeit unter Einstellungen → Testphase & Lizenz.",
     checkoutCancelledToast: "Bezahlvorgang abgebrochen — keine Zahlung erfolgt",
+    subscriptionPendingToast: "Zahlung erhalten — Ihr Abo wird aktiviert …",
     pastDueBanner: "Ihre letzte Zahlung ist fehlgeschlagen. Aktualisieren Sie Ihre Zahlungsmethode, um vollen Zugriff zu behalten.",
     pastDueUpdateCta: "Zahlungsmethode aktualisieren",
     dismiss: "Ausblenden",
@@ -3044,7 +3046,7 @@ Beispiele:
       "Der App-Dienst wird im Hintergrund gestartet — bitte gleich erneut versuchen.",
     entitlementBlockedTitle: "Verarbeitung pausiert — Testphase beendet",
     entitlementBlockedDesc:
-      "Öffnen Sie Einstellungen → Testphase & Lizenz, um einen Lizenzschlüssel einzugeben, oder kontaktieren Sie uns unter studio@exosites.com.",
+      "Öffnen Sie Einstellungen → Testphase & Lizenz, um zu abonnieren, oder kontaktieren Sie uns unter studio@exosites.com.",
     chooseOutputFolderTitle: "Zuerst einen Ausgabeordner wählen",
     chooseOutputFolderDesc:
       "Einstellungen werden geöffnet — unter Sortieren & Ausgabe legen Sie fest, wohin sortierte Dateien geschrieben werden.",

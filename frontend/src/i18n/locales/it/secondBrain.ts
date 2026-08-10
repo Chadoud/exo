@@ -456,12 +456,12 @@ export const itSecondBrainLocaleSlice = {
   pro: {
     badge: "Pro",
     title: "Prova terminata",
-    cta: "Inserisci una licenza",
+    cta: "Abbonati",
     tasksFeature:
-      "La raccolta automatica delle attività da posta e calendario è inclusa nella prova gratuita. Inserisci una licenza in Impostazioni per riattivarla.",
-    digestFeature: "Il riepilogo giornaliero automatico è incluso nella prova. Inserisci una licenza per riattivarlo.",
-    meetingFeature: "Le note di riunione a mani libere sono incluse nella prova. Inserisci una licenza per riattivarle.",
-    activityFeature: "La cronologia attività è inclusa nella prova. Inserisci una licenza per riattivarla.",
+      "La raccolta automatica delle attività da posta e calendario è inclusa nella prova gratuita. Abbonati in Impostazioni per riattivarla.",
+    digestFeature: "Il riepilogo giornaliero automatico è incluso nella prova. Abbonati per riattivarlo.",
+    meetingFeature: "Le note di riunione a mani libere sono incluse nella prova. Abbonati per riattivarle.",
+    activityFeature: "La cronologia attività è inclusa nella prova. Abbonati per riattivarla.",
   },
   recall: {
     title: "Cerca nella memoria",

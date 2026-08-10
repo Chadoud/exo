@@ -457,12 +457,12 @@ export const frSecondBrainLocaleSlice = {
   pro: {
     badge: "Pro",
     title: "Essai terminé",
-    cta: "Saisir une licence",
+    cta: "S'abonner",
     tasksFeature:
-      "La collecte automatique des tâches depuis votre boîte de réception et votre agenda est incluse pendant l'essai gratuit. Saisissez une licence dans Réglages pour la réactiver.",
-    digestFeature: "Votre résumé quotidien automatique est inclus pendant l'essai. Saisissez une licence pour le réactiver.",
-    meetingFeature: "Les notes de réunion mains libres sont incluses pendant l'essai. Saisissez une licence pour les réactiver.",
-    activityFeature: "La chronologie d'activité est incluse pendant l'essai. Saisissez une licence pour la réactiver.",
+      "La collecte automatique des tâches depuis votre boîte de réception et votre agenda est incluse pendant l'essai gratuit. Abonnez-vous dans Réglages pour la réactiver.",
+    digestFeature: "Votre résumé quotidien automatique est inclus pendant l'essai. Abonnez-vous pour le réactiver.",
+    meetingFeature: "Les notes de réunion mains libres sont incluses pendant l'essai. Abonnez-vous pour les réactiver.",
+    activityFeature: "La chronologie d'activité est incluse pendant l'essai. Abonnez-vous pour la réactiver.",
   },
   recall: {
     title: "Chercher dans la mémoire",

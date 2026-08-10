@@ -35,6 +35,9 @@ function profileSubtitle(entitlement: EntitlementStatus | null, uiLocale: UiLoca
   if (entitlement?.licensed) {
     return translate(uiLocale, "settings.licenseFullTier");
   }
+  if (entitlement?.subscriptionEntitled || entitlement?.subscriptionActive) {
+    return translate(uiLocale, "billing.planPro");
+  }
   if (entitlement?.trialActive && !entitlement.trialExpired) {
     return translate(uiLocale, "settings.trialMeterLine", trialLineVars(entitlement));
   }

@@ -41,6 +41,7 @@ export default function SettingsAccountSection({
   const displayEmail = entitlement.cloudEmail ?? "";
   const fullName = accountFullName(entitlement);
   const licensed = entitlement.licensed ?? false;
+  const subscribed = Boolean(entitlement.subscriptionEntitled || entitlement.subscriptionActive);
   const initials = accountAvatarInitials(entitlement);
 
   const run = async (mode: "register" | "login") => {
@@ -201,9 +202,9 @@ export default function SettingsAccountSection({
             {displayEmail ? (
               <p className="text-xs text-muted break-all">{displayEmail}</p>
             ) : null}
-            {licensed ? (
+            {licensed || subscribed ? (
               <span className="inline-block text-3xs font-semibold uppercase tracking-wide text-success px-2 py-0.5 rounded-md bg-success-soft border border-success-line">
-                {t("settings.licenseFullTier")}
+                {licensed ? t("settings.licenseFullTier") : t("billing.planPro")}
               </span>
             ) : (
               <span className="inline-block text-3xs font-semibold uppercase tracking-wide text-muted px-2 py-0.5 rounded-md bg-hover-overlay border border-border">

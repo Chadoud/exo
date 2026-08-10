@@ -34,15 +34,16 @@ const KNOWN_ERROR_CODES = new Set([
   "invalid_token",
 ]);
 
-/** @param {object} overrides test injection: { pool, stripe, isProduction, enabled } */
+/** @param {object} overrides test injection: { pool, stripe, expectLivemode, enabled } */
 function resolveDeps(overrides) {
   return {
     pool: overrides.pool || getPool(),
     stripe: overrides.stripe || billing.getStripe(),
-    isProduction:
-      overrides.isProduction !== undefined
-        ? overrides.isProduction
-        : process.env.NODE_ENV === "production",
+    // Derived from the configured key, NOT NODE_ENV: a production server may
+    // intentionally run sandbox keys during rollout, and its test-mode events
+    // must still be processed.
+    expectLivemode:
+      overrides.expectLivemode !== undefined ? overrides.expectLivemode : config.stripe.liveMode,
   };
 }
 
