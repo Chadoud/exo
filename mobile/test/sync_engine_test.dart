@@ -22,6 +22,13 @@ void main() {
     final storage = MemoryKeyValueStore();
     await storage.write('exosites_sync_master_key_b64', base64Encode(master));
 
+    // Schema v3 AAD binds the account id; the engine reads it from the JWT `sub`.
+    const account = '550e8400-e29b-41d4-a716-446655440000';
+    final payloadB64 = base64Url
+        .encode(utf8.encode(jsonEncode({'sub': account})))
+        .replaceAll('=', '');
+    final token = 'h.$payloadB64.s';
+
     final store = LocalBrainStore(databasePath: ':memory:');
     await store.upsertRecord(
       collection: 'memory_entries',
@@ -39,6 +46,21 @@ void main() {
       updatedAt: '2026-03-01T00:00:00Z',
       plaintext: Uint8List.fromList(utf8.encode('{"key":"kept"}')),
       recordKey: rkey,
+      accountId: account,
+    );
+
+    // Tombstones are AEAD-bound envelopes too (empty plaintext, deleted flag in AAD).
+    final goneKey = await SyncCrypto.recordKey(master, 'memory_entries', 'gone');
+    final tombstone = await SyncCrypto.buildEnvelope(
+      collection: 'memory_entries',
+      recordId: 'gone',
+      deviceId: 'desktop-1',
+      logicalClock: SyncCrypto.logicalClock('2026-03-02T00:00:00Z', 'gone'),
+      updatedAt: '2026-03-02T00:00:00Z',
+      plaintext: Uint8List(0),
+      recordKey: goneKey,
+      deleted: true,
+      accountId: account,
     );
 
     var pullCalls = 0;
@@ -57,14 +79,7 @@ void main() {
       }
       return http.Response(
         jsonEncode({
-          'blobs': [
-            {
-              'collection': 'memory_entries',
-              'record_id': 'gone',
-              'deleted': true,
-              'updated_at': '2026-03-02T00:00:00Z',
-            },
-          ],
+          'blobs': [tombstone],
           'cursor': 20,
           'has_more': false,
         }),
@@ -74,12 +89,12 @@ void main() {
 
     final api = CloudApi(
       baseUrl: 'https://example.test',
-      accessToken: () => 'tok',
+      accessToken: () => token,
       httpClient: client,
     );
     final engine = SyncEngine(
       cloudUrl: 'https://example.test',
-      accessToken: 'tok',
+      accessToken: token,
       deviceId: 'mobile-1',
       api: api,
       storage: storage,
