@@ -13,24 +13,32 @@ describe("TrialEndedGateModal", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
+    window.electronAPI = undefined as unknown as Window["electronAPI"];
   });
 
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
-    vi.useRealTimers();
   });
 
-  it("has no dismiss affordance — no close icon, Esc and backdrop click are inert", async () => {
-    const onEnterLicenseKey = vi.fn();
-    window.electronAPI = { quitApp: vi.fn() } as unknown as Window["electronAPI"];
+  const render = async (props?: {
+    onEnterLicenseKey?: () => void;
+    onContinueLimited?: () => void;
+  }) => {
     await act(async () => {
       root.render(
         <I18nProvider locale="en">
-          <TrialEndedGateModal onEnterLicenseKey={onEnterLicenseKey} />
+          <TrialEndedGateModal
+            onEnterLicenseKey={props?.onEnterLicenseKey ?? vi.fn()}
+            onContinueLimited={props?.onContinueLimited ?? vi.fn()}
+          />
         </I18nProvider>,
       );
     });
+  };
+
+  it("has no implicit dismiss — no close icon, Esc and backdrop click are inert", async () => {
+    await render();
 
     expect(document.querySelector('[aria-label="Close"]')).toBeNull();
 
@@ -46,86 +54,29 @@ describe("TrialEndedGateModal", () => {
     expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
   });
 
-  it("omits the Quit button entirely when no quit bridge exists (web build)", async () => {
-    window.electronAPI = undefined as unknown as Window["electronAPI"];
+  it("offers limited access as an explicit choice and routes it to the caller", async () => {
+    const onContinueLimited = vi.fn();
+    await render({ onContinueLimited });
+
+    const continueButton = Array.from(document.querySelectorAll("button")).find(
+      (b) => b.textContent === "Continue with limited access",
+    ) as HTMLButtonElement;
+    expect(continueButton).toBeTruthy();
+
     await act(async () => {
-      root.render(
-        <I18nProvider locale="en">
-          <TrialEndedGateModal onEnterLicenseKey={vi.fn()} />
-        </I18nProvider>,
-      );
+      continueButton.click();
     });
-    expect(document.body.textContent).not.toContain("Quit");
+    expect(onContinueLimited).toHaveBeenCalledTimes(1);
+  });
+
+  it("always shows a subscribe path", async () => {
+    await render();
     expect(document.body.textContent).toContain("Subscribe");
-  });
-
-  it("disables Quit synchronously so a second click cannot double-invoke the bridge", async () => {
-    let resolveQuit: (() => void) | undefined;
-    const quitApp = vi.fn(
-      () =>
-        new Promise<{ ok: boolean }>((resolve) => {
-          resolveQuit = () => resolve({ ok: true });
-        }),
-    );
-    window.electronAPI = { quitApp } as unknown as Window["electronAPI"];
-    await act(async () => {
-      root.render(
-        <I18nProvider locale="en">
-          <TrialEndedGateModal onEnterLicenseKey={vi.fn()} />
-        </I18nProvider>,
-      );
-    });
-
-    const quitButton = Array.from(document.querySelectorAll("button")).find(
-      (b) => b.textContent === "Quit",
-    ) as HTMLButtonElement;
-
-    await act(async () => {
-      quitButton.click();
-      quitButton.click();
-    });
-
-    expect(quitApp).toHaveBeenCalledTimes(1);
-    resolveQuit?.();
-  });
-
-  it("re-enables Quit with a fallback message if the IPC never resolves", async () => {
-    vi.useFakeTimers();
-    window.electronAPI = {
-      quitApp: vi.fn(() => new Promise(() => {})),
-    } as unknown as Window["electronAPI"];
-    await act(async () => {
-      root.render(
-        <I18nProvider locale="en">
-          <TrialEndedGateModal onEnterLicenseKey={vi.fn()} />
-        </I18nProvider>,
-      );
-    });
-
-    const quitButton = Array.from(document.querySelectorAll("button")).find(
-      (b) => b.textContent === "Quit",
-    ) as HTMLButtonElement;
-    await act(async () => {
-      quitButton.click();
-    });
-    expect(document.body.textContent).toContain("Quitting");
-
-    await act(async () => {
-      vi.advanceTimersByTime(5000);
-    });
-    expect(document.body.textContent).toContain("Couldn't quit automatically");
   });
 
   it("routes the license-key link to the caller-provided handler", async () => {
     const onEnterLicenseKey = vi.fn();
-    window.electronAPI = undefined as unknown as Window["electronAPI"];
-    await act(async () => {
-      root.render(
-        <I18nProvider locale="en">
-          <TrialEndedGateModal onEnterLicenseKey={onEnterLicenseKey} />
-        </I18nProvider>,
-      );
-    });
+    await render({ onEnterLicenseKey });
     const link = Array.from(document.querySelectorAll("button")).find(
       (b) => b.textContent === "Enter license key instead",
     ) as HTMLButtonElement;

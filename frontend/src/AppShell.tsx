@@ -10,7 +10,10 @@ import AssistantReplyToolBridge from "./components/AssistantReplyToolBridge";
 import AssistantAccessGuidanceModalHost from "./components/AssistantAccessGuidanceModalHost";
 import AssistantPermissionsModalHost from "./components/AssistantPermissionsModalHost";
 import TrialLifecycleModalHost from "./components/TrialLifecycleModalHost";
+import TrialEndedBanner from "./components/TrialEndedBanner";
 import BillingPastDueBanner from "./components/BillingPastDueBanner";
+import { useTrialGateDismissal } from "./hooks/useTrialGateDismissal";
+import { isTrialLimitedMode } from "./utils/trialLifecycleGate";
 import AppAccountGate from "./components/AppAccountGate";
 import ModelDownloadModal from "./components/settings/ModelDownloadModal";
 import GeminiApiKeySetupModal from "./components/settings/GeminiApiKeySetupModal";
@@ -78,6 +81,12 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
 
   useBillingEvents({ uiLocale, refreshEntitlement: chrome.refreshEntitlement });
 
+  const trialGate = useTrialGateDismissal();
+  const limitedModeBanner =
+    trialGate.gateDismissed && isTrialLimitedMode(chrome.entitlement) ? (
+      <TrialEndedBanner onSeePlans={trialGate.reopenGate} />
+    ) : null;
+
   const assistantVoice = useAssistantVoiceActions({
     uiLocale,
     settings,
@@ -141,6 +150,8 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
             entitlement={chrome.entitlement}
             activeTab={tab}
             openPrimarySettings={chrome.openPrimarySettings}
+            gateDismissed={trialGate.gateDismissed}
+            onContinueLimited={trialGate.continueLimited}
           />
           <BillingPastDueBanner entitlement={chrome.entitlement} />
           <AppLayout
@@ -161,6 +172,7 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
                     onRetryBackend={restartBackend}
                   />
                 }
+                workspaceBanner={limitedModeBanner}
                 needsCloudAccount={chrome.needsCloudAccount}
                 suppressAssistantPermissionPrompt={
                   chrome.needsCloudAccount || chrome.showWelcome || !chrome.entitlementLoaded

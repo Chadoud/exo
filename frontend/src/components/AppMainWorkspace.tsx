@@ -42,6 +42,7 @@ import { hasEntitlementIpc } from "../utils/electronDesktop";
 export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
   const {
     titleBar,
+    workspaceBanner,
     needsCloudAccount,
     suppressAssistantPermissionPrompt = false,
     deferAssistantPermissionPrompt = false,
@@ -281,7 +282,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
             />
           ) : null}
         </div>
-        <div className="app-shell-top-title row-start-1 col-start-2 min-h-0 min-w-0 flex flex-row items-stretch">
+        <div className="app-shell-top-title row-start-1 col-start-2 min-h-0 min-w-0 flex flex-col items-stretch">
           <div className="min-h-0 min-w-0 flex-1 flex flex-col">
             {tab === "exo" && exoChromeRevealed && isValidElement(titleBar)
               ? cloneElement(titleBar as ReactElement<{ suppressLeadingBranding?: boolean }>, {
@@ -291,6 +292,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
                 ? null
                 : titleBar}
           </div>
+          {workspaceBanner}
         </div>
         <div className="app-shell-sidebar row-start-2 col-start-1 flex min-h-0 min-w-0 flex-col overflow-hidden bg-bg-secondary border-r border-border">
           <div className="app-shell-sidebar-inner flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

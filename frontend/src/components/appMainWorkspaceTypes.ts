@@ -25,6 +25,8 @@ type Tab = MainNavTab;
 export interface AppMainWorkspaceProps {
   /** Sits in the main column only (same width as scrollable content — avoids header vs body horizontal mismatch). */
   titleBar: ReactNode;
+  /** Full-width strip rendered under the title bar, above the main panel (e.g. limited-mode upgrade banner). */
+  workspaceBanner?: ReactNode;
   needsCloudAccount: boolean;
   suppressAssistantPermissionPrompt?: boolean;
   /** Hold the assistant-actions prompt until the first-run product tour finishes. */

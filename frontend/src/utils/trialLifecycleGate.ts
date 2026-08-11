@@ -2,6 +2,7 @@ import type { EntitlementStatus } from "../api";
 import {
   TRIAL_ENDING_NUDGE_SEEN_STORAGE_KEY,
   TRIAL_ENDING_NUDGE_WARNING_DAYS,
+  TRIAL_GATE_DISMISSED_SESSION_KEY,
 } from "../constants";
 
 export type TrialLifecycleModal = "none" | "nudge" | "gate";
@@ -23,6 +24,38 @@ export function markTrialNudgeSeen(): void {
   }
 }
 
+/** True while the trial is over and no license/subscription entitles paid features (freemium limited mode). */
+export function isTrialLimitedMode(entitlement: EntitlementStatus | null): boolean {
+  if (!entitlement || entitlement.licensed || entitlement.unlimitedBuild) return false;
+  if (entitlement.subscriptionEntitled || entitlement.subscriptionActive) return false;
+  return entitlement.trialExpired;
+}
+
+/** True if the user already chose "Continue with limited access" this session (gate returns next launch). */
+export function readTrialGateDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(TRIAL_GATE_DISMISSED_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markTrialGateDismissed(): void {
+  try {
+    sessionStorage.setItem(TRIAL_GATE_DISMISSED_SESSION_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearTrialGateDismissed(): void {
+  try {
+    sessionStorage.removeItem(TRIAL_GATE_DISMISSED_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Which trial lifecycle modal (if any) should be shown right now.
  * The trial-ended gate always wins over the one-time nudge — an expired trial is a
@@ -30,13 +63,15 @@ export function markTrialNudgeSeen(): void {
  */
 export function computeTrialLifecycleModal(
   entitlement: EntitlementStatus | null,
-  nudgeSeen: boolean
+  nudgeSeen: boolean,
+  gateDismissed = false
 ): TrialLifecycleModal {
   if (!entitlement || entitlement.licensed || entitlement.unlimitedBuild) return "none";
   // Subscribers never see trial modals — subscriptionActive also covers the
   // deep-link window right after checkout, before the next full cache sync.
   if (entitlement.subscriptionEntitled || entitlement.subscriptionActive) return "none";
-  if (entitlement.trialExpired) return "gate";
+  // Freemium: once the user opts into limited access, the banner takes over for this session.
+  if (entitlement.trialExpired) return gateDismissed ? "none" : "gate";
   if (
     entitlement.trialActive &&
     !nudgeSeen &&

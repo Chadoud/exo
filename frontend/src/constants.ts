@@ -131,6 +131,9 @@ export const TRIAL_ENDING_NUDGE_WARNING_DAYS = 3;
 /** localStorage: the trial-ending nudge modal has been shown/decided once ever (never re-shown). */
 export const TRIAL_ENDING_NUDGE_SEEN_STORAGE_KEY = "exosites.trialEndingNudge.seen.v1";
 
+/** sessionStorage: user chose "Continue with limited access" on the trial-ended gate (re-shown next launch). */
+export const TRIAL_GATE_DISMISSED_SESSION_KEY = "exosites.trialGate.dismissed.v1";
+
 /** sessionStorage: Exo AI Manager full-bleed intro (shell + panel chrome) has completed once this session. */
 export const EXO_INTRO_STORAGE_KEY = "exo_panel_intro_done";
 /** @deprecated Legacy sessionStorage key — migrated on read. */

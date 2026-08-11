@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import type { EntitlementStatus } from "../api";
-import { TRIAL_ENDING_NUDGE_SEEN_STORAGE_KEY } from "../constants";
 import {
+  TRIAL_ENDING_NUDGE_SEEN_STORAGE_KEY,
+  TRIAL_GATE_DISMISSED_SESSION_KEY,
+} from "../constants";
+import {
+  clearTrialGateDismissed,
   computeTrialLifecycleModal,
+  isTrialLimitedMode,
+  markTrialGateDismissed,
   markTrialNudgeSeen,
+  readTrialGateDismissed,
   readTrialNudgeSeen,
 } from "./trialLifecycleGate";
 
@@ -99,6 +106,44 @@ describe("computeTrialLifecycleModal", () => {
 
   it("does not show the nudge while more than 3 days remain", () => {
     expect(computeTrialLifecycleModal(ent({ trialDaysRemaining: 4 }), false)).toBe("none");
+  });
+
+  it("suppresses the gate after the user opted into limited access", () => {
+    expect(
+      computeTrialLifecycleModal(ent({ trialExpired: true, trialActive: false }), true, true),
+    ).toBe("none");
+  });
+});
+
+describe("isTrialLimitedMode", () => {
+  it("is true only when the trial expired with no entitlement", () => {
+    expect(isTrialLimitedMode(ent({ trialExpired: true, trialActive: false }))).toBe(true);
+    expect(isTrialLimitedMode(ent({ trialExpired: false }))).toBe(false);
+    expect(isTrialLimitedMode(null)).toBe(false);
+  });
+
+  it("is false for licensed, unlimited, or subscribed users", () => {
+    expect(isTrialLimitedMode(ent({ trialExpired: true, licensed: true }))).toBe(false);
+    expect(isTrialLimitedMode(ent({ trialExpired: true, unlimitedBuild: true }))).toBe(false);
+    expect(isTrialLimitedMode(ent({ trialExpired: true, subscriptionEntitled: true }))).toBe(false);
+    expect(isTrialLimitedMode(ent({ trialExpired: true, subscriptionActive: true }))).toBe(false);
+  });
+});
+
+describe("trial gate dismissal storage (session-scoped)", () => {
+  beforeEach(() => {
+    sessionStorage.removeItem(TRIAL_GATE_DISMISSED_SESSION_KEY);
+  });
+
+  it("defaults to not dismissed", () => {
+    expect(readTrialGateDismissed()).toBe(false);
+  });
+
+  it("persists once marked and can be cleared for the See-plans path", () => {
+    markTrialGateDismissed();
+    expect(readTrialGateDismissed()).toBe(true);
+    clearTrialGateDismissed();
+    expect(readTrialGateDismissed()).toBe(false);
   });
 });
 

@@ -5,7 +5,10 @@ import { createRoot, type Root } from "react-dom/client";
 import TrialLifecycleModalHost from "./TrialLifecycleModalHost";
 import { I18nProvider } from "../i18n/I18nContext";
 import type { EntitlementStatus } from "../api";
-import { TRIAL_ENDING_NUDGE_SEEN_STORAGE_KEY } from "../constants";
+import {
+  TRIAL_ENDING_NUDGE_SEEN_STORAGE_KEY,
+  TRIAL_GATE_DISMISSED_SESSION_KEY,
+} from "../constants";
 
 function ent(overrides: Partial<EntitlementStatus>): EntitlementStatus {
   return {
@@ -31,6 +34,7 @@ describe("TrialLifecycleModalHost", () => {
     document.body.appendChild(container);
     root = createRoot(container);
     localStorage.removeItem(TRIAL_ENDING_NUDGE_SEEN_STORAGE_KEY);
+    sessionStorage.removeItem(TRIAL_GATE_DISMISSED_SESSION_KEY);
     window.electronAPI = undefined as unknown as Window["electronAPI"];
   });
 
@@ -136,6 +140,48 @@ describe("TrialLifecycleModalHost", () => {
       link.click();
     });
     expect(openPrimarySettings).toHaveBeenCalledWith("license");
+  });
+
+  it("routes 'Continue with limited access' to the caller and hides the gate once dismissed", async () => {
+    const onContinueLimited = vi.fn();
+    await act(async () => {
+      root.render(
+        <I18nProvider locale="en">
+          <TrialLifecycleModalHost
+            entitlement={ent({ trialExpired: true, trialActive: false })}
+            activeTab="exo"
+            openPrimarySettings={vi.fn()}
+            gateDismissed={false}
+            onContinueLimited={onContinueLimited}
+          />
+        </I18nProvider>,
+      );
+    });
+    expect(document.body.textContent).toContain("Your free trial has ended");
+
+    const continueButton = Array.from(document.querySelectorAll("button")).find(
+      (b) => b.textContent === "Continue with limited access",
+    ) as HTMLButtonElement;
+    await act(async () => {
+      continueButton.click();
+    });
+    expect(onContinueLimited).toHaveBeenCalledTimes(1);
+
+    // Re-render as AppShell would after the dismissal state flips.
+    await act(async () => {
+      root.render(
+        <I18nProvider locale="en">
+          <TrialLifecycleModalHost
+            entitlement={ent({ trialExpired: true, trialActive: false })}
+            activeTab="exo"
+            openPrimarySettings={vi.fn()}
+            gateDismissed={true}
+            onContinueLimited={onContinueLimited}
+          />
+        </I18nProvider>,
+      );
+    });
+    expect(document.body.textContent).not.toContain("Your free trial has ended");
   });
 
   it("shows nothing for licensed or unlimited-build users even if trial fields say expired", async () => {

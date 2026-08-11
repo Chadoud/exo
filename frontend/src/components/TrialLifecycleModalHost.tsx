@@ -14,20 +14,26 @@ interface TrialLifecycleModalHostProps {
   /** Current top-level nav tab — the gate hides while the user is on Settings so they can reach the license field. */
   activeTab: string;
   openPrimarySettings: (section: PrimarySettingsSectionKey) => void;
+  /** True once the user chose limited access this session (see useTrialGateDismissal). */
+  gateDismissed?: boolean;
+  onContinueLimited?: () => void;
 }
 
 /**
  * Decides between the one-time trial-ending nudge and the trial-ended gate, and renders
- * at most one of them. Replaces the old always-visible {@code TrialEndingBanner}.
+ * at most one of them. The limited-mode upgrade banner lives in the workspace layout
+ * (AppMainWorkspace), sharing state via useTrialGateDismissal.
  */
 export default function TrialLifecycleModalHost({
   entitlement,
   activeTab,
   openPrimarySettings,
+  gateDismissed = false,
+  onContinueLimited,
 }: TrialLifecycleModalHostProps) {
   const [nudgeSeen, setNudgeSeen] = useState(readTrialNudgeSeen);
 
-  const rawModal = computeTrialLifecycleModal(entitlement, nudgeSeen);
+  const rawModal = computeTrialLifecycleModal(entitlement, nudgeSeen, gateDismissed);
   // The gate's only escape hatch routes into Settings — don't block the very screen it sends them to.
   const modal = rawModal === "gate" && activeTab === "settings" ? "none" : rawModal;
 
@@ -52,7 +58,12 @@ export default function TrialLifecycleModalHost({
   }
 
   if (modal === "gate") {
-    return <TrialEndedGateModal onEnterLicenseKey={() => openPrimarySettings("license")} />;
+    return (
+      <TrialEndedGateModal
+        onEnterLicenseKey={() => openPrimarySettings("license")}
+        onContinueLimited={onContinueLimited ?? (() => {})}
+      />
+    );
   }
 
   return null;
