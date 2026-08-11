@@ -8,6 +8,8 @@ import 'package:exosites_mobile/layout/adaptive_shell.dart';
 import 'package:exosites_mobile/sync/key_value_store.dart';
 import 'package:exosites_mobile/sync/local_store.dart';
 import 'package:exosites_mobile/sync/user_messages.dart';
+import 'package:flutter/foundation.dart'
+    show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -47,62 +49,151 @@ void main() {
   });
 
   group('SetupSignInPanel', () {
-    testWidgets('shows email sign-in and toggles create-account title', (tester) async {
+    Widget panel({
+      SignInProvider? launchingProvider,
+      SignInProvider? waitingProvider,
+      bool emailBusy = false,
+      String? error,
+      void Function(SignInProvider)? onProviderSignIn,
+      Future<void> Function(String, String)? onEmailLogin,
+      Future<void> Function({
+        required String email,
+        required String password,
+        required String firstName,
+        required String lastName,
+      })? onEmailRegister,
+    }) {
+      return SingleChildScrollView(
+        child: SetupSignInPanel(
+          launchingProvider: launchingProvider,
+          waitingProvider: waitingProvider,
+          emailBusy: emailBusy,
+          error: error,
+          onProviderSignIn: onProviderSignIn ?? (_) {},
+          onEmailLogin: onEmailLogin ?? (_, __) async {},
+          onEmailRegister: onEmailRegister ??
+              ({
+                required email,
+                required password,
+                required firstName,
+                required lastName,
+              }) async {},
+        ),
+      );
+    }
+
+    testWidgets('shows email sign-in and toggles create-account with name fields',
+        (tester) async {
       var googleTaps = 0;
       await tester.pumpWidget(
-        _app(
-          SingleChildScrollView(
-            child: SetupSignInPanel(
-              launchingBrowser: false,
-              waitingBrowser: false,
-              emailBusy: false,
-              error: null,
-              onGoogle: () => googleTaps++,
-              onApple: () {},
-              onEmailLogin: (_, __) async {},
-              onEmailRegister: (_, __) async {},
-            ),
-          ),
-        ),
+        _app(panel(
+          onProviderSignIn: (p) {
+            if (p == SignInProvider.google) googleTaps++;
+          },
+        )),
       );
 
       expect(find.text(SyncUserMessages.setupTitle), findsOneWidget);
       expect(find.text(SyncUserMessages.signIn), findsOneWidget);
       expect(find.text(SyncUserMessages.signInWithGoogle), findsOneWidget);
       expect(find.text(SyncUserMessages.signInWithApple), findsOneWidget);
+      expect(find.text(SyncUserMessages.firstNameLabel), findsNothing);
 
       await tester.tap(find.text(SyncUserMessages.noAccountCreate));
       await tester.pump();
       expect(find.text(SyncUserMessages.setupTitleCreate), findsOneWidget);
       expect(find.text(SyncUserMessages.createAccount), findsOneWidget);
+      // Cloud registration requires names — fields must exist in create mode.
+      expect(find.text(SyncUserMessages.firstNameLabel), findsOneWidget);
+      expect(find.text(SyncUserMessages.lastNameLabel), findsOneWidget);
+      expect(find.text(SyncUserMessages.passwordMinHint), findsOneWidget);
 
+      await tester.ensureVisible(find.text(SyncUserMessages.signInWithGoogle));
       await tester.tap(find.text(SyncUserMessages.signInWithGoogle));
       expect(googleTaps, 1);
     });
 
-    testWidgets('shows error banner and waiting-for-browser CTA', (tester) async {
-      var openAgain = 0;
+    testWidgets('empty submit shows inline validation instead of a dead tap',
+        (tester) async {
+      var logins = 0;
       await tester.pumpWidget(
-        _app(
-          SingleChildScrollView(
-            child: SetupSignInPanel(
-              launchingBrowser: false,
-              waitingBrowser: true,
-              emailBusy: false,
-              error: SyncUserMessages.cloudUnreachable,
-              onGoogle: () => openAgain++,
-              onApple: () {},
-              onEmailLogin: (_, __) async {},
-              onEmailRegister: (_, __) async {},
-            ),
-          ),
-        ),
+        _app(panel(onEmailLogin: (_, __) async => logins++)),
       );
 
-      expect(find.text(SyncUserMessages.waitingForGoogle), findsOneWidget);
+      await tester.tap(find.text(SyncUserMessages.signIn));
+      await tester.pump();
+
+      expect(find.text(SyncUserMessages.emailRequired), findsOneWidget);
+      expect(find.text(SyncUserMessages.passwordRequired), findsOneWidget);
+      expect(logins, 0);
+    });
+
+    testWidgets('waiting banner retries the provider that was launched',
+        (tester) async {
+      final retried = <SignInProvider>[];
+      await tester.pumpWidget(
+        _app(panel(
+          waitingProvider: SignInProvider.apple,
+          error: SyncUserMessages.cloudUnreachable,
+          onProviderSignIn: retried.add,
+        )),
+      );
+
+      expect(find.text(SyncUserMessages.waitingForBrowser), findsOneWidget);
       expect(find.text(SyncUserMessages.cloudUnreachable), findsOneWidget);
       await tester.tap(find.text(SyncUserMessages.openSignInAgain));
-      expect(openAgain, 1);
+      expect(retried, [SignInProvider.apple]);
+    });
+
+    testWidgets('Apple is listed before Google on iOS (guideline 4.8)',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.pumpWidget(_app(panel()));
+        final appleY =
+            tester.getTopLeft(find.text(SyncUserMessages.signInWithApple)).dy;
+        final googleY =
+            tester.getTopLeft(find.text(SyncUserMessages.signInWithGoogle)).dy;
+        expect(appleY, lessThan(googleY));
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('register submit passes names through', (tester) async {
+      String? gotFirst;
+      String? gotLast;
+      await tester.pumpWidget(
+        _app(panel(
+          onEmailRegister: ({
+            required email,
+            required password,
+            required firstName,
+            required lastName,
+          }) async {
+            gotFirst = firstName;
+            gotLast = lastName;
+          },
+        )),
+      );
+
+      await tester.tap(find.text(SyncUserMessages.noAccountCreate));
+      await tester.pump();
+      await tester.enterText(
+          find.widgetWithText(TextFormField, SyncUserMessages.firstNameLabel), 'Ada');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, SyncUserMessages.lastNameLabel), 'Lovelace');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, SyncUserMessages.emailLabel),
+          'ada@example.com');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, SyncUserMessages.passwordLabel),
+          'longenough');
+      await tester.tap(find.text(SyncUserMessages.createAccount));
+      await tester.pump();
+
+      expect(gotFirst, 'Ada');
+      expect(gotLast, 'Lovelace');
     });
   });
 

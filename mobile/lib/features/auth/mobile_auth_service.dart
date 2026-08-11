@@ -101,14 +101,22 @@ class MobileAuthService {
   }
 
   /// Create account then session (for first-time email users).
+  /// The cloud requires first/last name at registration (422 without them).
   Future<void> registerWithPassword({
     required String email,
     required String password,
+    required String firstName,
+    required String lastName,
   }) async {
     final res = await _http.post(
       Uri.parse('$_base/auth/register'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email.trim(), 'password': password}),
+      body: jsonEncode({
+        'email': email.trim(),
+        'password': password,
+        'first_name': firstName.trim(),
+        'last_name': lastName.trim(),
+      }),
     );
     if (res.statusCode >= 400) {
       throw Exception(_detailFromBody(res.body) ?? 'register_failed');

@@ -106,13 +106,21 @@ class ExoPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Busy keeps the label: no width jump, and screen readers still hear it.
     return FilledButton(
       onPressed: busy ? null : onPressed,
       child: busy
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: ExoColors.textPrimary),
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: ExoColors.textPrimary),
+                ),
+                const SizedBox(width: ExoSpacing.sm),
+                Text(label),
+              ],
             )
           : Text(label),
     );
@@ -139,19 +147,19 @@ class ExoSecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = busy
+    // Busy swaps the leading glyph for a spinner but keeps the label.
+    final leadingWidget = busy
         ? const SizedBox(
             height: 18,
             width: 18,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
-        : Text(label);
-    final leadingWidget = leading ?? (icon != null ? Icon(icon, size: 20) : null);
-    if (leadingWidget == null || busy) {
-      return OutlinedButton(onPressed: busy ? null : onPressed, child: child);
+        : leading ?? (icon != null ? Icon(icon, size: 20) : null);
+    if (leadingWidget == null) {
+      return OutlinedButton(onPressed: busy ? null : onPressed, child: Text(label));
     }
     return OutlinedButton.icon(
-      onPressed: onPressed,
+      onPressed: busy ? null : onPressed,
       icon: leadingWidget,
       label: Text(label),
     );

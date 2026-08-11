@@ -15,12 +15,23 @@ abstract final class SyncUserMessages {
   static const noAccountCreate = 'No account yet? Create one';
   static const emailLabel = 'Email';
   static const passwordLabel = 'Password';
+  static const firstNameLabel = 'First name';
+  static const lastNameLabel = 'Last name';
+  static const emailRequired = 'Enter your email';
+  static const emailInvalid = 'Enter a valid email address';
+  static const passwordRequired = 'Enter your password';
+  static const firstNameRequired = 'Enter your first name';
+  static const lastNameRequired = 'Enter your last name';
+  static const passwordMinHint = 'At least 8 characters';
+  static const passwordTooShort = 'Password must be at least 8 characters.';
+  static const emailAlreadyRegistered =
+      'This email already has an account — sign in instead.';
   static const orDivider = 'or';
   static const orContinueWith = 'or continue with';
   static const openSignInAgain = 'Open sign-in again';
   static const signInAgain = 'Sign in again';
   static const pairAgain = 'Pair again';
-  static const waitingForGoogle =
+  static const waitingForBrowser =
       'Finish sign-in in the browser, then return here.';
   static const signInFailed = 'Couldn\'t sign in — try again.';
   static const cloudUnreachable =

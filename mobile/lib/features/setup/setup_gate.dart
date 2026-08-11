@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/mobile_sync_config.dart';
@@ -28,8 +29,8 @@ class SetupGate extends StatefulWidget {
 }
 
 class _SetupGateState extends State<SetupGate> {
-  bool _launchingBrowser = false;
-  bool _waitingBrowser = false;
+  SignInProvider? _launchingProvider;
+  SignInProvider? _waitingProvider;
   bool _emailBusy = false;
   String? _signInError;
   bool _syncing = false;
@@ -54,9 +55,11 @@ class _SetupGateState extends State<SetupGate> {
 
   void _onConfig() {
     if (!_wasSignedIn && widget.config.isSignedIn && mounted) {
+      // Sign-in succeeded — let iOS offer to save the typed credentials.
+      TextInput.finishAutofillContext();
       setState(() {
-        _waitingBrowser = false;
-        _launchingBrowser = false;
+        _waitingProvider = null;
+        _launchingProvider = null;
         _emailBusy = false;
         _signInError = null;
         _wasSignedIn = true;
@@ -72,16 +75,19 @@ class _SetupGateState extends State<SetupGate> {
     final msg = widget.auth.lastError.value;
     if (msg == null || !mounted) return;
     setState(() {
-      _waitingBrowser = false;
-      _launchingBrowser = false;
+      _waitingProvider = null;
+      _launchingProvider = null;
       _emailBusy = false;
       _signInError = SyncUserMessages.signInFailed;
     });
   }
 
-  Future<void> _launchOAuth(Uri uri) async {
+  Future<void> _signInWithProvider(SignInProvider provider) async {
+    final uri = provider == SignInProvider.google
+        ? widget.auth.googleSignInUri()
+        : widget.auth.appleSignInUri();
     setState(() {
-      _launchingBrowser = true;
+      _launchingProvider = provider;
       _signInError = null;
     });
     try {
@@ -89,8 +95,8 @@ class _SetupGateState extends State<SetupGate> {
       if (!reachable) {
         if (mounted) {
           setState(() {
-            _launchingBrowser = false;
-            _waitingBrowser = false;
+            _launchingProvider = null;
+            _waitingProvider = null;
             _signInError = SyncUserMessages.cloudUnreachable;
           });
         }
@@ -100,24 +106,20 @@ class _SetupGateState extends State<SetupGate> {
       if (!ok) throw Exception('launch failed');
       if (mounted) {
         setState(() {
-          _launchingBrowser = false;
-          _waitingBrowser = true;
+          _launchingProvider = null;
+          _waitingProvider = provider;
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _launchingBrowser = false;
-          _waitingBrowser = false;
+          _launchingProvider = null;
+          _waitingProvider = null;
           _signInError = SyncUserMessages.signInFailed;
         });
       }
     }
   }
-
-  Future<void> _signInGoogle() => _launchOAuth(widget.auth.googleSignInUri());
-
-  Future<void> _signInApple() => _launchOAuth(widget.auth.appleSignInUri());
 
   Future<void> _emailLogin(String email, String password) async {
     setState(() {
@@ -135,20 +137,41 @@ class _SetupGateState extends State<SetupGate> {
     }
   }
 
-  Future<void> _emailRegister(String email, String password) async {
+  Future<void> _emailRegister({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+  }) async {
     setState(() {
       _emailBusy = true;
       _signInError = null;
     });
     try {
-      await widget.auth.registerWithPassword(email: email, password: password);
-    } catch (_) {
+      await widget.auth.registerWithPassword(
+        email: email,
+        password: password,
+        firstName: firstName,
+        lastName: lastName,
+      );
+    } catch (e) {
       if (mounted) {
-        setState(() => _signInError = SyncUserMessages.signInFailed);
+        setState(() => _signInError = _describeRegisterError(e));
       }
     } finally {
       if (mounted) setState(() => _emailBusy = false);
     }
+  }
+
+  /// The cloud returns human-readable `detail` strings we own
+  /// (cloud-node/lib/accounts.js) — map the known ones to actionable copy.
+  static String _describeRegisterError(Object error) {
+    final msg = error.toString().toLowerCase();
+    if (msg.contains('already registered')) {
+      return SyncUserMessages.emailAlreadyRegistered;
+    }
+    if (msg.contains('at least 8')) return SyncUserMessages.passwordTooShort;
+    return SyncUserMessages.signInFailed;
   }
 
   Future<void> _runFirstSync() async {
@@ -191,12 +214,11 @@ class _SetupGateState extends State<SetupGate> {
     final Widget body;
     if (!cfg.isSignedIn) {
       body = SetupSignInPanel(
-        launchingBrowser: _launchingBrowser,
-        waitingBrowser: _waitingBrowser,
+        launchingProvider: _launchingProvider,
+        waitingProvider: _waitingProvider,
         emailBusy: _emailBusy,
         error: _signInError,
-        onGoogle: _signInGoogle,
-        onApple: _signInApple,
+        onProviderSignIn: (p) => _signInWithProvider(p),
         onEmailLogin: _emailLogin,
         onEmailRegister: _emailRegister,
       );
