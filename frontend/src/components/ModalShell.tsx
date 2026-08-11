@@ -19,6 +19,8 @@ interface ModalShellProps {
    * rather than rendered-but-disabled, so it isn't discoverable as a dead end.
    */
   dismissible?: boolean;
+  /** "center" for dialogs whose body copy is centered (trial gates) — keeps header and body on one axis. */
+  titleAlign?: "left" | "center";
 }
 
 export default function ModalShell({
@@ -28,6 +30,7 @@ export default function ModalShell({
   footer,
   maxWidthClass = "max-w-md",
   dismissible = true,
+  titleAlign = "left",
 }: ModalShellProps) {
   const titleId = useId();
 
@@ -57,7 +60,16 @@ export default function ModalShell({
       >
         {/* Header — always visible */}
         <div className={MODAL_HEADER_ROW_CLASS}>
-          <h2 id={titleId} className={MODAL_TITLE_CLASS}>
+          {/* Invisible twin of the close icon keeps a centered title optically centered. */}
+          {titleAlign === "center" && dismissible && <span className="w-5 shrink-0" aria-hidden="true" />}
+          <h2
+            id={titleId}
+            className={
+              titleAlign === "center"
+                ? "font-semibold text-text-primary truncate min-w-0 flex-1 text-center"
+                : MODAL_TITLE_CLASS
+            }
+          >
             {title}
           </h2>
           {dismissible && (
