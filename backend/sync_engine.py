@@ -192,10 +192,65 @@ def decrypt_envelope(
         "record_id": record_id,
         "payload": payload,
         "deleted": deleted,
+        "device_id": device_id,
+        "logical_clock": logical_clock,
     }
 
 
-def run_sync_push(
+def pull_and_apply_changes(
+    *,
+    cloud_url: str,
+    access_token: str,
+    master_key: bytes,
+    account_id: str,
+    device_id: str,
+    cursor: int = 0,
+) -> dict[str, Any]:
+    """Pull the change feed since cursor and apply allowlisted remote edits.
+
+    Tolerant per record — an undecryptable or unknown row is counted and
+    skipped, never fatal (the desktop is the source of truth and must not
+    brick on legacy ciphertext).
+    """
+    import sync_apply
+
+    applied = 0
+    skipped = 0
+    undecryptable = 0
+    guard = 0
+    while True:
+        guard += 1
+        if guard > 200:
+            break
+        page = pull_blobs(cloud_url=cloud_url, access_token=access_token, cursor=cursor)
+        if page.get("resync_required"):
+            # History was compacted past our cursor. Desktop holds the truth,
+            # so skip the snapshot replay and resume at the feed head.
+            cursor = int(page.get("resume_cursor") or page.get("cursor") or cursor)
+            break
+        for env in page.get("blobs") or []:
+            try:
+                record = decrypt_envelope(env, master_key, account_id=account_id)
+            except Exception:
+                undecryptable += 1
+                continue
+            outcome = sync_apply.apply_remote_task_completion(record, own_device_id=device_id)
+            if outcome == sync_apply.APPLIED:
+                applied += 1
+            else:
+                skipped += 1
+        cursor = int(page.get("cursor") or cursor)
+        if not page.get("has_more"):
+            break
+    return {
+        "applied": applied,
+        "skipped": skipped,
+        "undecryptable": undecryptable,
+        "cursor": cursor,
+    }
+
+
+def run_sync_cycle(
     *,
     cloud_url: str,
     access_token: str,
@@ -203,13 +258,34 @@ def run_sync_push(
     device_id: str,
     account_id: str,
     since_updated_at: str | None = None,
+    pull_cursor: int = 0,
 ) -> dict[str, Any]:
-    """Full push cycle: export → encrypt → relay."""
+    """Full cycle: pull+apply remote edits, then export → encrypt → push.
+
+    Pull runs first so a (re-)push can never overwrite a phone edit that is
+    already on the relay. Pull failures degrade to push-only — backup must
+    not stop because the apply phase had an issue.
+    """
     import base64
 
     master_key = base64.b64decode(master_key_b64)
     sync_run_id = str(uuid.uuid4())
     started = datetime.now(UTC).isoformat()
+    next_pull_cursor = pull_cursor
+    pull_stats: dict[str, Any]
+    try:
+        pull_stats = pull_and_apply_changes(
+            cloud_url=cloud_url,
+            access_token=access_token,
+            master_key=master_key,
+            account_id=account_id,
+            device_id=device_id,
+            cursor=pull_cursor,
+        )
+        next_pull_cursor = int(pull_stats.get("cursor") or pull_cursor)
+    except Exception as exc:
+        logger.exception("sync pull/apply failed — continuing with push")
+        pull_stats = {"error": str(exc)}
     try:
         blobs = export_encrypted_blobs(
             master_key=master_key,
@@ -224,6 +300,8 @@ def run_sync_push(
             "started_at": started,
             "finished_at": datetime.now(UTC).isoformat(),
             "blob_count": len(blobs),
+            "pull": pull_stats,
+            "next_pull_cursor": next_pull_cursor,
             **result,
         }
     except Exception as exc:
@@ -233,6 +311,8 @@ def run_sync_push(
             "sync_run_id": sync_run_id,
             "started_at": started,
             "error": str(exc),
+            "pull": pull_stats,
+            "next_pull_cursor": next_pull_cursor,
         }
 
 

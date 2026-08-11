@@ -68,6 +68,19 @@ function cloudUrl() {
   }
 }
 
+/**
+ * Change-feed cursor for the pull+apply phase (task completions from phones).
+ * First run starts at 0 — replaying history once is safe because the backend
+ * apply is allowlisted and tolerant of undecryptable legacy rows.
+ * @param {unknown} value
+ * @returns {number}
+ */
+function normalizePullCursor(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.floor(n);
+}
+
 function ensureMasterKey(userData) {
   const kp = keyPath(userData);
   const encOk = safeStorage.isEncryptionAvailable();
@@ -156,14 +169,21 @@ async function runSyncOnce(deviceRootHint) {
         device_id: deviceId,
         account_id: accountId,
         since_updated_at: prefs.lastSyncedAt || null,
+        pull_cursor: normalizePullCursor(prefs.pullCursor),
       }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(data.detail || `sync_run_${res.status}`);
     }
-    if (data.ok && data.finished_at) {
-      prefs.lastSyncedAt = data.finished_at;
+    if (data.ok) {
+      if (data.finished_at) {
+        prefs.lastSyncedAt = data.finished_at;
+      }
+      // Guarded so an older backend without the field can't reset the cursor.
+      if (typeof data.next_pull_cursor === "number") {
+        prefs.pullCursor = normalizePullCursor(data.next_pull_cursor);
+      }
       writePrefs(profileRoot, prefs);
     }
     lastStatus = {
@@ -316,6 +336,7 @@ module.exports = {
   startSyncWorker,
   stopSyncWorker,
   runSyncOnce,
+  normalizePullCursor,
   getSyncStatus,
   setSyncEnabled,
   readPrefs,

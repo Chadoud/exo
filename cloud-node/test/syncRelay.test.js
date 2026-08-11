@@ -60,6 +60,38 @@ test("pushBlobs ignores stale logical_clock (idempotency)", async () => {
   assert.equal(pulled.blobs[0].logical_clock, 5);
 });
 
+test("pushBlobs lets another device win with a newer logical_clock (task completion)", async () => {
+  const mock = createSyncMockPool();
+  const syncRelay = loadSyncRelayWithMock(mock);
+  // Desktop pushes the task first…
+  await syncRelay.pushBlobs(ACCOUNT, [
+    envelope({
+      collection: "tasks",
+      record_id: "7",
+      device_id: "desktop-1",
+      logical_clock: 100,
+      ciphertext: "cipher-open",
+      content_hash: "e".repeat(64),
+    }),
+  ]);
+  // …then the phone pushes a completion with a newer clock.
+  const result = await syncRelay.pushBlobs(ACCOUNT, [
+    envelope({
+      collection: "tasks",
+      record_id: "7",
+      device_id: "phone-1",
+      logical_clock: 200,
+      ciphertext: "cipher-done",
+      content_hash: "f".repeat(64),
+    }),
+  ]);
+  assert.equal(result.accepted, 1);
+  const pulled = await syncRelay.pullBlobs(ACCOUNT, 0, 10);
+  const latest = pulled.blobs.at(-1);
+  assert.equal(latest.device_id, "phone-1");
+  assert.equal(latest.ciphertext, "cipher-done");
+});
+
 test("pullBlobs delivers update after cursor (change feed)", async () => {
   const mock = createSyncMockPool();
   const syncRelay = loadSyncRelayWithMock(mock);

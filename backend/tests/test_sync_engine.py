@@ -51,23 +51,56 @@ class TestSyncEngine(unittest.TestCase):
         self.assertIn("payload", plain)
 
     @patch("sync_engine.httpx.Client")
-    def test_run_sync_push_ok(self, client_cls: MagicMock) -> None:
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status = MagicMock()
-        mock_resp.json.return_value = {"accepted": 1, "cursor": 1}
+    def test_run_sync_cycle_ok(self, client_cls: MagicMock) -> None:
+        push_resp = MagicMock()
+        push_resp.raise_for_status = MagicMock()
+        push_resp.json.return_value = {"accepted": 1, "cursor": 1}
+        pull_resp = MagicMock()
+        pull_resp.raise_for_status = MagicMock()
+        pull_resp.json.return_value = {"blobs": [], "cursor": 7, "has_more": False}
         mock_client = MagicMock()
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.return_value = mock_resp
+        mock_client.post.return_value = push_resp
+        mock_client.get.return_value = pull_resp
         client_cls.return_value = mock_client
 
         assistant_memory.update_memory("notes", "push-test", "x", conversation_id=None)
-        result = self.sync_engine.run_sync_push(
+        result = self.sync_engine.run_sync_cycle(
             cloud_url="https://relay.example.com",
             access_token="tok",
             master_key_b64=base64.b64encode(self.master_key).decode("ascii"),
             device_id="dev-1",
             account_id="550e8400-e29b-41d4-a716-446655440000",
+            pull_cursor=3,
         )
         self.assertTrue(result["ok"])
         self.assertGreaterEqual(result.get("blob_count", 0), 1)
+        self.assertEqual(result["next_pull_cursor"], 7)
+        self.assertEqual(result["pull"]["applied"], 0)
+
+    @patch("sync_engine.httpx.Client")
+    def test_run_sync_cycle_pull_failure_degrades_to_push(
+        self, client_cls: MagicMock
+    ) -> None:
+        push_resp = MagicMock()
+        push_resp.raise_for_status = MagicMock()
+        push_resp.json.return_value = {"accepted": 0, "cursor": 0}
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.post.return_value = push_resp
+        mock_client.get.side_effect = RuntimeError("pull boom")
+        client_cls.return_value = mock_client
+
+        result = self.sync_engine.run_sync_cycle(
+            cloud_url="https://relay.example.com",
+            access_token="tok",
+            master_key_b64=base64.b64encode(self.master_key).decode("ascii"),
+            device_id="dev-1",
+            account_id="550e8400-e29b-41d4-a716-446655440000",
+            pull_cursor=9,
+        )
+        self.assertTrue(result["ok"], "push must proceed when pull fails")
+        self.assertIn("error", result["pull"])
+        self.assertEqual(result["next_pull_cursor"], 9)
