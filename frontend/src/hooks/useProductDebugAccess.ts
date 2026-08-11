@@ -5,9 +5,11 @@ import { canUseProductDebug, setProductDebugAccessCached } from "../utils/produc
 import { hasEntitlementIpc } from "../utils/electronDesktop";
 
 function applyEntitlement(entitlement: EntitlementStatus | null): boolean {
-  const enabled = canUseProductDebug(entitlement);
+  // Update the cache first: canUseProductDebug falls back to it, and reading the
+  // stale value would keep admin debug UI visible after switching to a non-admin
+  // account in the same session.
   setProductDebugAccessCached(Boolean(entitlement?.isProductAdmin));
-  return enabled;
+  return canUseProductDebug(entitlement);
 }
 
 /**
