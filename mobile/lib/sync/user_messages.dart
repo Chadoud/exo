@@ -148,6 +148,8 @@ abstract final class SyncUserMessages {
       'Create tasks on your computer, then pull to refresh.';
   static const taskFallbackTitle = 'Task';
   static const taskCompletedLabel = 'Done';
+  static const taskMarkDone = 'Mark done';
+  static const taskMarkNotDone = 'Mark not done';
   static const taskDetailReviewHint =
       'Soon EXO can draft actions here (for example an email) for you to review before anything is sent.';
   // Legacy aliases (tests / older call sites)

@@ -21,7 +21,7 @@ class LocalBrainStore {
     final path = await _resolvePath();
     _db = await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE synced_records (
@@ -31,6 +31,7 @@ class LocalBrainStore {
             updated_at TEXT,
             logical_clock INTEGER NOT NULL DEFAULT 0,
             device_id TEXT NOT NULL DEFAULT '',
+            pending_push INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (collection, record_id)
           )
         ''');
@@ -42,6 +43,11 @@ class LocalBrainStore {
           );
           await db.execute(
             "ALTER TABLE synced_records ADD COLUMN device_id TEXT NOT NULL DEFAULT ''",
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+            "ALTER TABLE synced_records ADD COLUMN pending_push INTEGER NOT NULL DEFAULT 0",
           );
         }
       },
@@ -86,8 +92,74 @@ class LocalBrainStore {
         'updated_at': updatedAt,
         'logical_clock': logicalClock,
         'device_id': deviceId,
+        // Pull-applied rows supersede any queued local edit (last-writer-wins).
+        'pending_push': 0,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Map<String, dynamic>?> readRecord({
+    required String collection,
+    required String recordId,
+  }) async {
+    final database = await db;
+    final rows = await database.query(
+      'synced_records',
+      where: 'collection = ? AND record_id = ?',
+      whereArgs: [collection, recordId],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  /// Local edit awaiting push — overwrites the cached row and flags it dirty.
+  Future<void> applyLocalEdit({
+    required String collection,
+    required String recordId,
+    required String payloadJson,
+    required String updatedAt,
+    required int logicalClock,
+    required String deviceId,
+  }) async {
+    final database = await db;
+    await database.insert(
+      'synced_records',
+      {
+        'collection': collection,
+        'record_id': recordId,
+        'payload_json': payloadJson,
+        'updated_at': updatedAt,
+        'logical_clock': logicalClock,
+        'device_id': deviceId,
+        'pending_push': 1,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> listPendingPush({int limit = 100}) async {
+    final database = await db;
+    return database.query(
+      'synced_records',
+      where: 'pending_push = 1',
+      orderBy: 'updated_at ASC',
+      limit: limit,
+    );
+  }
+
+  /// Mark pushed — only clears when the row hasn't been edited again since.
+  Future<void> clearPendingPush({
+    required String collection,
+    required String recordId,
+    required int logicalClock,
+  }) async {
+    final database = await db;
+    await database.update(
+      'synced_records',
+      {'pending_push': 0},
+      where: 'collection = ? AND record_id = ? AND logical_clock = ?',
+      whereArgs: [collection, recordId, logicalClock],
     );
   }
 

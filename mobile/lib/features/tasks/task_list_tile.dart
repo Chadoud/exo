@@ -4,18 +4,22 @@ import '../../design/exo_colors.dart';
 import '../../design/exo_spacing.dart';
 import '../../sync/user_messages.dart';
 
-/// Presentational task row — description, priority, due, completed state.
+/// Task row — description, priority, due, and a tappable completed toggle.
 class TaskListTile extends StatelessWidget {
   const TaskListTile({
     super.key,
     required this.payload,
     this.updatedAt,
     this.onTap,
+    this.onToggleCompleted,
   });
 
   final Map<String, dynamic> payload;
   final String? updatedAt;
   final VoidCallback? onTap;
+
+  /// Marks the task done / not done. Null renders a read-only indicator.
+  final VoidCallback? onToggleCompleted;
 
   static String titleOf(Map<String, dynamic> payload) {
     final desc = payload['description']?.toString().trim();
@@ -73,10 +77,10 @@ class TaskListTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                done ? Icons.check_circle : Icons.radio_button_unchecked,
-                size: 22,
-                color: done ? ExoColors.brandPrimary : ExoColors.textSecondary,
+              _CompletedToggle(
+                done: done,
+                title: title,
+                onToggle: onToggleCompleted,
               ),
               const SizedBox(width: ExoSpacing.md),
               Expanded(
@@ -101,6 +105,47 @@ class TaskListTile extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 48dp toggle target, separate from the row tap that opens the detail sheet.
+class _CompletedToggle extends StatelessWidget {
+  const _CompletedToggle({
+    required this.done,
+    required this.title,
+    this.onToggle,
+  });
+
+  final bool done;
+  final String title;
+  final VoidCallback? onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(
+      done ? Icons.check_circle : Icons.radio_button_unchecked,
+      size: 22,
+      color: done ? ExoColors.brandPrimary : ExoColors.textSecondary,
+    );
+    if (onToggle == null) {
+      return Padding(padding: const EdgeInsets.all(ExoSpacing.xs), child: icon);
+    }
+    return Semantics(
+      button: true,
+      checked: done,
+      label: done
+          ? SyncUserMessages.taskMarkNotDone
+          : SyncUserMessages.taskMarkDone,
+      child: InkWell(
+        onTap: onToggle,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Center(child: icon),
         ),
       ),
     );

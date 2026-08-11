@@ -10,6 +10,7 @@ import '../sync/cloud_api.dart';
 import '../sync/key_value_store.dart';
 import '../sync/local_store.dart';
 import '../sync/pairing_cloud_url.dart';
+import '../sync/sync_crypto.dart';
 import '../sync/sync_engine.dart';
 import '../sync/sync_errors.dart';
 import '../sync/sync_failure.dart';
@@ -305,6 +306,9 @@ class MobileSyncConfig extends ChangeNotifier {
     clearLastError();
     notifyListeners();
     try {
+      // Queued local edits go out first so a pull can't overwrite them
+      // with the pre-edit server copy.
+      await engine.pushPendingEdits();
       final result = await engine.pullUntilCaughtUp();
       await _refreshCounts();
       _lastSyncLabel = DateTime.now().toLocal().toString().split('.').first;
@@ -334,6 +338,48 @@ class MobileSyncConfig extends ChangeNotifier {
       _syncInFlight = false;
       notifyListeners();
     }
+  }
+
+  /// Toggle a synced task's completion locally and queue it for push.
+  ///
+  /// Optimistic: the cached row updates immediately (with a fresh logical
+  /// clock so stale pulls can't clobber it); push is attempted right away and
+  /// otherwise retried on the next [syncNow]. Returns false for unknown rows.
+  Future<bool> setTaskCompleted({
+    required String recordId,
+    required bool completed,
+  }) async {
+    final row = await _localStore.readRecord(
+      collection: 'tasks',
+      recordId: recordId,
+    );
+    if (row == null) return false;
+    Map<String, dynamic> payload;
+    try {
+      payload = jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
+    } catch (_) {
+      payload = <String, dynamic>{};
+    }
+    final now = DateTime.now().toUtc().toIso8601String();
+    payload['completed'] = completed;
+    payload['completed_at'] = completed ? now : null;
+    payload['updated_at'] = now;
+    await _localStore.applyLocalEdit(
+      collection: 'tasks',
+      recordId: recordId,
+      payloadJson: jsonEncode(payload),
+      updatedAt: now,
+      logicalClock: SyncCrypto.logicalClock(now, recordId),
+      deviceId: _deviceIdSync,
+    );
+    _dataEpoch++;
+    notifyListeners();
+    try {
+      await engine.pushPendingEdits();
+    } catch (_) {
+      // Stays queued; next syncNow retries and surfaces failures via banner.
+    }
+    return true;
   }
 
   /// Drop pairing + local sync cache; keep sign-in so the user can paste a fresh code.

@@ -113,4 +113,147 @@ void main() {
     expect(rows.first['record_id'], 'keep');
     expect(rows.first['updated_at'], '2026-03-01T00:00:00Z');
   });
+
+  test('pushPendingEdits encrypts queued edits, pushes, clears flags', () async {
+    final master = Uint8List.fromList(List<int>.generate(32, (i) => i + 1));
+    final storage = MemoryKeyValueStore();
+    await storage.write('exosites_sync_master_key_b64', base64Encode(master));
+
+    const account = '550e8400-e29b-41d4-a716-446655440000';
+    final payloadB64 = base64Url
+        .encode(utf8.encode(jsonEncode({'sub': account})))
+        .replaceAll('=', '');
+    final token = 'h.$payloadB64.s';
+
+    // ':memory:' is a shared singleton per test file — start clean.
+    final store = LocalBrainStore(databasePath: ':memory:');
+    await store.clearAll();
+    const updatedAt = '2026-08-11T20:00:00Z';
+    await store.applyLocalEdit(
+      collection: 'tasks',
+      recordId: '7',
+      payloadJson: jsonEncode({'description': 'Call', 'completed': true}),
+      updatedAt: updatedAt,
+      logicalClock: SyncCrypto.logicalClock(updatedAt, '7'),
+      deviceId: 'mobile-1',
+    );
+
+    List<dynamic>? pushedBlobs;
+    final client = MockClient((request) async {
+      expect(request.url.path, endsWith('/blobs/push'));
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      pushedBlobs = body['blobs'] as List<dynamic>;
+      return http.Response(jsonEncode({'accepted': 1, 'cursor': 1}), 200);
+    });
+    final engine = SyncEngine(
+      cloudUrl: 'https://example.test',
+      accessToken: token,
+      deviceId: 'mobile-1',
+      api: CloudApi(
+        baseUrl: 'https://example.test',
+        accessToken: () => token,
+        httpClient: client,
+      ),
+      storage: storage,
+      localStore: store,
+    );
+
+    expect(await engine.pushPendingEdits(), 1);
+    expect(await store.listPendingPush(), isEmpty);
+
+    // Envelope is v3, bound to this device, and decrypts to the edited payload.
+    final env = (pushedBlobs!.single as Map).cast<String, dynamic>();
+    expect(env['collection'], 'tasks');
+    expect(env['record_id'], '7');
+    expect(env['device_id'], 'mobile-1');
+    expect(env['schema_version'], SyncCrypto.schemaV3);
+    final rkey = await SyncCrypto.recordKey(master, 'tasks', '7');
+    final aad = SyncCrypto.aadBytes(
+      collection: 'tasks',
+      recordId: '7',
+      deviceId: 'mobile-1',
+      logicalClock: (env['logical_clock'] as num).toInt(),
+      deleted: false,
+      schemaVersion: SyncCrypto.schemaV3,
+      accountId: account,
+    );
+    final plain = await SyncCrypto.decryptRecord(
+      env['ciphertext'] as String,
+      rkey,
+      aad: aad,
+    );
+    final decoded = jsonDecode(utf8.decode(plain)) as Map<String, dynamic>;
+    expect(decoded['completed'], isTrue);
+
+    // No-op when the queue is empty.
+    expect(await engine.pushPendingEdits(), 0);
+  });
+
+  test('stale pulled row does not clobber a newer pending local edit', () async {
+    final master = Uint8List.fromList(List<int>.generate(32, (i) => i + 1));
+    final storage = MemoryKeyValueStore();
+    await storage.write('exosites_sync_master_key_b64', base64Encode(master));
+    // Preset the feed version so ensureFeedVersion doesn't wipe the store.
+    await storage.write(SyncEngine.feedVersionKey, SyncEngine.expectedFeedVersion);
+
+    const account = '550e8400-e29b-41d4-a716-446655440000';
+    final payloadB64 = base64Url
+        .encode(utf8.encode(jsonEncode({'sub': account})))
+        .replaceAll('=', '');
+    final token = 'h.$payloadB64.s';
+
+    final store = LocalBrainStore(databasePath: ':memory:');
+    await store.clearAll();
+    const editedAt = '2026-08-11T20:00:00Z';
+    await store.applyLocalEdit(
+      collection: 'tasks',
+      recordId: '7',
+      payloadJson: jsonEncode({'description': 'Call', 'completed': true}),
+      updatedAt: editedAt,
+      logicalClock: SyncCrypto.logicalClock(editedAt, '7'),
+      deviceId: 'mobile-1',
+    );
+
+    // Feed still carries the pre-edit desktop copy (older clock).
+    const staleAt = '2026-08-01T00:00:00Z';
+    final rkey = await SyncCrypto.recordKey(master, 'tasks', '7');
+    final stale = await SyncCrypto.buildEnvelope(
+      collection: 'tasks',
+      recordId: '7',
+      deviceId: 'desktop-1',
+      logicalClock: SyncCrypto.logicalClock(staleAt, '7'),
+      updatedAt: staleAt,
+      plaintext: Uint8List.fromList(
+        utf8.encode(jsonEncode({'description': 'Call', 'completed': false})),
+      ),
+      recordKey: rkey,
+      accountId: account,
+    );
+
+    final client = MockClient((request) async {
+      return http.Response(
+        jsonEncode({'blobs': [stale], 'cursor': 5, 'has_more': false}),
+        200,
+      );
+    });
+    final engine = SyncEngine(
+      cloudUrl: 'https://example.test',
+      accessToken: token,
+      deviceId: 'mobile-1',
+      api: CloudApi(
+        baseUrl: 'https://example.test',
+        accessToken: () => token,
+        httpClient: client,
+      ),
+      storage: storage,
+      localStore: store,
+    );
+
+    await engine.pullUntilCaughtUp();
+    final row = (await store.listByCollection('tasks')).single;
+    final payload = jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
+    expect(payload['completed'], isTrue, reason: 'local edit must win');
+    expect(await store.listPendingPush(), hasLength(1),
+        reason: 'edit still queued for push');
+  });
 }

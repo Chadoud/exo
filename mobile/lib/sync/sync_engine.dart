@@ -224,6 +224,32 @@ class SyncEngine {
     return _api.pushBlobs(envelopes);
   }
 
+  /// Push queued local edits (e.g. task completion), then unflag them.
+  ///
+  /// Rows edited again mid-push keep their flag (clock guard in the store).
+  Future<int> pushPendingEdits() async {
+    final rows = await _localStore.listPendingPush();
+    if (rows.isEmpty) return 0;
+    final items = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      items.add({
+        'collection': row['collection'],
+        'record_id': row['record_id'],
+        'updated_at': row['updated_at'],
+        'payload': jsonDecode(row['payload_json'] as String),
+      });
+    }
+    await pushLocalRecords(items);
+    for (final row in rows) {
+      await _localStore.clearPendingPush(
+        collection: row['collection'] as String,
+        recordId: row['record_id'] as String,
+        logicalClock: (row['logical_clock'] as num?)?.toInt() ?? 0,
+      );
+    }
+    return rows.length;
+  }
+
   Future<Map<String, dynamic>> _encryptItem(Map<String, dynamic> item, Uint8List mk) async {
     final collection = item['collection'] as String;
     final recordId = item['record_id'] as String;

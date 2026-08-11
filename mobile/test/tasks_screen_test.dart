@@ -45,6 +45,93 @@ void main() {
     expect(rows.first['record_id'], '1');
   });
 
+  test('pending push queue: clock guard keeps re-edited rows flagged', () async {
+    // ':memory:' is a shared singleton per test file — start clean.
+    final store = LocalBrainStore(databasePath: ':memory:');
+    await store.clearAll();
+    await store.applyLocalEdit(
+      collection: 'tasks',
+      recordId: '1',
+      payloadJson: '{"completed":true}',
+      updatedAt: '2026-08-11T20:00:00Z',
+      logicalClock: 100,
+      deviceId: 'mobile-1',
+    );
+    expect(await store.listPendingPush(), hasLength(1));
+
+    // Clearing with a stale clock (row edited again mid-push) keeps the flag.
+    await store.clearPendingPush(collection: 'tasks', recordId: '1', logicalClock: 99);
+    expect(await store.listPendingPush(), hasLength(1));
+
+    await store.clearPendingPush(collection: 'tasks', recordId: '1', logicalClock: 100);
+    expect(await store.listPendingPush(), isEmpty);
+
+    // Pull-applied rows supersede any queued edit.
+    await store.applyLocalEdit(
+      collection: 'tasks',
+      recordId: '1',
+      payloadJson: '{"completed":true}',
+      updatedAt: '2026-08-11T21:00:00Z',
+      logicalClock: 200,
+      deviceId: 'mobile-1',
+    );
+    await store.upsertRecord(
+      collection: 'tasks',
+      recordId: '1',
+      payloadJson: '{"completed":true}',
+      updatedAt: '2026-08-11T22:00:00Z',
+      logicalClock: 300,
+      deviceId: 'desktop-1',
+    );
+    expect(await store.listPendingPush(), isEmpty);
+  });
+
+  test('setTaskCompleted rewrites cached payload and queues a push', () async {
+    final store = LocalBrainStore(databasePath: ':memory:');
+    await store.clearAll();
+    await store.upsertRecord(
+      collection: 'tasks',
+      recordId: '9',
+      payloadJson: jsonEncode({'description': 'Water plants', 'completed': false}),
+      updatedAt: '2026-08-01T00:00:00Z',
+      logicalClock: 10,
+      deviceId: 'desktop-1',
+    );
+    final config = MobileSyncConfig(
+      storage: MemoryKeyValueStore(),
+      localStore: store,
+    );
+    await config.hydrate();
+
+    // Not paired — the immediate push fails silently and the edit stays queued.
+    expect(
+      await config.setTaskCompleted(recordId: '9', completed: true),
+      isTrue,
+    );
+    final row = (await store.listByCollection('tasks')).single;
+    final payload = jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
+    expect(payload['completed'], isTrue);
+    expect(payload['completed_at'], isNotNull);
+    expect((row['logical_clock'] as int), greaterThan(10));
+    expect(await store.listPendingPush(), hasLength(1));
+
+    // Unknown record: no-op.
+    expect(
+      await config.setTaskCompleted(recordId: 'missing', completed: true),
+      isFalse,
+    );
+
+    // Un-complete clears completed_at.
+    expect(
+      await config.setTaskCompleted(recordId: '9', completed: false),
+      isTrue,
+    );
+    final after = (await store.listByCollection('tasks')).single;
+    final payload2 = jsonDecode(after['payload_json'] as String) as Map<String, dynamic>;
+    expect(payload2['completed'], isFalse);
+    expect(payload2['completed_at'], isNull);
+  });
+
   testWidgets('TasksScreen lists synced tasks incomplete first', (tester) async {
     final store = LocalBrainStore(databasePath: ':memory:');
     await tester.runAsync(() async {
@@ -96,5 +183,50 @@ void main() {
     final doneY = tester.getTopLeft(find.text('Done already')).dy;
     expect(openY, lessThan(doneY));
     expect(find.text('Suggested by EXO'), findsNothing);
+  });
+
+  testWidgets('tapping the toggle marks a task done on screen', (tester) async {
+    final store = LocalBrainStore(databasePath: ':memory:');
+    await tester.runAsync(() async {
+      await store.clearAll();
+      await store.upsertRecord(
+        collection: 'tasks',
+        recordId: '5',
+        payloadJson: jsonEncode({
+          'description': 'Buy stamps',
+          'completed': false,
+          'priority': 'normal',
+        }),
+        updatedAt: '2026-08-01T00:00:00Z',
+      );
+    });
+    final config = MobileSyncConfig(
+      storage: MemoryKeyValueStore(),
+      localStore: store,
+    );
+    await tester.runAsync(config.hydrate);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ExoTheme.dark(),
+        home: Scaffold(body: TasksScreen(config: config)),
+      ),
+    );
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pump();
+    expect(find.text('Buy stamps'), findsOneWidget);
+
+    await tester.runAsync(() async {
+      await tester.tap(find.bySemanticsLabel(SyncUserMessages.taskMarkDone));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pump();
+
+    expect(find.text(SyncUserMessages.taskCompletedLabel), findsOneWidget);
+    final row = (await tester.runAsync(() => store.listByCollection('tasks')))!.single;
+    final payload = jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
+    expect(payload['completed'], isTrue);
   });
 }

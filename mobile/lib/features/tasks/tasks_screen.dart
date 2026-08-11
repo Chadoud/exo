@@ -94,9 +94,21 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  void _openDetail(Map<String, dynamic> payload) {
+  Future<void> _toggleCompleted(Map<String, dynamic> row) async {
+    final recordId = row['record_id']?.toString();
+    if (recordId == null || recordId.isEmpty) return;
+    final completed = TaskListTile.isCompleted(_payloadOf(row));
+    await widget.config.setTaskCompleted(
+      recordId: recordId,
+      completed: !completed,
+    );
+  }
+
+  void _openDetail(Map<String, dynamic> row) {
+    final payload = _payloadOf(row);
     final title = TaskListTile.titleOf(payload);
     final meta = TaskListTile.metaLine(payload);
+    final done = TaskListTile.isCompleted(payload);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: ExoColors.bgElevated,
@@ -125,6 +137,24 @@ class _TasksScreenState extends State<TasksScreen> {
                   style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
                         color: ExoColors.textSecondary,
                       ),
+                ),
+                const SizedBox(height: ExoSpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: Icon(
+                      done ? Icons.radio_button_unchecked : Icons.check_circle,
+                    ),
+                    label: Text(
+                      done
+                          ? SyncUserMessages.taskMarkNotDone
+                          : SyncUserMessages.taskMarkDone,
+                    ),
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _toggleCompleted(row);
+                    },
+                  ),
                 ),
               ],
             ),
@@ -168,7 +198,8 @@ class _TasksScreenState extends State<TasksScreen> {
         return TaskListTile(
           payload: payload,
           updatedAt: row['updated_at']?.toString(),
-          onTap: () => _openDetail(payload),
+          onTap: () => _openDetail(row),
+          onToggleCompleted: () => _toggleCompleted(row),
         );
       },
     );
