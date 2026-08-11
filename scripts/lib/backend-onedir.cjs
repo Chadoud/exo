@@ -49,7 +49,10 @@ function stageOnedirDirectory(srcDir, destDir) {
   }
   fs.rmSync(destDir, { recursive: true, force: true });
   fs.mkdirSync(path.dirname(destDir), { recursive: true });
-  fs.cpSync(srcDir, destDir, { recursive: true });
+  // verbatimSymlinks keeps Python.framework's relative symlinks intact; the default
+  // resolves them to absolute build-machine paths, which breaks codesign
+  // ("unsealed contents") and would dangle on end-user machines.
+  fs.cpSync(srcDir, destDir, { recursive: true, verbatimSymlinks: true });
   try {
     fs.chmodSync(nestedBackendExecutable(destDir), 0o755);
   } catch {
