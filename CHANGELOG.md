@@ -6,6 +6,21 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.55] - 2026-08-11
+
+### Added
+
+- **Billing:** Stripe subscriptions (CHF 20/month, CHF 200/year) with checkout/portal deep links, entitlement sync, webhook hardening, and nightly reconciliation.
+- **Trial:** Freemium limited mode — trial-ended gate is dismissible into limited access with a persistent in-flow upgrade banner; subscribe modal redesigned with plan cards and benefits.
+- **Voice:** Mic restart button between mic and settings controls.
+- **Admin:** Audited support tooling — account lookup, trial extension, subscription resync (allowlist + audit trail).
+
+### Fixed
+
+- **Voice:** Silent mic denial on macOS — explicitly request TCC microphone access so the system prompt appears.
+- **Debug UI:** Product-admin debug tools no longer stay visible after switching to a non-admin account in the same session.
+- **Packaging:** Preserve Python.framework symlinks verbatim in onedir staging (codesign "unsealed contents" failure).
+
 ## [1.1.54] - 2026-07-17
 
 ### Fixed
