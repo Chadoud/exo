@@ -52,6 +52,14 @@ See [DISTRIBUTION.md](DISTRIBUTION.md) and [PRODUCTION_RELEASE.md](PRODUCTION_RE
 - Use [RELEASE_NOTES_TEMPLATE.md](RELEASE_NOTES_TEMPLATE.md).
 - Link to [app-privacy](https://exosites.ch/eng/app-privacy) and [app-terms](https://exosites.ch/eng/app-terms).
 
+## Branch and tag conventions
+
+- `main` is the only trunk, on both repos (`Chadoud/ai-assistant` private, `Chadoud/exo` public mirror). Mobile lives on `main` too — no long-lived feature or platform branches.
+- One working copy pushes to both remotes; keep the two `main`s at the same commit (`git push origin main && git push public main`).
+- Release tags (`v*`) live on the **public** repo, where CI builds and publishes installers. Do not backfill or bulk-push tags: every `v*` push triggers a full Win + Mac installer pipeline (`.github/workflows/build.yml`).
+- Historic pre-copy tags (v1.1.0–v1.1.44) exist only on the private repo; `archive/pre-public-copy-2026-07-23` preserves the pre-mirror history. Leave both alone.
+- Short-lived branches only: branch from `main`, merge or delete within days. No `master`, no incubation trunks.
+
 ## Cloud accounts (Exosites)
 
 Production builds bundle `EXOSITES_CLOUD_URL` (e.g. `https://api.exosites.ch`) via `electron/resources/integration-config.json`.
