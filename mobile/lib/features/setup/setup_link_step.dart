@@ -24,7 +24,6 @@ class _SetupLinkStepState extends State<SetupLinkStep>
   bool _clipboardReady = false;
   bool _busy = false;
   String? _error;
-  bool _accountMismatch = false;
 
   @override
   void initState() {
@@ -100,11 +99,9 @@ class _SetupLinkStepState extends State<SetupLinkStep>
         setState(() {
           _busy = false;
           _error = messageForPairingParseFailure(fail);
-          _accountMismatch = fail == PairingParseFailure.accountMismatch;
         });
         return;
       }
-      _accountMismatch = false;
       await _afterPaired();
       if (mounted) setState(() => _busy = false);
     } catch (_) {
@@ -133,10 +130,7 @@ class _SetupLinkStepState extends State<SetupLinkStep>
   Future<void> _signOutSwitchAccount() async {
     await widget.config.clearSession();
     if (mounted) {
-      setState(() {
-        _error = null;
-        _accountMismatch = false;
-      });
+      setState(() => _error = null);
     }
   }
 
@@ -147,12 +141,11 @@ class _SetupLinkStepState extends State<SetupLinkStep>
       clipboardReady: _clipboardReady,
       busy: _busy,
       error: _error,
-      showSignOutOnError: _accountMismatch,
       onConnect: _onConnect,
       onScan: _onScan,
       onPasteFromClipboard: _pasteFromClipboard,
       onSkipDev: ExoConfig.allowDevSkipPair ? _skipPairDev : null,
-      onSignOut: _accountMismatch ? _signOutSwitchAccount : null,
+      onSignOut: _signOutSwitchAccount,
     );
   }
 }

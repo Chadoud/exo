@@ -13,7 +13,6 @@ class SetupLinkPanel extends StatefulWidget {
     this.clipboardReady = false,
     required this.busy,
     this.error,
-    this.showSignOutOnError = false,
     required this.onConnect,
     required this.onScan,
     this.onPasteFromClipboard,
@@ -25,11 +24,13 @@ class SetupLinkPanel extends StatefulWidget {
   final bool clipboardReady;
   final bool busy;
   final String? error;
-  final bool showSignOutOnError;
   final Future<void> Function(String raw) onConnect;
   final VoidCallback onScan;
   final Future<void> Function()? onPasteFromClipboard;
   final Future<void> Function()? onSkipDev;
+
+  /// Always-visible escape hatch — without it a wrong-account sign-in is a
+  /// dead end (nothing is synced yet at this step, so no confirmation needed).
   final Future<void> Function()? onSignOut;
 
   @override
@@ -90,13 +91,6 @@ class _SetupLinkPanelState extends State<SetupLinkPanel> {
         const SizedBox(height: ExoSpacing.xl),
         if (widget.error != null) ...[
           ExoSyncStatusBanner(message: widget.error!, isError: true),
-          if (widget.showSignOutOnError && widget.onSignOut != null) ...[
-            const SizedBox(height: ExoSpacing.sm),
-            TextButton(
-              onPressed: widget.busy ? null : () => widget.onSignOut!(),
-              child: const Text(SyncUserMessages.signOutSwitchAccount),
-            ),
-          ],
           const SizedBox(height: ExoSpacing.md),
         ],
         ExoSurface(
@@ -156,6 +150,13 @@ class _SetupLinkPanelState extends State<SetupLinkPanel> {
             ],
           ),
         ),
+        if (widget.onSignOut != null) ...[
+          const SizedBox(height: ExoSpacing.lg),
+          TextButton(
+            onPressed: widget.busy ? null : () => widget.onSignOut!(),
+            child: const Text(SyncUserMessages.signOutSwitchAccount),
+          ),
+        ],
       ],
     );
   }

@@ -3,6 +3,7 @@ import 'package:exosites_mobile/design/exo_status_banner.dart';
 import 'package:exosites_mobile/design/exo_theme.dart';
 import 'package:exosites_mobile/features/memory/memory_screen.dart';
 import 'package:exosites_mobile/features/tasks/tasks_screen.dart';
+import 'package:exosites_mobile/features/setup/setup_link_panel.dart';
 import 'package:exosites_mobile/features/setup/setup_sign_in_panel.dart';
 import 'package:exosites_mobile/layout/adaptive_shell.dart';
 import 'package:exosites_mobile/sync/key_value_store.dart';
@@ -194,6 +195,31 @@ void main() {
 
       expect(gotFirst, 'Ada');
       expect(gotLast, 'Lovelace');
+    });
+  });
+
+  group('SetupLinkPanel', () {
+    testWidgets('sign out escape is always visible, not only on mismatch errors',
+        (tester) async {
+      var signOuts = 0;
+      await tester.pumpWidget(
+        _app(
+          SingleChildScrollView(
+            child: SetupLinkPanel(
+              busy: false,
+              onConnect: (_) async {},
+              onScan: () {},
+              onSignOut: () async => signOuts++,
+            ),
+          ),
+        ),
+      );
+
+      final signOut = find.text(SyncUserMessages.signOutSwitchAccount);
+      expect(signOut, findsOneWidget);
+      await tester.ensureVisible(signOut);
+      await tester.tap(signOut);
+      expect(signOuts, 1);
     });
   });
 
