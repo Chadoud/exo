@@ -218,11 +218,17 @@ void main() {
     await tester.pump();
     expect(find.text('Buy stamps'), findsOneWidget);
 
-    await tester.runAsync(() async {
-      await tester.tap(find.bySemanticsLabel(SyncUserMessages.taskMarkDone));
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-    });
-    await tester.pump();
+    // Tap outside runAsync (gesture dispatch conflicts with the real-async
+    // zone), then let the sqlite round-trips complete before asserting.
+    await tester.tap(find.bySemanticsLabel(SyncUserMessages.taskMarkDone));
+    var found = false;
+    for (var i = 0; i < 40 && !found; i++) {
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      });
+      await tester.pump();
+      found = find.text(SyncUserMessages.taskCompletedLabel).evaluate().isNotEmpty;
+    }
 
     expect(find.text(SyncUserMessages.taskCompletedLabel), findsOneWidget);
     final row = (await tester.runAsync(() => store.listByCollection('tasks')))!.single;
