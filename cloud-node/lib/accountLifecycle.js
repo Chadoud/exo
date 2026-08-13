@@ -45,6 +45,51 @@ async function exportAccountData(accountId) {
 }
 
 /**
+ * Tables scoped by `account_id`, deleted in this order for every account
+ * deletion. `optional: true` marks a table that may not exist yet on a
+ * deployment that hasn't applied its migration — that one failure mode
+ * (`ER_NO_SUCH_TABLE`) is swallowed for those tables; every other error, and
+ * every non-optional table, still aborts the transaction.
+ */
+const ACCOUNT_SCOPED_TABLES = [
+  { table: "telemetry_events" },
+  { table: "product_feedback" },
+  { table: "crash_reports" },
+  { table: "app_sessions", optional: true },
+  { table: "stripe_events_processed", optional: true }, // migration 024
+  { table: "subscriptions", optional: true }, // migration 024
+  { table: "whatsapp_events", optional: true },
+  { table: "whatsapp_phone_bindings", optional: true },
+  { table: "sync_changes", optional: true }, // migration 023
+  { table: "sync_pairing_grants", optional: true }, // migration 023
+  { table: "sync_blobs" },
+  { table: "sync_cursors" },
+  { table: "sync_devices" },
+  { table: "auth_exchange_codes" },
+  { table: "auth_identities" },
+  { table: "user_profiles" },
+  { table: "product_admins" },
+  { table: "entitlements" },
+  { table: "wallets" },
+];
+
+/**
+ * @param {import("mysql2/promise").PoolConnection} conn
+ * @param {string} accountId
+ * @param {{ table: string, optional?: boolean }} entry
+ */
+async function deleteAccountScopedRow(conn, accountId, { table, optional }) {
+  try {
+    await conn.execute(`DELETE FROM ${table} WHERE account_id = ?`, [accountId]);
+  } catch (e) {
+    if (optional && e?.code === "ER_NO_SUCH_TABLE") {
+      return;
+    }
+    throw e;
+  }
+}
+
+/**
  * Permanently delete an account and all linked cloud rows.
  * @param {string} accountId
  */
@@ -60,15 +105,8 @@ async function deleteAccount(accountId) {
   const accountHash = crypto.createHash("sha256").update(String(accountId)).digest("hex");
   try {
     await conn.beginTransaction();
-    await conn.execute("DELETE FROM telemetry_events WHERE account_id = ?", [accountId]);
-    await conn.execute("DELETE FROM product_feedback WHERE account_id = ?", [accountId]);
-    await conn.execute("DELETE FROM crash_reports WHERE account_id = ?", [accountId]);
-    try {
-      await conn.execute("DELETE FROM app_sessions WHERE account_id = ?", [accountId]);
-    } catch (e) {
-      if (e?.code !== "ER_NO_SUCH_TABLE") {
-        throw e;
-      }
+    for (const entry of ACCOUNT_SCOPED_TABLES) {
+      await deleteAccountScopedRow(conn, accountId, entry);
     }
     try {
       await conn.execute("INSERT INTO accounts_deleted_at (account_id_hash) VALUES (?)", [accountHash]);
@@ -77,32 +115,7 @@ async function deleteAccount(accountId) {
         throw e;
       }
     }
-    const tables = [
-      "DELETE FROM stripe_events_processed WHERE account_id = ?",
-      "DELETE FROM subscriptions WHERE account_id = ?",
-      "DELETE FROM whatsapp_events WHERE account_id = ?",
-      "DELETE FROM whatsapp_phone_bindings WHERE account_id = ?",
-      "DELETE FROM sync_blobs WHERE account_id = ?",
-      "DELETE FROM sync_cursors WHERE account_id = ?",
-      "DELETE FROM sync_devices WHERE account_id = ?",
-      "DELETE FROM auth_exchange_codes WHERE account_id = ?",
-      "DELETE FROM auth_identities WHERE account_id = ?",
-      "DELETE FROM user_profiles WHERE account_id = ?",
-      "DELETE FROM product_admins WHERE account_id = ?",
-      "DELETE FROM entitlements WHERE account_id = ?",
-      "DELETE FROM wallets WHERE account_id = ?",
-      "DELETE FROM accounts WHERE id = ?",
-    ];
-    for (const sql of tables) {
-      try {
-        await conn.execute(sql, [accountId]);
-      } catch (e) {
-        if (/whatsapp_|stripe_events_processed|FROM subscriptions/.test(sql) && e?.code === "ER_NO_SUCH_TABLE") {
-          continue;
-        }
-        throw e;
-      }
-    }
+    await conn.execute("DELETE FROM accounts WHERE id = ?", [accountId]);
     await conn.commit();
   } catch (e) {
     await conn.rollback();

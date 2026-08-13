@@ -174,3 +174,25 @@ cp .env.example .env
 npm install
 npm run dev
 ```
+
+### Testing Google sign-in against a local server
+
+Google rejects any `redirect_uri` that isn't pre-registered on the OAuth client — a
+local `APP_BASE_URL` (e.g. `http://localhost:3000`) produces
+`http://localhost:3000/auth/google/callback`, which is **not** the production URI and
+fails with `Error 400: redirect_uri_mismatch`.
+
+One-time, permanent fix (safe — additive, doesn't touch production):
+
+1. Google Cloud Console → **APIs & Services → Credentials** → open the same OAuth
+   client used in production (`GOOGLE_CLIENT_ID`).
+2. Under **Authorized redirect URIs**, add a second entry:
+   `http://localhost:3000/auth/google/callback` (Google allows plain `http://localhost`
+   as an explicit exception to its HTTPS-only rule).
+3. Keep `APP_BASE_URL=http://localhost:3000` in local `.env` so cloud-node derives the
+   matching redirect URI automatically.
+
+Apple Sign In has no such exception (return URL must be HTTPS), so it can't be
+click-tested against a local server — verify the account-linking logic directly via
+`lib/identities.js` (`resolveSocialAccount`) instead, and click-test Apple only against
+staging/production.

@@ -10,6 +10,7 @@ const { issueAuthTokens } = require("../lib/refreshTokens");
 const { getPool } = require("../lib/db");
 const { oauthHandoffPageHtml } = require("../lib/oauthHandoffHtml");
 const { mapSocialCallbackError } = require("../lib/authCallbackErrors");
+const { authRateLimitMiddleware } = require("../lib/authRateLimit");
 
 const router = express.Router();
 
@@ -44,7 +45,7 @@ function donePage(res, params) {
   return res.redirect(302, url);
 }
 
-router.get("/start/:provider", (req, res) => {
+router.get("/start/:provider", authRateLimitMiddleware("social"), (req, res) => {
   const provider = req.params.provider;
   const lib = providerLib(provider);
   if (!lib || !lib.isConfigured()) {
@@ -90,7 +91,7 @@ async function completeCallback(provider, code, stateToken, res) {
   }
 }
 
-router.get("/mobile/start/:provider", (req, res) => {
+router.get("/mobile/start/:provider", authRateLimitMiddleware("social"), (req, res) => {
   const provider = req.params.provider;
   const lib = providerLib(provider);
   if (!lib || !lib.isConfigured()) {
@@ -106,7 +107,7 @@ router.get("/mobile/start/:provider", (req, res) => {
   return res.redirect(302, apple.buildAuthUrl({ state, nonce }));
 });
 
-router.get("/google/callback", asyncRoute(async (req, res) => {
+router.get("/google/callback", authRateLimitMiddleware("social"), asyncRoute(async (req, res) => {
   const oauthError = String(req.query.error || "");
   if (oauthError) {
     const mapped = oauthError === "access_denied" ? "cancelled" : "signin_failed";
@@ -122,6 +123,7 @@ router.get("/google/callback", asyncRoute(async (req, res) => {
 router.post(
   "/apple/callback",
   express.urlencoded({ extended: false, limit: "64kb" }),
+  authRateLimitMiddleware("social"),
   asyncRoute(async (req, res) => {
     const oauthError = String(req.body?.error || "");
     if (oauthError) {
@@ -147,7 +149,7 @@ router.get("/done", (req, res) => {
   res.status(200).type("html").send(oauthHandoffPageHtml({ deepLink, error }));
 });
 
-router.post("/exchange", asyncRoute(async (req, res) => {
+router.post("/exchange", authRateLimitMiddleware("social"), asyncRoute(async (req, res) => {
   const code = String(req.body?.code || "");
   if (!code) return res.status(400).json({ detail: "Missing code" });
   try {

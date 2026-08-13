@@ -46,6 +46,19 @@ https://api.exosites.ch/auth/google/callback
 
 Optional Apple: see `cloud-node/.env.example` (`APPLE_*`).
 
+Required for **password reset + email verification** (else the "Forgot password" /
+verify-email links 404 with `{"detail":"Not found"}`, and even once the routes are
+deployed, sends silently no-op without these):
+
+| Variable | Notes |
+|----------|--------|
+| `EMAIL_ENABLED` | `1` to actually send (default `0` — logs an ALERT and no-ops) |
+| `RESEND_API_KEY` | From [resend.com](https://resend.com) → API Keys |
+| `EMAIL_FROM` | Optional; defaults to `Exo <noreply@exosites.ch>` — the sending domain must be verified in Resend first |
+
+Migrations `026`–`028` (password reset tokens, `accounts.email_verified`, email
+verification tokens) are included in `deploy-cloud-api.sh` — no manual step needed.
+
 ### 3. Verify production
 
 ```bash
@@ -89,6 +102,8 @@ Confirms `Contents/Resources/preload.js` exists (account gate IPC works).
 | Welcome before login | Missing `preload.js` in bundle | Rebuild with `extraResources` preload copy |
 | Email register works, Google 404 | Social routes not deployed | `./scripts/deploy-cloud-api.sh` |
 | SSH deploy `Permission denied` | Key/password | Fix `cloud-node/.env.deploy` or Infomaniak SSH keys |
+| Forgot-password link → `{"detail":"Not found"}` | Migrations 026–028 / routes not deployed yet | `./scripts/deploy-cloud-api.sh` |
+| "Check your email" but nothing arrives | `EMAIL_ENABLED`/`RESEND_API_KEY` unset, or sending domain unverified in Resend | Set both env vars + verify domain in Resend dashboard |
 
 ---
 

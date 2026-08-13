@@ -4,9 +4,13 @@ const config = require("./config");
 const { getPool } = require("./db");
 const { isAccountProductAdmin } = require("./productAdmins");
 const { latestSubscriptionRow, isEntitledSubscriptionRow } = require("./stripeBilling");
+const { createVerifyToken } = require("./emailVerification");
+const { sendEmail } = require("./email");
+const { verifyEmailTemplate } = require("./emailTemplates");
 
 const BCRYPT_ROUNDS = 12;
 const NAME_MAX_LENGTH = 120;
+const MIN_PASSWORD_LENGTH = 8;
 
 /**
  * Trim and cap a registrant name for storage.
@@ -37,10 +41,14 @@ function isValidPersonName(value) {
 async function provisionAccount(conn, id, email, passwordHash, names = {}) {
   const firstName = normalizePersonName(names.firstName);
   const lastName = normalizePersonName(names.lastName);
+  // Social-only accounts (no password) arrive here only after verifyIdToken()
+  // confirmed the provider's email_verified claim — already trustworthy.
+  // Password signups start unverified until they click the verify-email link.
+  const emailVerified = passwordHash === null ? 1 : 0;
   await conn.execute(
-    `INSERT INTO accounts (id, email, first_name, last_name, password_hash, trial_ends_at)
-     VALUES (?, ?, ?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY))`,
-    [id, email, firstName || null, lastName || null, passwordHash, config.freeTrialDays],
+    `INSERT INTO accounts (id, email, first_name, last_name, password_hash, email_verified, trial_ends_at)
+     VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY))`,
+    [id, email, firstName || null, lastName || null, passwordHash, emailVerified, config.freeTrialDays],
   );
   await conn.execute("INSERT INTO wallets (account_id, bytes_balance) VALUES (?, 0)", [id]);
   await conn.execute(
@@ -52,6 +60,23 @@ async function provisionAccount(conn, id, email, passwordHash, names = {}) {
     "INSERT INTO user_profiles (account_id, locale) VALUES (?, 'en')",
     [id],
   );
+}
+
+/**
+ * Best-effort — a token-creation or delivery hiccup must never fail
+ * registration (the account already committed by the time this runs).
+ * @param {string} accountId
+ * @param {string} email
+ */
+async function sendVerificationEmail(accountId, email) {
+  try {
+    const token = await createVerifyToken(accountId);
+    const verifyUrl = `${config.appBaseUrl}/auth/verify-email?token=${encodeURIComponent(token)}`;
+    const { subject, html, text } = verifyEmailTemplate(verifyUrl);
+    await sendEmail({ to: email, subject, html, text });
+  } catch (e) {
+    console.error("[accounts] ALERT could not send verification email:", e?.message || e);
+  }
 }
 
 /**
@@ -69,8 +94,8 @@ async function registerAccount(email, password, names) {
     err.status = 422;
     throw err;
   }
-  if (password.length < 8) {
-    const err = new Error("Password must be at least 8 characters");
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    const err = new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
     err.status = 400;
     throw err;
   }
@@ -99,6 +124,7 @@ async function registerAccount(email, password, names) {
     conn.release();
   }
 
+  await sendVerificationEmail(id, normalized);
   return { account_id: id, email: normalized };
 }
 
@@ -136,6 +162,54 @@ async function loginAccount(email, password) {
     throw err;
   }
   return { account_id: row.id, email: normalized };
+}
+
+/**
+ * Lookup for the forgot-password flow. Returns null for unknown emails and
+ * for social-only accounts (no password to reset) — callers must not let
+ * either case distinguish the response sent back to the client.
+ * @param {string} email
+ * @returns {Promise<{ id: string } | null>}
+ */
+async function findPasswordAccountByEmail(email) {
+  const pool = getPool();
+  const normalized = email.trim().toLowerCase();
+  const [rows] = await pool.execute(
+    "SELECT id FROM accounts WHERE email = ? AND is_active = 1 AND password_hash IS NOT NULL LIMIT 1",
+    [normalized],
+  );
+  return rows[0] ? { id: rows[0].id } : null;
+}
+
+/**
+ * Lightweight lookup for the verify-email/resend flow — deliberately not
+ * part of the public getProfile() shape consumed by desktop/mobile clients.
+ * @param {string} accountId
+ * @returns {Promise<{ email: string; emailVerified: boolean } | null>}
+ */
+async function getAccountEmailVerification(accountId) {
+  const pool = getPool();
+  const [rows] = await pool.execute(
+    "SELECT email, email_verified FROM accounts WHERE id = ? AND is_active = 1 LIMIT 1",
+    [accountId],
+  );
+  const row = rows[0];
+  return row ? { email: row.email, emailVerified: Boolean(row.email_verified) } : null;
+}
+
+/**
+ * @param {string} accountId
+ * @param {string} newPassword
+ */
+async function setAccountPassword(accountId, newPassword) {
+  if (String(newPassword || "").length < MIN_PASSWORD_LENGTH) {
+    const err = new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+    err.status = 422;
+    throw err;
+  }
+  const pool = getPool();
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+  await pool.execute("UPDATE accounts SET password_hash = ? WHERE id = ?", [passwordHash, accountId]);
 }
 
 /** @param {string} accountId */
@@ -259,6 +333,10 @@ module.exports = {
   loginAccount,
   getProfile,
   findAccountByEmail,
+  findPasswordAccountByEmail,
+  setAccountPassword,
+  getAccountEmailVerification,
+  sendVerificationEmail,
   assertAccountActive,
   provisionAccount,
   computePlan,

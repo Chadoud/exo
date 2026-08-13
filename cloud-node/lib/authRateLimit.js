@@ -9,6 +9,12 @@ const ACTION_MAX = {
   register: 8,
   login: 20,
   refresh: 60,
+  // Password reset request/consume and social-auth hops — high enough that a
+  // real user retrying a typo'd password never gets caught, low enough to
+  // blunt token-guessing / email-bombing abuse.
+  password_reset: 10,
+  verify_email: 10,
+  social: 30,
   license_activate: 30,
 };
 
@@ -21,7 +27,7 @@ function clientIp(req) {
 }
 
 /**
- * @param {"register"|"login"|"refresh"|"license_activate"} action
+ * @param {"register"|"login"|"refresh"|"password_reset"|"verify_email"|"social"|"license_activate"} action
  */
 function authRateLimitMiddleware(action) {
   const max = ACTION_MAX[action] ?? ACTION_MAX.login;

@@ -41,6 +41,10 @@ if (nodeEnv === "production") {
   if (stripeSecretKey && stripeSecretKey.startsWith("sk_test_")) {
     console.warn("[config] WARNING: STRIPE_SECRET_KEY is a test-mode key in production");
   }
+  if (env("EMAIL_ENABLED", "0") === "1" && !env("RESEND_API_KEY")) {
+    console.error("[config] EMAIL_ENABLED=1 requires RESEND_API_KEY in production");
+    process.exit(1);
+  }
 }
 
 const jwtSecret = jwtSecretRaw;
@@ -120,6 +124,14 @@ module.exports = {
     /** Display-only price strings served to clients (never used for charging). */
     displayPriceMonthly: env("STRIPE_DISPLAY_PRICE_MONTHLY", "CHF 20"),
     displayPriceAnnual: env("STRIPE_DISPLAY_PRICE_ANNUAL", "CHF 200"),
+  },
+
+  // ─── Transactional email (Resend) ──────────────────────────────────────────
+  email: {
+    /** Master rollout switch — off logs an ALERT and no-ops (never blocks auth flows). */
+    enabled: env("EMAIL_ENABLED", "0") === "1",
+    apiKey: env("RESEND_API_KEY"),
+    from: env("EMAIL_FROM", "Exo <noreply@exosites.ch>"),
   },
 
   whatsapp: {

@@ -25,6 +25,13 @@ const ERROR_ICON = `<svg class="icon icon--err" viewBox="0 0 48 48" width="48" h
   <path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" d="M17 17l14 14M31 17L17 31"/>
 </svg>`;
 
+/** Neutral (pre-action) state — e.g. a form awaiting input, nothing succeeded or failed yet. */
+const NEUTRAL_ICON = `<svg class="icon icon--neutral" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">
+  <circle cx="24" cy="24" r="22" fill="none" stroke="currentColor" stroke-width="2" opacity="0.35"/>
+  <rect x="16" y="22" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2.5"/>
+  <path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" d="M19 22v-4a5 5 0 0 1 10 0v4"/>
+</svg>`;
+
 function openAppButton(deepLink, label) {
   const safeLink = escapeHtml(deepLink);
   const safeLabel = escapeHtml(label);
@@ -47,9 +54,32 @@ function openAppButton(deepLink, label) {
 </script>`;
 }
 
+const VARIANT_PRESENTATION = {
+  success: { icon: SUCCESS_ICON, iconClass: "icon-wrap icon-wrap--ok" },
+  error: { icon: ERROR_ICON, iconClass: "icon-wrap icon-wrap--err" },
+  neutral: { icon: NEUTRAL_ICON, iconClass: "icon-wrap icon-wrap--neutral" },
+};
+
+/**
+ * Shared browser-side JSON-POST helper for hosted auth pages (forgot
+ * password, reset password, verify email). Each page's own inline <script>
+ * calls `postJson(url, payload)` instead of repeating the
+ * fetch → parse-body → { ok, body } boilerplate for every submit handler.
+ */
+const POST_JSON_HELPER_SCRIPT = `<script>
+function postJson(url, payload) {
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).then(function (res) {
+    return res.json().then(function (body) { return { ok: res.ok, body: body }; });
+  });
+}
+</script>`;
+
 function brandedShell({ variant, headline, bodyHtml, footerHtml = "" }) {
-  const icon = variant === "error" ? ERROR_ICON : SUCCESS_ICON;
-  const iconClass = variant === "error" ? "icon-wrap icon-wrap--err" : "icon-wrap icon-wrap--ok";
+  const { icon, iconClass } = VARIANT_PRESENTATION[variant] || VARIANT_PRESENTATION.success;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -113,6 +143,7 @@ function brandedShell({ variant, headline, bodyHtml, footerHtml = "" }) {
     }
     .icon-wrap--ok { color: var(--success); background: rgba(76, 175, 125, 0.12); }
     .icon-wrap--err { color: var(--error); background: rgba(239, 83, 80, 0.12); }
+    .icon-wrap--neutral { color: var(--accent); background: rgba(108, 99, 255, 0.12); }
     .icon { display: block; }
     h1 {
       font-size: 1.35rem;
@@ -248,4 +279,14 @@ function billingHandoffPageHtml({ kind }) {
   });
 }
 
-module.exports = { oauthHandoffPageHtml, billingHandoffPageHtml, escapeHtml, ERROR_COPY };
+module.exports = {
+  oauthHandoffPageHtml,
+  billingHandoffPageHtml,
+  escapeHtml,
+  ERROR_COPY,
+  // Shared dark-theme card shell — reused by passwordResetPagesHtml.js so every
+  // hosted auth page (OAuth handoff, billing, password reset) looks the same.
+  brandedShell,
+  openAppButton,
+  POST_JSON_HELPER_SCRIPT,
+};

@@ -67,5 +67,65 @@ test("deleteAccount purges telemetry and records deletion audit", async () => {
     auditInsert.params[0],
     crypto.createHash("sha256").update(accountId).digest("hex"),
   );
+  const syncChangesDelete = executed.find(
+    (e) => typeof e === "object" && /delete from sync_changes/i.test(e.sql),
+  );
+  assert.ok(syncChangesDelete);
+  assert.deepEqual(syncChangesDelete.params, [accountId]);
+
+  const pairingGrantsDelete = executed.find(
+    (e) => typeof e === "object" && /delete from sync_pairing_grants/i.test(e.sql),
+  );
+  assert.ok(pairingGrantsDelete);
+  assert.deepEqual(pairingGrantsDelete.params, [accountId]);
+
   assert.ok(executed.includes("commit"));
+});
+
+test("deleteAccount tolerates sync_changes/sync_pairing_grants not existing yet (pre-migration-023)", async () => {
+  const accountId = "acc-test-002";
+  const executed = [];
+
+  const conn = {
+    async beginTransaction() {
+      executed.push("begin");
+    },
+    async commit() {
+      executed.push("commit");
+    },
+    async rollback() {
+      executed.push("rollback");
+    },
+    async execute(sql, params = []) {
+      const normalized = sql.replace(/\s+/g, " ").trim();
+      executed.push({ sql: normalized, params });
+      if (/delete from sync_changes|delete from sync_pairing_grants/i.test(normalized)) {
+        const err = new Error("no such table");
+        err.code = "ER_NO_SUCH_TABLE";
+        throw err;
+      }
+      return [{ affectedRows: 1 }];
+    },
+    release() {},
+  };
+
+  const pool = {
+    async getConnection() {
+      return conn;
+    },
+  };
+
+  delete require.cache[require.resolve("../lib/db")];
+  delete require.cache[require.resolve("../lib/accountLifecycle")];
+  require("../lib/db").getPool = () => pool;
+
+  const { deleteAccount } = require("../lib/accountLifecycle");
+  await deleteAccount(accountId);
+
+  const accountsDelete = executed.find(
+    (e) => typeof e === "object" && /delete from accounts where/i.test(e.sql),
+  );
+  assert.ok(accountsDelete, "deletion continues past missing sync_changes/sync_pairing_grants tables");
+  assert.ok(executed.includes("commit"));
+  assert.ok(!executed.includes("rollback"));
 });

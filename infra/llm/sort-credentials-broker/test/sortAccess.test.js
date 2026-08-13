@@ -1,6 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { accountHasSortAccess } = require("../lib/sortAccess");
+const { accountHasSortAccess } = require("../sortAccess");
+
+// Mirrors cloud-node/test/sortAccess.test.js — this file is a duplicated copy
+// of cloud-node/lib/sortAccess.js (separate process, same contract) and must
+// not drift from it.
 
 test("accountHasSortAccess allows active trial", () => {
   assert.equal(accountHasSortAccess({ trial_active: true, entitlements: [] }), true);
@@ -10,7 +14,7 @@ test("accountHasSortAccess allows active sort entitlement", () => {
   assert.equal(
     accountHasSortAccess({
       trial_active: false,
-      entitlements: [{ feature: "sort", active: true }],
+      entitlements: [{ feature: "sort", source: "stripe", active: true }],
     }),
     true,
   );
