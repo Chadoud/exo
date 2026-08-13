@@ -8,7 +8,11 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // One retry everywhere: local machines absorb load spikes, CI absorbs flakes.
+  retries: 1,
+  // Local dev-mode Vite serves every worker from one process; beyond ~3 workers
+  // module transforms contend and per-test time doubles past the 30s budget.
+  workers: process.env.CI ? undefined : 3,
   reporter: "list",
   use: {
     baseURL: "http://127.0.0.1:5173",
