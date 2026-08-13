@@ -80,18 +80,25 @@ else
   echo "  response: ${device_body}"
 fi
 
+# Envelope must satisfy the hardened relay contract (syncRelay.validateBlob):
+# allowlisted collection, 64-hex content_hash, schema_version 2-3.
 record_id="verify-$(date +%s)"
+content_hash="$(printf 'dGVzdA==' | shasum -a 256 | cut -d' ' -f1)"
 push_body="$(curl -fsS -X POST "${BASE}/v1/sync/blobs/push" "${auth_header[@]}" \
-  -d "{\"blobs\":[{\"collection\":\"verify\",\"record_id\":\"${record_id}\",\"device_id\":\"verify-script\",\"logical_clock\":1,\"updated_at\":\"2026-06-16T12:00:00Z\",\"ciphertext\":\"dGVzdA==\",\"content_hash\":\"abc123\"}]}" \
+  -d "{\"blobs\":[{\"collection\":\"tasks\",\"record_id\":\"${record_id}\",\"device_id\":\"verify-script\",\"logical_clock\":1,\"updated_at\":\"2026-06-16T12:00:00Z\",\"schema_version\":3,\"ciphertext\":\"dGVzdA==\",\"content_hash\":\"${content_hash}\"}]}" \
   2>/dev/null || echo '{}')"
-if echo "$push_body" | grep -q '"accepted"'; then
+if echo "$push_body" | grep -q '"accepted":1'; then
   check "POST /v1/sync/blobs/push (test envelope)" 1
 else
   check "POST /v1/sync/blobs/push" 0
   echo "  response: ${push_body}"
 fi
 
-pull_body="$(curl -fsS "${BASE}/v1/sync/blobs/pull?cursor=0&limit=10" -H "Authorization: Bearer ${access_token}" 2>/dev/null || echo '{}')"
+# Pull from just before the cursor returned by push, so the check stays exact
+# regardless of how much history the verify account has accumulated.
+push_cursor="$(echo "$push_body" | sed -n 's/.*"cursor":\([0-9][0-9]*\).*/\1/p')"
+pull_from=$(( ${push_cursor:-1} - 1 ))
+pull_body="$(curl -fsS "${BASE}/v1/sync/blobs/pull?cursor=${pull_from}&limit=10" -H "Authorization: Bearer ${access_token}" 2>/dev/null || echo '{}')"
 if echo "$pull_body" | grep -q "\"record_id\":\"${record_id}\""; then
   check "GET /v1/sync/blobs/pull returns pushed blob" 1
 else
