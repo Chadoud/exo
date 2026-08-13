@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 /**
- * Internal: sign an offline license (exo1.…) for one machine_id.
+ * Internal: sign an offline license (exo1.…).
  * Usage (from repo root):
- *   node tools/license-keygen/sign.cjs --private-key path/to/secret.hex --machine-id <64-char sha256 hex>
+ *   node tools/license-keygen/sign.cjs --private-key path/to/secret.hex [--max-seats N]
+ *
+ * The key carries no machine_id — it's unknown at signing time, since the
+ * client just pastes the key with no prior ID exchange. Device binding
+ * happens on first activation, enforced server-side by cloud-node
+ * (routes/licenses.js + lib/licenseActivations.js) via `max_seats`.
  *
  * Private key: 32-byte Ed25519 seed as 64 hex chars (never commit).
  */
@@ -26,21 +31,23 @@ function b64url(buf) {
 }
 
 function parseArgs(argv) {
-  const out = { privateKeyPath: null, machineId: null };
+  const out = { privateKeyPath: null, maxSeats: 1 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--private-key") out.privateKeyPath = argv[++i];
-    else if (a === "--machine-id") out.machineId = argv[++i];
+    else if (a === "--max-seats") out.maxSeats = Number.parseInt(argv[++i], 10);
   }
   return out;
 }
 
 async function main() {
-  const { privateKeyPath, machineId } = parseArgs(process.argv.slice(2));
-  if (!privateKeyPath || !machineId) {
-    console.error(
-      "Usage: node tools/license-keygen/sign.cjs --private-key <secret.hex> --machine-id <64-hex fingerprint>"
-    );
+  const { privateKeyPath, maxSeats } = parseArgs(process.argv.slice(2));
+  if (!privateKeyPath) {
+    console.error("Usage: node tools/license-keygen/sign.cjs --private-key <secret.hex> [--max-seats N]");
+    process.exit(1);
+  }
+  if (!Number.isInteger(maxSeats) || maxSeats < 1) {
+    console.error("--max-seats must be a positive integer.");
     process.exit(1);
   }
   const raw = fs.readFileSync(path.resolve(privateKeyPath), "utf8").trim();
@@ -49,17 +56,11 @@ async function main() {
     console.error("Private key must be 32 bytes (64 hex chars).");
     process.exit(1);
   }
-  const mid = String(machineId).trim().toLowerCase();
-  if (!/^[0-9a-f]{64}$/.test(mid)) {
-    console.error("machine_id must be a 64-char hex SHA-256 fingerprint (see Electron machineId / backend machine_fingerprint).");
-    process.exit(1);
-  }
 
   const payload = {
     iat: Math.floor(Date.now() / 1000),
     license_id: crypto.randomUUID(),
-    machine_id: mid,
-    max_seats: 1,
+    max_seats: maxSeats,
     product: PRODUCT_SLUG,
     tier: "full",
   };

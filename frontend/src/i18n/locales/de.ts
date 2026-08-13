@@ -1615,6 +1615,8 @@ export default {
       "Ihre kostenlose Testphase ist abgelaufen. Abonnieren Sie oben, um weiterzusortieren.",
     licenseHaveKeyLink: "Ich habe einen Lizenzschlüssel",
     licenseUnlimitedDesc: "Ihre Lizenz ist auf diesem Gerät aktiv — unbegrenzte Verarbeitung.",
+    licenseSeatLimitDesc: "Diese Lizenz ist bereits auf der maximalen Anzahl von Geräten aktiv.",
+    licenseNetworkErrorDesc: "Server für die Aktivierung nicht erreichbar — bitte Verbindung prüfen und erneut versuchen.",
     licenseKeyLabel: "Lizenzschlüssel",
     licensePastePlaceholder: "exo1.…-Lizenzzeichenfolge einfügen",
     licenseActivate: "Lizenz speichern",

@@ -19,6 +19,8 @@ const {
   clearLicense,
 } = require("../entitlement/store");
 const { verifyLicenseKey } = require("../entitlement/verify");
+const { getMachineFingerprint } = require("../entitlement/machineId");
+const { activateLicenseOnline } = require("../entitlement/activateOnline");
 const cloudAuth = require("../cloudAuth");
 const { syncSortCredentialsFromCloud } = require("../entitlement/sortCredentials");
 const { getManualRemoteLlmApiKey, setManualRemoteLlmApiKey } = require("../backendAiSecrets");
@@ -278,12 +280,18 @@ function registerAppHandlers() {
   ipcMain.handle("entitlement:activateLicense", async (event, licenseKey) => {
     const denied = rejectUntrustedSender(event);
     if (denied) return denied;
-    const raw = typeof licenseKey === "string" ? licenseKey : "";
+    const raw = typeof licenseKey === "string" ? licenseKey.trim() : "";
     const v = await verifyLicenseKey(raw);
     if (!v.ok) {
       return { ok: false, reason: v.reason ?? "invalid" };
     }
-    saveLicenseKey(app.getPath("userData"), raw.trim());
+    // Binds this key to the current device on first use — silent, no ID
+    // exchange needed from the client (see tools/license-keygen/README.md).
+    const activation = await activateLicenseOnline(raw, getMachineFingerprint());
+    if (!activation.ok) {
+      return { ok: false, reason: activation.reason };
+    }
+    saveLicenseKey(app.getPath("userData"), raw);
     return { ok: true };
   });
 

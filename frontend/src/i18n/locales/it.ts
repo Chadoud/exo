@@ -1620,6 +1620,8 @@ export default {
       "La prova gratuita è terminata. Abbonati sopra per continuare a ordinare.",
     licenseHaveKeyLink: "Ho una chiave di licenza",
     licenseUnlimitedDesc: "La licenza Ã¨ attiva su questo dispositivo â€” elaborazione illimitata.",
+    licenseSeatLimitDesc: "Questa licenza è già attiva sul numero massimo di dispositivi.",
+    licenseNetworkErrorDesc: "Impossibile contattare il server per l'attivazione — controlla la connessione e riprova.",
     licenseKeyLabel: "Chiave di licenza",
     licensePastePlaceholder: "Incolla la stringa exo1.â€¦",
     licenseActivate: "Salva licenza",

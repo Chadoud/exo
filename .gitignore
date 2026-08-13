@@ -45,6 +45,7 @@ backend/.coverage
 tools/ffmpeg/
 tools/license-keygen/private*.hex
 tools/license-keygen/*.secret
+tools/license-keygen/issued/
 # Local-only recovery branch after secret purge — never push
 # (enforced by scripts/push-new-public-repo.sh)
 

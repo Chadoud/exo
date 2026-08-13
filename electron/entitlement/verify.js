@@ -1,7 +1,8 @@
 const { loadEd25519 } = require("../crypto/ed25519");
 const { LICENSE_PREFIX, PRODUCT_SLUG } = require("./constants");
-const { getMachineFingerprint } = require("./machineId");
-const { EMBEDDED_LICENSE_PUBLIC_KEY_HEX } = require("./embeddedPublicKey");
+// Not destructured: tests reassign `embeddedPublicKey.EMBEDDED_LICENSE_PUBLIC_KEY_HEX`
+// to verify against a throwaway keypair instead of the real embedded one.
+const embeddedPublicKey = require("./embeddedPublicKey");
 
 /** Same canonical form as backend `canonical_license_payload`. */
 function canonicalLicensePayload(obj) {
@@ -38,9 +39,12 @@ async function verifyLicenseKey(licenseKey) {
   if (payloadObj.tier !== "full") {
     return { ok: false, reason: "tier" };
   }
-  const fp = getMachineFingerprint();
-  if (typeof payloadObj.machine_id !== "string" || payloadObj.machine_id !== fp) {
-    return { ok: false, reason: "machine" };
+  if (typeof payloadObj.license_id !== "string" || !payloadObj.license_id) {
+    return { ok: false, reason: "license_id" };
+  }
+  const maxSeats = Number(payloadObj.max_seats);
+  if (!Number.isInteger(maxSeats) || maxSeats < 1) {
+    return { ok: false, reason: "max_seats" };
   }
   const message = new TextEncoder().encode(canonicalLicensePayload(payloadObj));
   let sig;
@@ -52,7 +56,7 @@ async function verifyLicenseKey(licenseKey) {
   if (sig.length !== 64) {
     return { ok: false, reason: "sig_len" };
   }
-  const pub = Uint8Array.from(Buffer.from(EMBEDDED_LICENSE_PUBLIC_KEY_HEX, "hex"));
+  const pub = Uint8Array.from(Buffer.from(embeddedPublicKey.EMBEDDED_LICENSE_PUBLIC_KEY_HEX, "hex"));
   const loaded = await loadEd25519();
   if (!loaded.ok) {
     return { ok: false, reason: loaded.reason || "crypto_unavailable" };

@@ -2,10 +2,15 @@
 
 const { allow } = require("./rateLimit");
 
-const REGISTER_MAX = 8;
-const LOGIN_MAX = 20;
-const REFRESH_MAX = 60;
 const WINDOW_MS = 15 * 60 * 1000;
+
+/** Per-action max events per IP per WINDOW_MS. */
+const ACTION_MAX = {
+  register: 8,
+  login: 20,
+  refresh: 60,
+  license_activate: 30,
+};
 
 function clientIp(req) {
   const forwarded = req.headers["x-forwarded-for"];
@@ -16,11 +21,10 @@ function clientIp(req) {
 }
 
 /**
- * @param {"register"|"login"|"refresh"} action
+ * @param {"register"|"login"|"refresh"|"license_activate"} action
  */
 function authRateLimitMiddleware(action) {
-  const max =
-    action === "register" ? REGISTER_MAX : action === "login" ? LOGIN_MAX : REFRESH_MAX;
+  const max = ACTION_MAX[action] ?? ACTION_MAX.login;
   return (req, res, next) => {
     const key = `auth:${action}:${clientIp(req)}`;
     if (!allow(key, max, WINDOW_MS)) {

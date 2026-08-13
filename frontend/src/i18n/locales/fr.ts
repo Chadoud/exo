@@ -1619,6 +1619,8 @@ export default {
       "Votre essai gratuit est terminé. Abonnez-vous ci-dessus pour continuer à trier.",
     licenseHaveKeyLink: "J'ai une clé de licence",
     licenseUnlimitedDesc: "Votre licence est active sur cet appareil — traitement illimité.",
+    licenseSeatLimitDesc: "Cette licence est déjà active sur le nombre maximal d'appareils.",
+    licenseNetworkErrorDesc: "Impossible de contacter le serveur pour l'activation — vérifiez votre connexion et réessayez.",
     licenseKeyLabel: "Clé de licence",
     licensePastePlaceholder: "Collez votre chaîne exo1.…",
     licenseActivate: "Enregistrer la licence",

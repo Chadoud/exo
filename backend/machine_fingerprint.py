@@ -7,12 +7,19 @@ import json
 import platform
 import socket
 
+_ARCH_ALIASES = {
+    # Map Python's `platform.machine()` spellings onto Node's `os.arch()` spellings.
+    "amd64": "x64",
+    "x86_64": "x64",
+    "aarch64": "arm64",
+    "i386": "ia32",
+    "i686": "ia32",
+}
+
 
 def _norm_arch() -> str:
     m = (platform.machine() or "").lower()
-    if m == "amd64":
-        return "x64"
-    return m
+    return _ARCH_ALIASES.get(m, m)
 
 
 def _norm_platform() -> str:

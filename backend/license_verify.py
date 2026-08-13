@@ -1,4 +1,12 @@
-"""Offline Ed25519 license verification (same format as Electron)."""
+"""Offline Ed25519 license verification (same format as Electron).
+
+Deliberately does not check any machine/device binding: the signed payload
+carries no machine_id (unknown at signing time — the client just pastes a key
+with no prior ID exchange). Device binding is enforced server-side, once, at
+first-activation time by cloud-node (routes/licenses.js); this module only
+re-checks the cheap, fully-offline parts (signature, product, tier, seats) on
+every local entitlement read.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +18,6 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from entitlement_constants import EMBEDDED_LICENSE_PUBLIC_KEY_HEX, LICENSE_PREFIX, PRODUCT_SLUG
-from machine_fingerprint import machine_fingerprint
 
 
 def _canonical_payload(obj: dict[str, Any]) -> str:
@@ -43,9 +50,11 @@ def verify_license_key(license_key: str) -> tuple[bool, str | None, dict | None]
         return False, "product", None
     if payload.get("tier") != "full":
         return False, "tier", None
-    fp = machine_fingerprint()
-    if payload.get("machine_id") != fp:
-        return False, "machine", None
+    if not isinstance(payload.get("license_id"), str) or not payload.get("license_id"):
+        return False, "license_id", None
+    max_seats = payload.get("max_seats")
+    if not isinstance(max_seats, int) or isinstance(max_seats, bool) or max_seats < 1:
+        return False, "max_seats", None
     message = _canonical_payload(payload).encode("utf-8")
     try:
         sig = _b64url_decode(parts[2])

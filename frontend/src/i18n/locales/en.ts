@@ -1789,6 +1789,8 @@ export default {
       "Your free trial has ended. Subscribe above to continue sorting.",
     licenseHaveKeyLink: "I have a license key",
     licenseUnlimitedDesc: "Your license is active on this device — unlimited processing.",
+    licenseSeatLimitDesc: "This license is already active on the maximum number of devices.",
+    licenseNetworkErrorDesc: "Couldn't reach the server to activate — check your connection and try again.",
     licenseKeyLabel: "License key",
     licensePastePlaceholder: "Paste your exo1.… license string",
     licenseActivate: "Save license",

@@ -35,6 +35,18 @@ export default function SettingsLicenseSection({
       duration: 8000,
     });
 
+  const activationErrorDescription = (reason: string | undefined) => {
+    switch (reason) {
+      case "seat_limit":
+        return t("settings.licenseSeatLimitDesc");
+      case "network_error":
+      case "cloud_url_unset":
+        return t("settings.licenseNetworkErrorDesc");
+      default:
+        return reason ?? "";
+    }
+  };
+
   const activate = async () => {
     const bridge = window.electronAPI?.activateLicense;
     if (!bridge) {
@@ -46,7 +58,7 @@ export default function SettingsLicenseSection({
       const res = await bridge(licenseInput);
       if (!res.ok) {
         toast.error(t("settings.licenseInvalid"), {
-          description: res.reason ?? "",
+          description: activationErrorDescription(res.reason),
         });
         return;
       }
