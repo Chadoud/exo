@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 /** Error codes surfaced by the billing IPC (electron/ipc/billingHandlers.js). */
-export type BillingErrorCode =
+type BillingErrorCode =
   | "not_logged_in"
   | "already_subscribed"
   | "no_stripe_customer"
@@ -12,7 +12,7 @@ export type BillingErrorCode =
   | "billing_error"
   | "untrusted_sender";
 
-export type BillingInterval = "monthly" | "annual";
+type BillingInterval = "monthly" | "annual";
 
 export function hasBillingIpc(): boolean {
   return (

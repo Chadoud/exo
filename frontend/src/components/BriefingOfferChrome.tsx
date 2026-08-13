@@ -3,7 +3,7 @@ import type { BriefingOfferPhase } from "../voice/briefingOfferTypes";
 import { useI18n } from "../i18n/I18nContext";
 import BriefingAlwaysConfirmDialog from "./BriefingAlwaysConfirmDialog";
 
-export interface BriefingOfferChromeProps {
+interface BriefingOfferChromeProps {
   phase: BriefingOfferPhase;
   errorMessage: string | null;
   confirmAlwaysOpen: boolean;

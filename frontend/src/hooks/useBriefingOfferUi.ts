@@ -9,7 +9,7 @@ import type {
   BriefingOfferServerEvent,
 } from "../voice/briefingOfferTypes";
 
-export interface UseBriefingOfferUiOptions {
+interface UseBriefingOfferUiOptions {
   /** Send a JSON frame on the open voice WebSocket (no-op when disconnected). */
   sendFrame: (frame: Record<string, unknown>) => void;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export interface BillingConfig {
+interface BillingConfig {
   loading: boolean;
   /** Whether Stripe billing is live on the cloud API. */
   enabled: boolean;

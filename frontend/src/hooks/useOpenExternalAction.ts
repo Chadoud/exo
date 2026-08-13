@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { copyTextToClipboard } from "../utils/clipboard";
 
-export type OpenExternalActionState = "idle" | "failed" | "copied";
+type OpenExternalActionState = "idle" | "failed" | "copied";
 
 /**
  * Opens an external URL via the Electron bridge, with a copy-link fallback when the

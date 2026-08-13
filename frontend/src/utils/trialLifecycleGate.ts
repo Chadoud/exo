@@ -5,7 +5,7 @@ import {
   TRIAL_GATE_DISMISSED_SESSION_KEY,
 } from "../constants";
 
-export type TrialLifecycleModal = "none" | "nudge" | "gate";
+type TrialLifecycleModal = "none" | "nudge" | "gate";
 
 /** True once the user has decided (either button, Esc, or backdrop) on the trial-ending nudge. */
 export function readTrialNudgeSeen(): boolean {
