@@ -23,6 +23,9 @@ export const VOICE_CAPTURE_WORKLET_URL = publicAssetUrl("voice-capture-processor
 /** Account / password help on the public website. */
 export const EXO_ACCOUNT_WEB_URL = "https://exosites.ch";
 
+/** Hosted "request a password reset" page — same cloud API host as social sign-in. */
+export const EXO_FORGOT_PASSWORD_WEB_URL = "https://api.exosites.ch/auth/forgot-password/page";
+
 export const DEFAULT_SORT_OUTPUT_FOLDER_LABEL = `${APP_DISPLAY_NAME.trim()} Sorted Files`;
 
 /** Keep in sync with `electron/constants.js` `BACKEND_PORT`. */

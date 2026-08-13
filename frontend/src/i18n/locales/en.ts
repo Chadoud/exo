@@ -1027,7 +1027,7 @@ export default {
     trialStarted: "Your free trial has started",
     trialStartedDesc: "{days} days of full Exo — sorting, briefing, and more.",
     forgotPassword: "Forgot password?",
-    forgotPasswordAria: "Reset your password on exosites.ch",
+    forgotPasswordAria: "Reset your password — opens a page to send you a reset link by email",
     emailOnlyHint:
       "Google sign-in isn't available on the server yet. Create a free account with email below (password at least 8 characters), or sign in if you already have one.",
   },

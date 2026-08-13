@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { APP_DISPLAY_NAME, APP_LOGO_URL, EXO_ACCOUNT_WEB_URL } from "../constants";
+import { APP_DISPLAY_NAME, APP_LOGO_URL, EXO_FORGOT_PASSWORD_WEB_URL } from "../constants";
 import { useRememberDevicePreference } from "../hooks/useRememberDevicePreference";
 import {
   performCloudAuth,
@@ -122,7 +122,7 @@ export default function CloudAuthScreen({ onSignedIn }: CloudAuthScreenProps) {
   };
 
   const openForgotPassword = () => {
-    void window.electronAPI?.openExternal?.(EXO_ACCOUNT_WEB_URL);
+    void window.electronAPI?.openExternal?.(EXO_FORGOT_PASSWORD_WEB_URL);
   };
 
   const hasSocial = providers.google || providers.apple;

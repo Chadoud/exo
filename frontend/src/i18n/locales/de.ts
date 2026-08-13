@@ -876,7 +876,7 @@ export default {
     trialStarted: "Ihre kostenlose Testphase hat begonnen",
     trialStartedDesc: "{days} Tage voller Exo — Sortieren, Briefing und mehr.",
     forgotPassword: "Passwort vergessen?",
-    forgotPasswordAria: "Passwort auf exosites.ch zurücksetzen",
+    forgotPasswordAria: "Passwort zurücksetzen – öffnet eine Seite, die Ihnen einen Link per E-Mail sendet",
     emailOnlyHint:
       "Google-Anmeldung ist auf dem Server noch nicht verfügbar. Erstellen Sie unten ein kostenloses Konto per E-Mail (Passwort mindestens 8 Zeichen) oder melden Sie sich an, wenn Sie bereits eines haben.",
   },

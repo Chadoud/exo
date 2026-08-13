@@ -880,7 +880,7 @@ export default {
     trialStarted: "Votre essai gratuit a commencé",
     trialStartedDesc: "{days} jours d'Exo complet — tri, briefing et plus.",
     forgotPassword: "Mot de passe oublié ?",
-    forgotPasswordAria: "Réinitialiser le mot de passe sur exosites.ch",
+    forgotPasswordAria: "Réinitialiser le mot de passe — ouvre une page qui vous envoie un lien par e-mail",
     emailOnlyHint:
       "La connexion Google n'est pas encore disponible sur le serveur. Créez un compte gratuit avec votre e-mail ci-dessous (mot de passe d'au moins 8 caractères), ou connectez-vous si vous en avez déjà un.",
   },
