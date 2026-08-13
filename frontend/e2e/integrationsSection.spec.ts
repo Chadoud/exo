@@ -68,7 +68,9 @@ test.describe("External sources tab", () => {
       .getByRole("region", { name: "WhatsApp" })
       .getByRole("button", { name: "Setup help" });
     await expect(setupHelp).toBeVisible();
-    await setupHelp.click({ force: true });
+    // No force: an actionability-checked click waits for layout to settle;
+    // force-clicking fired at a stale position and missed the button.
+    await setupHelp.click();
     await expect(page.getByRole("heading", { name: "WhatsApp Business setup" })).toBeVisible();
 
     await expect(page.getByText("Business number connected (+41791234567).")).toBeVisible();

@@ -23,7 +23,8 @@ test.describe("Sort instructions strip v2", () => {
 
     await page.getByRole("button", { name: "How files are grouped" }).click();
     await page.getByRole("option", { name: "Custom instructions" }).click();
-    await expect(page.getByRole("button", { name: "Write instructions" })).toBeVisible();
+    // The editor now renders inline (no "Write instructions" disclosure step).
+    await expect(page.getByRole("textbox", { name: "Extra sorting instructions" })).toBeVisible();
 
     await page.getByRole("button", { name: "How files are grouped" }).click();
     await page.getByRole("option", { name: "Folder structure" }).click();
