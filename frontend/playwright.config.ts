@@ -10,6 +10,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   // One retry everywhere: local machines absorb load spikes, CI absorbs flakes.
   retries: 1,
+  // Dev-mode Vite transforms modules on first request; the heaviest panels
+  // (Settings, memory map) legitimately take ~30s cold — same budget the
+  // larger specs already set individually via test.setTimeout.
+  timeout: 60_000,
   // Local dev-mode Vite serves every worker from one process; beyond ~3 workers
   // module transforms contend and per-test time doubles past the 30s budget.
   workers: process.env.CI ? undefined : 3,
