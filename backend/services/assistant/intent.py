@@ -40,7 +40,14 @@ _EXTERNAL_SOURCE_TASK_RE = re.compile(
 _AGENT_TASK_RE = re.compile(
     r"\b(plan\s+step|autonomously|step[\s-]by[\s-]step|automatically|do everything|"
     r"execute|carry\s+out|handle\s+everything|multiple steps?|find.*then.*then|"
-    r"then.*and\s+then)\b",
+    r"then.*and\s+then|"
+    # Analytical asks over retrieved data (filter/extract/count/compute) need real
+    # reasoning, not the deterministic "just list it" read_calendar/read_mail path —
+    # those paths render prefetched items as-is with no LLM step at all. Without this,
+    # a goal like "find events matching X, extract and count unique names" gets caught
+    # by the calendar/mail noun check below and silently dumped unfiltered.
+    r"extract\s+and\s+count|count\s+the\s+(?:number|total)|how\s+many\s+unique|"
+    r"determine\s+how\s+many|cross[\s-]?reference|tally\b)",
     re.IGNORECASE,
 )
 # Inbox "Retry in Chat" prefills — must win over mail nouns like "invoices".

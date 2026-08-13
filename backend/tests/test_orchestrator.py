@@ -310,7 +310,7 @@ def _fake_reason(capability, system, user):
         ]})
     if "verify one step" in system:
         return '{"ok": true, "feedback": ""}'
-    if "Summarize" in system:
+    if "actual answer" in system:
         return "All done — weather fetched and summarized."
     return "reasoned output"
 

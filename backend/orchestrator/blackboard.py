@@ -12,6 +12,18 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+# A step's raw output is already capped at 1500 chars when it's recorded
+# (see orchestrator/agents.py _run_step). Re-truncating to 200 chars here used
+# to silently starve any goal that needs to reason over a full result (e.g.
+# "count the unique names across these 20 calendar events") — the model would
+# never see more than the first couple of entries. Match the storage cap so
+# rendering doesn't lose data that was already kept.
+_PER_STEP_CONTEXT_CHARS = 1500
+# Bounds total prompt size across all recorded steps (plan budget caps at 12
+# steps); 12000 chars (~3k tokens) comfortably fits every provider Conductor
+# routes to without materially affecting latency/cost.
+_DEFAULT_CONTEXT_MAX_CHARS = 12000
+
 
 @dataclass
 class Step:
@@ -60,7 +72,7 @@ class Blackboard:
         self.results.append(result)
         self.note(f"step {result.step_id}: {'ok' if result.ok else 'failed'}")
 
-    def render_context(self, *, max_chars: int = 2000) -> str:
+    def render_context(self, *, max_chars: int = _DEFAULT_CONTEXT_MAX_CHARS) -> str:
         """Compact text snapshot for prompting the agents."""
         lines: list[str] = [f"Goal: {self.goal}"]
         if self.facts:
@@ -70,7 +82,7 @@ class Blackboard:
             lines.append("Results so far:")
             for r in self.results:
                 status = "ok" if r.ok else "failed"
-                lines.append(f"- step {r.step_id} [{status}]: {r.output[:200]}")
+                lines.append(f"- step {r.step_id} [{status}]: {r.output[:_PER_STEP_CONTEXT_CHARS]}")
         text = "\n".join(lines)
         return text[:max_chars]
 

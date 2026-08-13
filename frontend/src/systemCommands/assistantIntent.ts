@@ -24,8 +24,11 @@ const SEND_MESSAGE_RE =
 const EXTERNAL_SOURCE_TASK_RE =
   /\b((?:google\s+)?drive|dropbox|one\s*drive|onedrive|s3|amazon\s+s3|slack|icloud|infomaniak)\b.*\b(move|copy|upload|download|list|search|find|create|delete|rename|share|send|post|message|channel|bucket|object|folder)\b|\b(move|copy|upload|download|create\s+folder|delete|rename)\b.*\b((?:google\s+)?drive|dropbox|one\s*drive|onedrive|s3|amazon\s+s3|icloud|infomaniak)\b|\b(send\s+(?:an?\s+)?email|compose\s+(?:an?\s+)?email|write\s+(?:an?\s+)?email|envoyer\s+(?:un\s+)?(?:e-?mail|mail)|e-?mail\s+senden)\b|\b(post\s+(?:a\s+)?(?:message|msg)|send\s+(?:a\s+)?(?:message|msg)\s+(?:to|in|on)\s+slack|slack\s+message)\b/i;
 
+// Analytical asks over retrieved data (filter/extract/count/compute) need real
+// reasoning, not the deterministic "just list it" read_calendar/read_mail path —
+// keep in sync with backend `_AGENT_TASK_RE` (services/assistant/intent.py).
 const AGENT_TASK_RE =
-  /\b(plan\s+step|autonomously|step[\s-]by[\s-]step|automatically|do everything|execute|carry\s+out|handle\s+everything|multiple steps?|find.*then.*then|then.*and\s+then)\b/i;
+  /\b(plan\s+step|autonomously|step[\s-]by[\s-]step|automatically|do everything|execute|carry\s+out|handle\s+everything|multiple steps?|find.*then.*then|then.*and\s+then|extract\s+and\s+count|count\s+the\s+(?:number|total)|how\s+many\s+unique|determine\s+how\s+many|cross[\s-]?reference|tally\b)/i;
 
 /** Inbox Retry prefills — classify underlying goal (sync with backend `_AGENT_RETRY_RE`). */
 const AGENT_RETRY_RE = /^please\s+retry\s+this(?:\s+autonomously)?\s*:\s*(.+)$/i;

@@ -14,5 +14,6 @@
   { "text": "upload a report to Dropbox", "previous": null, "intent": "external_source_task" },
   { "text": "how are you?", "previous": null, "intent": "generic_chat" },
   { "text": "do it", "previous": "what's on my calendar tomorrow", "intent": "read_calendar" },
-  { "text": "midi", "previous": "pour demain il faut que j'achète une bouteille de bourbon", "intent": "write_calendar" }
+  { "text": "midi", "previous": "pour demain il faut que j'achète une bouteille de bourbon", "intent": "write_calendar" },
+  { "text": "Please retry this: Find all calendar events with titles containing \"scan dentaire\", extract and count the number of unique patient names mentioned in these titles", "previous": null, "intent": "agent_task" }
 ]

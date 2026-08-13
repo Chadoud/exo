@@ -72,8 +72,12 @@ _CRITIC_SYSTEM = (
 )
 
 _SUMMARY_SYSTEM = (
-    "Summarize, in 1-3 plain sentences for the user, what was accomplished toward "
-    "the goal and anything still pending. No preamble."
+    "Give the user the actual answer to their goal, using the step results above — "
+    "not a narration of what you did. If the goal asks to filter, extract, count, or "
+    "compute something, do that computation yourself from the data in the results and "
+    "state the concrete answer (e.g. the number, the list, the names). Only fall back "
+    "to describing what was accomplished when the goal has no concrete answer to give. "
+    "1-3 plain sentences. No preamble."
 )
 
 
