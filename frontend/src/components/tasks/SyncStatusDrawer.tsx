@@ -14,7 +14,6 @@ interface Props {
   onOpenSources?: () => void;
   onSync: () => void;
   syncing: boolean;
-  onDiscardPromotional?: () => void;
 }
 
 export default function SyncStatusDrawer({
@@ -25,7 +24,6 @@ export default function SyncStatusDrawer({
   onOpenSources,
   onSync,
   syncing,
-  onDiscardPromotional,
 }: Props) {
   const { t } = useI18n();
 
@@ -135,16 +133,6 @@ export default function SyncStatusDrawer({
           >
             {syncing ? t("tasks.syncing") : t("tasks.syncAccounts")}
           </button>
-          {onDiscardPromotional ? (
-            <button
-              type="button"
-              onClick={() => void onDiscardPromotional()}
-              disabled={syncing}
-              className="w-full rounded-lg py-2 text-xs font-medium text-muted hover:text-text-secondary disabled:opacity-50"
-            >
-              {t("cleanup.actionTasks")}
-            </button>
-          ) : null}
         </div>
       </div>
     </div>,

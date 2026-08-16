@@ -1,16 +1,17 @@
-/**
- * TasksPanel — Tasks hub: day-grouped action items, briefing, sync drawer, meeting modal.
- */
-
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import { toast } from "sonner";
-import MeetingModeModal from "./tasks/MeetingModeModal";
-import SyncStatusDrawer from "./tasks/SyncStatusDrawer";
-import TaskRow, { type TaskSourceBadge } from "./tasks/TaskRow";
+import TaskMeetingFab from "./tasks/TaskMeetingFab";
+import TaskPromoCleanupBanner from "./tasks/TaskPromoCleanupBanner";
+import TasksPanelModals from "./tasks/TasksPanelModals";
+import TaskRow from "./tasks/TaskRow";
+import TaskSelectBar from "./tasks/TaskSelectBar";
+import TaskPanelHeaderActions from "./tasks/TaskPanelHeaderActions";
+import { taskSourceBadge } from "./tasks/taskSourceBadge";
 import TodayBriefingCard from "./tasks/TodayBriefingCard";
 import TodoInboxSection from "./tasks/TodoInboxSection";
 import TodoSubNav from "./tasks/TodoSubNav";
 import TodoTaskTimeline, { firstOverdueSectionId, todaySectionId } from "./tasks/TodoTaskTimeline";
+import TodoUpcomingLater from "./tasks/TodoUpcomingLater";
 import TodoTodaySummary from "./tasks/TodoTodaySummary";
 import PanelShell from "./ui/PanelShell";
 import OfflineStrip from "./ui/OfflineStrip";
@@ -19,11 +20,12 @@ import EmptyState from "./ui/EmptyState";
 import ListSkeleton from "./ui/ListSkeleton";
 import { EntitlementBlockedError } from "../api/client";
 import { fetchTasks, fetchTaskOpenTarget, setTaskCompleted, syncTasksFromIntegrations, type Task } from "../api/tasks";
-import NoiseCleanupDialog from "./secondBrain/NoiseCleanupDialog";
 import { useSecondBrainNoiseCleanup } from "../hooks/useSecondBrainNoiseCleanup";
 import { fetchSchedulerStatus } from "../api/proactive";
 import { consumeOpenMeetingModal } from "../utils/deferredPanelActions";
 import { useOpenTarget } from "../hooks/useOpenTarget";
+import { useTaskSelectActions } from "../hooks/useTaskSelectActions";
+import { useTaskSelection } from "../hooks/useTaskSelection";
 import { useI18n } from "../i18n/I18nContext";
 import { getTodoPanelHeadingKeys } from "../utils/workspacePanelHeadings";
 import type { TodoSubTab } from "../utils/todoUi";
@@ -59,26 +61,6 @@ interface Props {
   onUpgrade?: () => void;
   onRetryBackend?: () => void | Promise<void>;
 }
-
-const SOURCE_TONES: Record<string, string> = {
-  conversation: "bg-accent/15 text-accent",
-  meeting: "bg-accent/15 text-accent",
-  assistant: "bg-accent/15 text-accent",
-  gmail: "bg-red-500/15 text-red-400",
-  outlook: "bg-sky-500/15 text-sky-400",
-  "google-calendar": "bg-emerald-500/15 text-emerald-400",
-  "outlook-calendar": "bg-sky-500/15 text-sky-400",
-};
-
-const SOURCE_LABEL_KEYS: Record<string, string> = {
-  conversation: "tasks.sources.conversation",
-  meeting: "tasks.sources.meeting",
-  assistant: "tasks.sources.assistant",
-  gmail: "tasks.sources.gmail",
-  outlook: "tasks.sources.outlook",
-  "google-calendar": "tasks.sources.googleCalendar",
-  "outlook-calendar": "tasks.sources.outlookCalendar",
-};
 
 export default function TasksPanel({
   backendOnline,
@@ -141,6 +123,8 @@ export default function TasksPanel({
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [pendingMeetingOpen, setPendingMeetingOpen] = useState(() => consumeOpenMeetingModal());
   const [laterOpen, setLaterOpen] = useState(false);
+  const selection = useTaskSelection();
+  const selectActions = useTaskSelectActions(tasks, setTasks, selection);
 
   const proLocked = !proAllowed || proBlocked;
 
@@ -149,14 +133,6 @@ export default function TasksPanel({
     setPendingMeetingOpen(false);
     setMeetingOpen(true);
   }, [pendingMeetingOpen, backendOnline, proLocked]);
-
-  const sourceBadge = useCallback(
-    (source: string): TaskSourceBadge => ({
-      label: SOURCE_LABEL_KEYS[source] ? t(SOURCE_LABEL_KEYS[source]) : source.replace(/-/g, " "),
-      tone: SOURCE_TONES[source] ?? "bg-bg-primary text-muted",
-    }),
-    [t],
-  );
 
   const load = useCallback(async () => {
     if (!backendOnline) return;
@@ -173,6 +149,11 @@ export default function TasksPanel({
 
   const noiseCleanup = useSecondBrainNoiseCleanup({ onSuccess: () => load() });
 
+  useEffect(() => {
+    if (!backendOnline) return;
+    void noiseCleanup.refreshPreview();
+  }, [backendOnline, noiseCleanup.refreshPreview]);
+
   const refreshAll = useCallback(async () => {
     if (!backendOnline) return;
     setSyncing(true);
@@ -181,6 +162,7 @@ export default function TasksPanel({
       setSyncReport({ created: sync.created, statuses: sync.statuses });
       setLastSyncAt(new Date().toISOString());
       await load();
+      void noiseCleanup.refreshPreview();
       if (sync.total_created > 0) {
         toast.success(
           t(sync.total_created === 1 ? "tasks.toastFoundOne" : "tasks.toastFoundOther", {
@@ -198,7 +180,7 @@ export default function TasksPanel({
     } finally {
       setSyncing(false);
     }
-  }, [backendOnline, load, t]);
+  }, [backendOnline, load, t, noiseCleanup.refreshPreview]);
 
   useEffect(() => {
     if (!backendOnline) return;
@@ -218,6 +200,16 @@ export default function TasksPanel({
     () => tasks.filter((task) => !task.completed && !task.due_at),
     [tasks],
   );
+  const visibleSelectIds = useMemo(() => {
+    if (showDone && !showTasks) return tasks.filter((task) => task.completed).map((task) => task.id);
+    if (showTasks && !showDone) return tasks.filter((task) => !task.completed).map((task) => task.id);
+    return tasks.map((task) => task.id);
+  }, [tasks, showTasks, showDone]);
+
+  const clearSelection = selection.clear;
+  useEffect(() => {
+    clearSelection();
+  }, [subTab, clearSelection]);
 
   const handleToggle = async (task: Task) => {
     try {
@@ -238,9 +230,12 @@ export default function TasksPanel({
     <TaskRow
       key={task.id}
       task={task}
-      sourceBadge={sourceBadge(task.source)}
+      sourceBadge={taskSourceBadge(task.source, t)}
       dueDisplay={dueDisplay}
       onToggle={(item) => void handleToggle(item)}
+      onSelect={(item) => selection.onSelect(item.id)}
+      selected={selection.isSelected(task.id)}
+      selecting={selection.selecting}
       onOpenSource={taskMayHaveOpenTarget(task) ? openSource : undefined}
       openBusy={openBusyTaskId === task.id}
     />
@@ -262,55 +257,6 @@ export default function TasksPanel({
     showAllSections ? (
       <h2 className="border-b border-border pb-2 text-base font-semibold text-text-primary">{t(titleKey)}</h2>
     ) : null;
-
-  const renderBriefingCard = () => (
-    <div className="mt-6">
-      <TodayBriefingCard
-        backendOnline={backendOnline}
-        proAllowed={proAllowed}
-        onUpgrade={onUpgrade}
-        hideProCard={proLocked}
-      />
-    </div>
-  );
-
-  const renderUpcomingAndLater = (showDivider: boolean) => {
-    if (!hasUpcomingContent) return null;
-    return (
-      <div
-        id="todo-upcoming-section"
-        className={showDivider ? "mt-10 space-y-5 border-t border-border pt-10" : "space-y-5"}
-      >
-        {showDivider ? (
-          <h2 className="text-base font-semibold text-text-primary">{t("nav.todoUpcoming")}</h2>
-        ) : null}
-        <TodoTaskTimeline mode="upcoming" dueGroups={upcomingDayGroups} renderTask={renderTaskRow} />
-        {somedayTasks.length > 0 ? (
-          <section className="space-y-2">
-            <button
-              type="button"
-              onClick={() => setLaterOpen((value) => !value)}
-              className="flex w-full items-center justify-between px-0.5 text-sm font-medium text-muted hover:text-text-primary"
-            >
-              {t("tasks.laterSection", { n: somedayTasks.length })}
-              <svg
-                className={`h-4 w-4 transition-transform ${laterOpen ? "rotate-180" : ""}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {laterOpen ? (
-              <ul className="space-y-2">{somedayTasks.map((task) => renderTaskRow(task, "none"))}</ul>
-            ) : null}
-          </section>
-        ) : null}
-      </div>
-    );
-  };
 
   const renderTasksBody = () => {
     if (proLocked) return null;
@@ -335,8 +281,24 @@ export default function TasksPanel({
         {todayHasTasks ? (
           <TodoTaskTimeline mode="today" dueGroups={todayDayGroups} renderTask={renderTaskRow} />
         ) : null}
-        {renderBriefingCard()}
-        {renderUpcomingAndLater(todayHasTasks)}
+        <div className="mt-6">
+          <TodayBriefingCard
+            backendOnline={backendOnline}
+            proAllowed={proAllowed}
+            onUpgrade={onUpgrade}
+            hideProCard={proLocked}
+          />
+        </div>
+        {hasUpcomingContent ? (
+          <TodoUpcomingLater
+            showDivider={todayHasTasks}
+            dueGroups={upcomingDayGroups}
+            somedayTasks={somedayTasks}
+            laterOpen={laterOpen}
+            onToggleLater={() => setLaterOpen((value) => !value)}
+            renderTask={renderTaskRow}
+          />
+        ) : null}
       </>
     );
   };
@@ -357,24 +319,16 @@ export default function TasksPanel({
         title={t(heading.titleKey)}
         subtitle={t(heading.subtitleKey)}
         actions={
-          showSyncAction ? (
-            <button
-              type="button"
-              onClick={() => setSyncDrawerOpen(true)}
-              disabled={!backendOnline}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-bg-secondary px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
-              title={t("tasks.syncDetails")}
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                />
-              </svg>
-              {t("tasks.syncAccounts")}
-            </button>
-          ) : undefined
+          <TaskPanelHeaderActions
+            showSelect={!proLocked && !selection.selecting && visibleSelectIds.length > 0}
+            selectLabel={t("tasks.select")}
+            onSelect={selection.enter}
+            showSync={showSyncAction}
+            syncDisabled={!backendOnline}
+            syncLabel={t("tasks.syncAccounts")}
+            syncTitle={t("tasks.syncDetails")}
+            onSync={() => setSyncDrawerOpen(true)}
+          />
         }
         offlineBanner={
           !backendOnline ? (
@@ -401,6 +355,17 @@ export default function TasksPanel({
               today: todoFeed.counts.today,
               inbox: todoFeed.counts.inbox,
             }}
+          />
+        ) : null}
+
+        {selection.selecting ? (
+          <TaskSelectBar
+            selectedCount={selection.selectedIds.length}
+            onMarkDone={() => void selectActions.applySelected(true)}
+            onMarkNotDone={() => void selectActions.applySelected(false)}
+            onRemove={selectActions.requestRemove}
+            onSelectAll={() => selection.selectAll(visibleSelectIds)}
+            onCancel={selection.clear}
           />
         ) : null}
 
@@ -468,6 +433,13 @@ export default function TasksPanel({
             ) : null}
 
             {!proLocked && showTasks ? (
+              <>
+              <TaskPromoCleanupBanner
+                count={noiseCleanup.taskCandidateCount}
+                message={t("tasks.promoCleanupBanner", { n: noiseCleanup.taskCandidateCount })}
+                actionLabel={t("cleanup.actionTasks")}
+                onRemove={() => void noiseCleanup.openDialog()}
+              />
               <TodoTodaySummary
                 overdueCount={todaySplit.overdue.length}
                 dueTodayCount={todaySplit.dueToday.length}
@@ -476,6 +448,7 @@ export default function TasksPanel({
                 onScrollToOverdue={() => scrollToDaySection(firstOverdueSectionId(todayDayGroups))}
                 onScrollToToday={() => scrollToDaySection(todaySectionId(todayDayGroups))}
               />
+              </>
             ) : null}
 
             {!showInbox && error ? (
@@ -488,51 +461,33 @@ export default function TasksPanel({
       </PanelShell>
 
       {showMeetingFab ? (
-        <button
-          type="button"
-          onClick={() => setMeetingOpen(true)}
+        <TaskMeetingFab
           disabled={!backendOnline}
-          className="fixed bottom-6 right-6 z-20 mb-[env(safe-area-inset-bottom)] mr-[env(safe-area-inset-right)] inline-flex max-w-[calc(100vw-3rem)] items-center gap-2 rounded-full bg-button-primary px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-button-hover disabled:opacity-50 max-[1024px]:bottom-20"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 18.75a6.75 6.75 0 0 0 6.75-6.75v-1.5m-6.75 7.5a6.75 6.75 0 0 1-6.75-6.75v-1.5m6.75 7.5v3.75m-3.75-3.75h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 0 1 6 0v8.25a3 3 0 0 1-3 3Z"
-            />
-          </svg>
-          {t("tasks.recordMeeting")}
-        </button>
+          label={t("tasks.recordMeeting")}
+          onClick={() => setMeetingOpen(true)}
+        />
       ) : null}
 
-      <SyncStatusDrawer
-        open={syncDrawerOpen}
-        onClose={() => setSyncDrawerOpen(false)}
+      <TasksPanelModals
+        syncDrawerOpen={syncDrawerOpen}
+        onCloseSyncDrawer={() => setSyncDrawerOpen(false)}
         lastSyncAt={lastSyncAt}
         syncReport={syncReport}
         onOpenSources={onOpenSources}
         onSync={() => void refreshAll()}
         syncing={syncing}
-        onDiscardPromotional={() => void noiseCleanup.openDialog()}
-      />
-
-      <NoiseCleanupDialog
-        open={noiseCleanup.dialogOpen}
-        preview={noiseCleanup.preview}
-        isPreviewing={noiseCleanup.isPreviewing}
-        isRunning={noiseCleanup.isRunning}
-        onClose={noiseCleanup.closeDialog}
-        onConfirm={() => void noiseCleanup.execute()}
-      />
-
-      <MeetingModeModal
-        open={meetingOpen}
-        onClose={() => setMeetingOpen(false)}
+        cleanup={noiseCleanup}
+        meetingOpen={meetingOpen}
+        onCloseMeeting={() => setMeetingOpen(false)}
         backendOnline={backendOnline}
         onMeetingEnded={() => void load()}
         onOpenConversation={onOpenConversation}
         proAllowed={proAllowed}
         onUpgrade={onUpgrade}
+        removeOpen={selectActions.removeOpen}
+        removeCount={selection.selectedIds.length}
+        onCloseRemove={selectActions.closeRemove}
+        onConfirmRemove={() => void selectActions.applyRemoved()}
       />
     </div>
   );
