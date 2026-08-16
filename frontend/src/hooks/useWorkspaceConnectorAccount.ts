@@ -1,11 +1,8 @@
 /**
  * Shared hook for WorkspaceSortBlock account-connection state.
  *
- * All four cloud-provider blocks (Drive, Dropbox, OneDrive, Outlook) need to:
- *   1. Poll IPC for account status on mount.
- *   2. Re-poll when a provider-specific "integration changed" event fires.
- *
- * This hook encapsulates both behaviours.
+ * Desktop sort cards (Gmail, Drive, Dropbox, OneDrive, Outlook, Infomaniak)
+ * must read Electron integration accounts — the same store External sources uses.
  */
 import { useCallback, useEffect, useState } from "react";
 import { hasElectronBridge } from "../utils/platform";

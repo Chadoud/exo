@@ -30,8 +30,10 @@ _TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 def gmail_token_file() -> pathlib.Path:
     """Path to persisted Gmail OAuth token JSON (0600).
 
-    Electron materializes tokens under ``EXOSITES_USER_DATA`` while the backend runs;
-    standalone / web flows keep using ``APP_STATE_DIR``.
+    Electron materializes tokens under ``EXOSITES_USER_DATA`` while a backend
+    that actually bound the listen port is running. Do not delete this file from
+    interpreter ``atexit``: failed uvicorn children (port already in use) still
+    import this module and would wipe the live backend's session.
     """
     user_data = (os.environ.get("EXOSITES_USER_DATA") or "").strip()
     if user_data:
@@ -199,26 +201,30 @@ def save_gmail_token_payload(data: dict[str, Any]) -> None:
 
 
 def delete_gmail_token_file() -> None:
+    """Explicit disconnect only. Electron owns crash/quit wipe of the ephemeral file."""
     p = gmail_token_file()
     if p.is_file():
         p.unlink()
 
 
-def _register_gmail_mirror_atexit() -> None:
-    """Best-effort wipe of ephemeral gmail_oauth.json on clean interpreter exit (M2.4)."""
-    import atexit
-
-    atexit.register(delete_gmail_token_file)
-
-
-_register_gmail_mirror_atexit()
+def _access_token_from_relay_cache() -> str | None:
+    """Desktop sort/import: Electron already pushed the live access token."""
+    try:
+        from connector_credentials import CredentialUnavailableError, try_get_token
+    except ImportError:
+        return None
+    try:
+        token = try_get_token("google-gmail", "google-all", "google").strip()
+    except CredentialUnavailableError:
+        return None
+    return token or None
 
 
 def is_gmail_connected() -> bool:
     data = load_gmail_token_payload()
-    if not data:
-        return False
-    return bool((data.get("refresh_token") or data.get("access_token") or "").strip())
+    if data and bool((data.get("refresh_token") or data.get("access_token") or "").strip()):
+        return True
+    return _access_token_from_relay_cache() is not None
 
 
 def _merge_token_save(
@@ -615,6 +621,9 @@ def get_valid_access_token(*, force_refresh: bool = False) -> str:
     with _gmail_token_refresh_lock:
         data = load_gmail_token_payload()
         if not data:
+            relayed = _access_token_from_relay_cache()
+            if relayed:
+                return relayed
             raise RuntimeError("Gmail is not connected. Run Connect Gmail first.")
         access = str(data.get("access_token", "") or "").strip()
         refresh = str(data.get("refresh_token", "") or "").strip()

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   gmailImportSort,
@@ -8,32 +8,28 @@ import {
 import type { AppSettings } from "../../types/settings";
 import { effectiveMinConfidenceForJob } from "../../utils/automationPreset";
 import {
-  WORKSPACE_CONNECTOR_CARD_SHELL_CLASS,
+  WORKSPACE_CONNECTOR_FILTERS_ONLY_PANEL_CLASS,
   WORKSPACE_CONNECTOR_SUBSECTION_HEADER_CLASS,
   WORKSPACE_CONNECTOR_SUBSECTION_HINT_CLASS,
   WORKSPACE_CONNECTOR_SUBSECTION_TITLE_CLASS,
-  WORKSPACE_CONNECTOR_TINTED_PANEL_CLASS,
 } from "../../utils/styles";
 import { buildGmailQueryFromSelection, parseGmailQueryToSelectionIds } from "../../utils/gmailSearchCategories";
 import GmailCategoryMaxRow from "./GmailCategoryMaxRow";
-import { WorkspaceSortBlockShell } from "./WorkspaceSortBlockShell";
 import { useSyncWorkspaceMergePrefs } from "./useSyncWorkspaceMergePrefs";
 import { buildAnalyzeOcrPayload } from "../../utils/tesseractLang";
 import { useI18n } from "../../i18n/I18nContext";
 import { EntitlementBlockedError } from "../../api/client";
 import { formatError } from "../../utils/formatError";
+import { toastUserError } from "../../utils/userGuidance";
 import { GMAIL_EXPORT_MAX_MESSAGES } from "../../constants";
 import { GmailBrandIcon } from "../../externalSources/ExternalSourceBrandIcons";
-import {
-  EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT,
-  hasElectronBridge,
-  notifyGoogleIntegrationChanged,
-} from "../../utils/platform";
+import { EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT } from "../../utils/platform";
 import { buildGmailJobUiParametersJson } from "../../utils/gmailJobParameters";
-import {
-  documentBriefingRequestField,
-} from "../../utils/sortSystemPromptPayload";
+import { documentBriefingRequestField } from "../../utils/sortSystemPromptPayload";
 import { sortClassifyPayloadForJob } from "../../utils/sortClassifyPayload";
+import { useWorkspaceConnectorAccount } from "../../hooks/useWorkspaceConnectorAccount";
+import { WorkspaceConnectorCollapsibleCard } from "./WorkspaceConnectorCollapsibleCard";
+import { relayConnectorTokens } from "../../assistant/connectorContext";
 
 export type GmailMergePrefs = {
   enabled: boolean;
@@ -59,6 +55,16 @@ export interface GmailWorkspaceSortBlockProps {
   ) => void;
 }
 
+function capFromStatus(raw: unknown): number | null {
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 1) return null;
+  return Math.min(GMAIL_EXPORT_MAX_MESSAGES, Math.max(1, Math.round(raw)));
+}
+
+/**
+ * Sort-files Gmail card. Desktop connection state comes from Electron accounts
+ * (same store as External sources). Python `/gmail/status` is only for import
+ * caps and the browser-only OAuth path.
+ */
 export default function GmailWorkspaceSortBlock({
   settings,
   backendOnline,
@@ -72,86 +78,85 @@ export default function GmailWorkspaceSortBlock({
   onRegisterWorkspaceGmailMailOnlyRunner,
 }: GmailWorkspaceSortBlockProps) {
   const { t } = useI18n();
-  const desktop = hasElectronBridge();
-  const priorConnectedRef = useRef(false);
-  const [connected, setConnected] = useState(false);
-  const [oauthConfigured, setOauthConfigured] = useState(false);
-  const [loadingStatus, setLoadingStatus] = useState(true);
+  const {
+    desktop,
+    connected: electronConnected,
+    oauthConfigured: electronOauth,
+    loadingStatus: electronLoading,
+  } = useWorkspaceConnectorAccount({
+    providerId: "google-gmail",
+    integrationChangedEvent: EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT,
+  });
+
+  const [webConnected, setWebConnected] = useState(false);
+  const [webOauth, setWebOauth] = useState(false);
+  const [webLoading, setWebLoading] = useState(true);
   const [importBusy, setImportBusy] = useState(false);
   const [sectionOpen, setSectionOpen] = useState(false);
   const [query, setQuery] = useState("in:anywhere");
   const [maxMessages, setMaxMessages] = useState(GMAIL_EXPORT_MAX_MESSAGES);
   const [importMaxCap, setImportMaxCap] = useState(GMAIL_EXPORT_MAX_MESSAGES);
   const [importContent, setImportContent] = useState<GmailImportContent>("both");
-  const [mergeIntoNextLocalSort, setMergeIntoNextLocalSort] = useState(false);
+  const [includeInRun, setIncludeInRun] = useState(false);
 
-  const refreshStatus = useCallback(async () => {
+  const connected = desktop ? electronConnected : webConnected;
+  const oauthConfigured = desktop ? electronOauth : webOauth;
+  const loadingStatus = desktop ? electronLoading : webLoading;
+
+  useEffect(() => {
     if (!backendOnline) {
-      setLoadingStatus(false);
+      if (!desktop) setWebLoading(false);
       return;
     }
-    setLoadingStatus(true);
-    try {
-      const s = await gmailStatus();
-      setConnected(s.connected);
-      setOauthConfigured(s.oauth_configured);
-      if (desktop && s.connected && !priorConnectedRef.current) {
-        notifyGoogleIntegrationChanged();
-      }
-      priorConnectedRef.current = s.connected;
-      const cap = s.gmail_import_max_messages;
-      if (typeof cap === "number" && Number.isFinite(cap) && cap >= 1) {
-        setImportMaxCap(Math.min(GMAIL_EXPORT_MAX_MESSAGES, Math.max(1, Math.round(cap))));
-      }
-    } catch {
-      setConnected(false);
-      setOauthConfigured(false);
-      priorConnectedRef.current = false;
-    } finally {
-      setLoadingStatus(false);
-    }
-  }, [backendOnline, desktop]);
-
-  useEffect(() => {
-    void refreshStatus();
-  }, [refreshStatus]);
-
-  useEffect(() => {
-    if (!desktop) return;
-    const onGoogleIntegrationChanged = () => {
-      void refreshStatus();
+    let cancelled = false;
+    void gmailStatus()
+      .then((s) => {
+        if (cancelled) return;
+        const cap = capFromStatus(s.gmail_import_max_messages);
+        if (cap != null) setImportMaxCap(cap);
+        if (!desktop) {
+          setWebConnected(s.connected);
+          setWebOauth(s.oauth_configured);
+        }
+      })
+      .catch(() => {
+        if (cancelled || desktop) return;
+        setWebConnected(false);
+        setWebOauth(false);
+      })
+      .finally(() => {
+        if (!cancelled && !desktop) setWebLoading(false);
+      });
+    return () => {
+      cancelled = true;
     };
-    window.addEventListener(EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT, onGoogleIntegrationChanged);
-    return () =>
-      window.removeEventListener(EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT, onGoogleIntegrationChanged);
-  }, [desktop, refreshStatus]);
+  }, [backendOnline, desktop]);
 
   useEffect(() => {
     setMaxMessages((m) => Math.min(m, importMaxCap));
   }, [importMaxCap]);
 
   const mergePayload = useCallback((): GmailMergePrefs | null => {
-    if (!mergeIntoNextLocalSort || !connected || !oauthConfigured) return null;
+    if (!includeInRun || !connected || !oauthConfigured) return null;
     return {
       enabled: true,
       gmail_query: buildGmailQueryFromSelection(parseGmailQueryToSelectionIds(query)),
       max_messages: Math.min(importMaxCap, Math.max(1, maxMessages)),
       gmail_import_content: importContent,
     };
-  }, [mergeIntoNextLocalSort, connected, oauthConfigured, query, maxMessages, importContent, importMaxCap]);
+  }, [includeInRun, connected, oauthConfigured, query, maxMessages, importContent, importMaxCap]);
 
   useSyncWorkspaceMergePrefs(onGmailMergePrefsChange, mergePayload);
 
-  const statusLine = useMemo(() => {
+  const needsExternal = !oauthConfigured || !connected;
+  const accountBusy = !backendOnline || !connected || loadingStatus;
+
+  const summaryLine = useMemo(() => {
     if (loadingStatus) return t("sources.gmailLoadingStatus");
     if (!oauthConfigured) return t("queue.workspaceGmailSummarySetup");
     if (!connected) return t("queue.workspaceGmailSummaryDisconnected");
     return t("queue.workspaceGmailSummaryConnected");
   }, [loadingStatus, oauthConfigured, connected, t]);
-
-  const needsExternalSources = !oauthConfigured || !connected;
-  const disabledBlock = !oauthConfigured || loadingStatus;
-  const canUseGmail = backendOnline && connected && oauthConfigured && !loadingStatus;
 
   const runMailImport = useCallback(async (signal?: AbortSignal) => {
     if (!backendOnline || !settings.outputDir?.trim()) {
@@ -160,6 +165,7 @@ export default function GmailWorkspaceSortBlock({
     }
     setImportBusy(true);
     try {
+      await relayConnectorTokens();
       const ocr = buildAnalyzeOcrPayload(settings, installedTesseractLangs);
       const { job_id, session_id } = await gmailImportSort(
         {
@@ -206,7 +212,7 @@ export default function GmailWorkspaceSortBlock({
           description: `${msg}\n\n${t("queue.gmailImportCapAdapted", { cap: serverCap })}`,
         });
       } else {
-        toast.error(t("queue.gmailImportFailed"), { description: msg });
+        toastUserError(t("queue.gmailImportFailed"), e);
       }
     } finally {
       setImportBusy(false);
@@ -231,135 +237,58 @@ export default function GmailWorkspaceSortBlock({
     return () => onRegisterWorkspaceGmailMailOnlyRunner(null);
   }, [onRegisterWorkspaceGmailMailOnlyRunner, runMailImport]);
 
-  const mergeToggleDisabled = !backendOnline || !connected || disabledBlock;
+  const canUseGmail = backendOnline && connected && oauthConfigured && !loadingStatus;
 
   return (
-    <WorkspaceSortBlockShell id="workspace-gmail" aria-labelledby="workspace-gmail-heading">
-      <label
-        className={`flex shrink-0 items-center self-center pl-0.5 ${
-          mergeToggleDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-        }`}
-        title={t("queue.workspaceIncludeGmailInRun")}
-      >
-        <input
-          type="checkbox"
-          className="accent-accent h-4 w-4 shrink-0 rounded border-border"
-          checked={mergeIntoNextLocalSort}
-          disabled={mergeToggleDisabled}
-          aria-label={t("queue.workspaceIncludeGmailInRun")}
-          onChange={(e) => setMergeIntoNextLocalSort(e.target.checked)}
+    <WorkspaceConnectorCollapsibleCard
+      idBase="workspace-gmail"
+      icon={<GmailBrandIcon compact />}
+      copy={{
+        title: t("sources.gmailTitle"),
+        srHeading: t("queue.workspaceGmailHeading"),
+        includeInRunLabel: t("queue.workspaceIncludeGmailInRun"),
+        openExternalSourcesLabel: t("queue.gmailOpenExternalSources"),
+        notConnectedLabel: t("queue.workspaceGmailNotConnected"),
+        connectUnderSourcesLabel: t("queue.workspaceGmailConnectHint"),
+      }}
+      connected={connected}
+      oauthConfigured={oauthConfigured}
+      loadingStatus={loadingStatus}
+      needsExternal={needsExternal}
+      includeDisabled={accountBusy}
+      includeInRun={includeInRun}
+      onIncludeInRunChange={setIncludeInRun}
+      sectionOpen={sectionOpen}
+      onToggleSection={() => setSectionOpen((o) => !o)}
+      summaryLine={summaryLine}
+      onOpenExternalSourcesTab={onOpenExternalSourcesTab}
+    >
+      <div className={WORKSPACE_CONNECTOR_FILTERS_ONLY_PANEL_CLASS}>
+        <div className={WORKSPACE_CONNECTOR_SUBSECTION_HEADER_CLASS}>
+          <span className={WORKSPACE_CONNECTOR_SUBSECTION_TITLE_CLASS}>{t("queue.gmailImportOptionsToggle")}</span>
+          <span className={WORKSPACE_CONNECTOR_SUBSECTION_HINT_CLASS}>{t("queue.gmailImportOptionsHint")}</span>
+        </div>
+        <GmailCategoryMaxRow
+          query={query}
+          onQueryChange={setQuery}
+          maxMessages={maxMessages}
+          onMaxMessagesChange={setMaxMessages}
+          importMaxCap={importMaxCap}
+          importContent={importContent}
+          onImportContentChange={setImportContent}
+          disabled={accountBusy}
         />
-      </label>
-
-      <div className={WORKSPACE_CONNECTOR_CARD_SHELL_CLASS}>
-        <h2 id="workspace-gmail-heading" className="sr-only">
-          {t("queue.workspaceGmailHeading")}
-        </h2>
-
+      </div>
+      {!hideWorkspacePrimaryImportButton && (
         <button
           type="button"
-          className="w-full flex items-center gap-3 p-4 text-left hover:bg-bg-secondary/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-          onClick={() => setSectionOpen((o) => !o)}
-          aria-expanded={sectionOpen}
-          aria-controls="workspace-gmail-panel"
-          id="workspace-gmail-toggle"
-          aria-label={`${t("sources.gmailTitle")} — ${t("queue.workspaceGmailHeading")}`}
+          disabled={!canUseGmail || importBusy || !settings.outputDir?.trim()}
+          onClick={() => void runMailImport()}
+          className="w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-button-primary text-white hover:bg-button-hover disabled:opacity-40 disabled:pointer-events-none"
         >
-          <GmailBrandIcon compact />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold text-text-primary">{t("sources.gmailTitle")}</span>
-              {!loadingStatus && oauthConfigured && (
-                <span
-                  className={`text-2xs font-medium px-2 py-0.5 rounded-full ${
-                    connected ? "bg-success-soft text-success" : "bg-bg-secondary text-muted border border-border"
-                  }`}
-                >
-                  {connected ? t("queue.gmailStatusPillReady") : t("queue.gmailStatusPillOff")}
-                </span>
-              )}
-              {!loadingStatus && !oauthConfigured && (
-                <span className="text-2xs font-medium px-2 py-0.5 rounded-full bg-warning-soft text-warning">
-                  {t("queue.gmailStatusPillSetup")}
-                </span>
-              )}
-            </div>
-            {(loadingStatus || !oauthConfigured || !connected) && (
-              <p className="text-2xs text-muted mt-0.5 leading-snug truncate">{statusLine}</p>
-            )}
-          </div>
-          <svg
-            className={`w-5 h-5 shrink-0 text-muted transition-transform ${sectionOpen ? "rotate-180" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-            aria-hidden
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
+          {importBusy ? t("queue.gmailImporting") : t("queue.gmailImportSort")}
         </button>
-
-        {sectionOpen && (
-          <div
-            id="workspace-gmail-panel"
-            role="region"
-            aria-labelledby="workspace-gmail-toggle"
-            className="px-4 pb-4 pt-3 space-y-4 border-t border-border"
-          >
-            {needsExternalSources && onOpenExternalSourcesTab ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenExternalSourcesTab();
-                }}
-                className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium border border-accent-line bg-accent-light text-accent hover:bg-accent-light/80 transition-colors"
-              >
-                {t("queue.gmailOpenExternalSources")}
-              </button>
-            ) : needsExternalSources ? (
-              <p className="text-xs text-muted leading-relaxed">
-                {!oauthConfigured || loadingStatus
-                  ? t("queue.workspaceGmailConnectHint")
-                  : t("queue.workspaceGmailNotConnected")}
-              </p>
-            ) : null}
-
-            {!needsExternalSources && (
-              <div className="space-y-3">
-                <div className={WORKSPACE_CONNECTOR_TINTED_PANEL_CLASS}>
-                  <div className={WORKSPACE_CONNECTOR_SUBSECTION_HEADER_CLASS}>
-                    <span className={WORKSPACE_CONNECTOR_SUBSECTION_TITLE_CLASS}>{t("queue.gmailImportOptionsToggle")}</span>
-                    <span className={WORKSPACE_CONNECTOR_SUBSECTION_HINT_CLASS}>{t("queue.gmailImportOptionsHint")}</span>
-                  </div>
-                  <GmailCategoryMaxRow
-                    query={query}
-                    onQueryChange={setQuery}
-                    maxMessages={maxMessages}
-                    onMaxMessagesChange={setMaxMessages}
-                    importMaxCap={importMaxCap}
-                    importContent={importContent}
-                    onImportContentChange={setImportContent}
-                    disabled={!backendOnline || disabledBlock}
-                  />
-                </div>
-
-                {!hideWorkspacePrimaryImportButton && (
-                  <button
-                    type="button"
-                    disabled={!backendOnline || !canUseGmail || importBusy || !settings.outputDir?.trim()}
-                    onClick={() => void runMailImport()}
-                    className="w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-button-primary text-white hover:bg-button-hover disabled:opacity-40 disabled:pointer-events-none"
-                  >
-                    {importBusy ? t("queue.gmailImporting") : t("queue.gmailImportSort")}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </WorkspaceSortBlockShell>
+      )}
+    </WorkspaceConnectorCollapsibleCard>
   );
 }

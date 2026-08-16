@@ -89,15 +89,16 @@ export function SortWizard({
       />
 
       <div className="min-w-0">
-        {wizardStep === 1 ? (
-          <div data-tour="workspace-sort-sources">
-            {desktop ? (
-              <QueueDesktopWorkspaceSection {...sectionProps} />
-            ) : (
-              <QueueWebImportSection {...sectionProps} onFiles={onFiles} onBrowserFiles={onBrowserFiles} />
-            )}
-          </div>
-        ) : null}
+        {/* Keep sources mounted on later steps. Unmounting Gmail's block
+            unregisters the mail-only runner, so Run sort on Review would toast
+            "Gmail is not ready to run from here yet." */}
+        <div hidden={wizardStep !== 1} data-tour="workspace-sort-sources">
+          {desktop ? (
+            <QueueDesktopWorkspaceSection {...sectionProps} />
+          ) : (
+            <QueueWebImportSection {...sectionProps} onFiles={onFiles} onBrowserFiles={onBrowserFiles} />
+          )}
+        </div>
 
         {wizardStep === 2 ? (
           <SortInstructionsStrip
