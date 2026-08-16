@@ -151,6 +151,15 @@ function writeSession(userData, obj) {
   } catch {
     /* ignore if Electron app not ready */
   }
+  // Retry binding a saved offline license to this account on every fresh session
+  // (login/register/social/token-refresh) — self-guarded (no-op without a saved
+  // key) and covers users who applied a license while offline/signed-out.
+  try {
+    const { attachOfflineLicenseToCloudAccount } = require("./entitlement/applyLicenseRuntime");
+    attachOfflineLicenseToCloudAccount(userData).catch(() => {});
+  } catch {
+    /* ignore if module unavailable */
+  }
   return true;
 }
 

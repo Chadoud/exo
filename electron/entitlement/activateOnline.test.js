@@ -18,15 +18,18 @@ test("posts the license key and machine id, returns ok on 200", async () => {
   cloudAuth.cloudBaseUrl = () => "https://cloud.test";
   let seenUrl = null;
   let seenBody = null;
+  let seenAuth = null;
   global.fetch = async (url, init) => {
     seenUrl = String(url);
     seenBody = JSON.parse(init.body);
+    seenAuth = init.headers.Authorization;
     return { ok: true, text: async () => JSON.stringify({ ok: true }) };
   };
 
-  const result = await activateLicenseOnline("exo1.abc.def", "f".repeat(64));
+  const result = await activateLicenseOnline("exo1.abc.def", "f".repeat(64), "sess-token");
   assert.deepEqual(result, { ok: true });
   assert.equal(seenUrl, "https://cloud.test/v1/licenses/activate");
+  assert.equal(seenAuth, "Bearer sess-token");
   assert.deepEqual(seenBody, { license_key: "exo1.abc.def", machine_id: "f".repeat(64) });
 });
 

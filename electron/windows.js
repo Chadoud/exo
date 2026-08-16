@@ -14,7 +14,8 @@ const {
   BACKEND_PACKAGED_HEALTH_DELAY_MS,
 } = require("./constants");
 const { runSetup } = require("./setup/runSetup");
-const { startBackend, waitForBackend, freeBackendPort } = require("./backendProcess");
+const { startBackend } = require("./backendProcess");
+const { waitForBackend, freeBackendPort } = require("./backendLifecycle");
 const { attachMainWindowCloseHandler } = require("./voiceWakeBackground");
 const { attachRendererLifecycleDiagnostics } = require("./rendererDiagnostics");
 
@@ -233,7 +234,7 @@ async function createMainWindow(options = {}) {
  * open main window. Renderer probes /health via getManagedBackendStatus.
  */
 async function startMainAppFlow(options = {}) {
-  freeBackendPort();
+  await freeBackendPort({ force: true });
   startBackend();
 
   await createMainWindow({ ...options, deferShow: true });
@@ -259,8 +260,12 @@ async function startMainAppFlow(options = {}) {
         const userData = require("electron").app.getPath("userData");
         if (cloudAuth.isAuthGateEnabled()) {
           const sess = await cloudAuth.ensureFreshSession(userData);
-          if (sess?.access_token && !getSortServiceSurface(userData).sortServiceConfigured) {
-            await syncSortCredentialsFromCloud(userData);
+          if (sess?.access_token) {
+            const { attachOfflineLicenseToCloudAccount } = require("./entitlement/applyLicenseRuntime");
+            await attachOfflineLicenseToCloudAccount(userData).catch(() => {});
+            if (!getSortServiceSurface(userData).sortServiceConfigured) {
+              await syncSortCredentialsFromCloud(userData);
+            }
           }
         }
       } catch (err) {

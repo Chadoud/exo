@@ -145,8 +145,7 @@ async function getEntitlementState(userData) {
     };
   }
 
-  const ent = readJsonSafe(entitlementPath(dataRoot), { v: 1, licenseKey: null });
-  const key = typeof ent.licenseKey === "string" ? ent.licenseKey.trim() : "";
+  const key = readSavedLicenseKey(userData) || "";
   let licensed = false;
   let licenseReason = null;
   if (key) {
@@ -214,6 +213,12 @@ function entitlementGateFallback() {
   };
 }
 
+function readSavedLicenseKey(userData) {
+  const ent = readJsonSafe(entitlementPath(profileRootFor(userData)), { v: 1, licenseKey: null });
+  const key = typeof ent.licenseKey === "string" ? ent.licenseKey.trim() : "";
+  return key || null;
+}
+
 function saveLicenseKey(userData, licenseKey) {
   const p = entitlementPath(profileRootFor(userData));
   const prev = readJsonSafe(p, { v: 1, licenseKey: null });
@@ -230,6 +235,7 @@ module.exports = {
   entitlementPath,
   getEntitlementState,
   entitlementGateFallback,
+  readSavedLicenseKey,
   saveLicenseKey,
   clearLicense,
   syncTrialFromCloudSession,

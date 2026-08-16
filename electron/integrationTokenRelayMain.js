@@ -51,12 +51,26 @@ async function postTokenRelay(providerId, token, expiresIn) {
   return res.ok;
 }
 
+function rematerializeGmailMirror(ud) {
+  try {
+    const storage = require("./integrations/storage");
+    const google = require("./integrations/google");
+    const secrets = storage.loadProviderSecrets(ud, "google-gmail");
+    if (secrets && secrets.refresh_token) {
+      google.syncGmailOAuthMirrorFromSecrets(secrets);
+    }
+  } catch {
+    /* file mirror is best-effort; token-relay is the live path */
+  }
+}
+
 /**
  * Relay all connected integration tokens to the backend credential cache.
  * @returns {Promise<{ ok: true; relayed: string[] } | { ok: false; reason: string }>}
  */
 async function relayAllConnectedIntegrationTokens() {
   const ud = core.userData();
+  rematerializeGmailMirror(ud);
   const relayed = [];
 
   for (const providerId of RELAY_PROVIDER_IDS) {

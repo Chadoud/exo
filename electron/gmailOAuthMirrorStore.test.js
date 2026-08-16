@@ -8,6 +8,7 @@ const { describe, it } = require("node:test");
 const {
   materializedMirrorPath,
   deleteMaterializedGmailOAuthMirror,
+  reconcileGmailOAuthMirrorAfterBackendExit,
   legacyHomeMirrorPath,
 } = require("./gmailOAuthMirrorStore");
 
@@ -25,13 +26,25 @@ describe("gmailOAuthMirrorStore paths", () => {
   });
 });
 
-describe("deleteMaterializedGmailOAuthMirror", () => {
-  it("removes ephemeral mirror file when present", () => {
-    const userData = fs.mkdtempSync(path.join(os.tmpdir(), "gmail-del-"));
+describe("reconcileGmailOAuthMirrorAfterBackendExit", () => {
+  it("keeps an existing mirror when another process still holds the port", () => {
+    const userData = fs.mkdtempSync(path.join(os.tmpdir(), "gmail-hold-"));
+    const mirrorPath = materializedMirrorPath(userData);
+    try {
+      fs.writeFileSync(mirrorPath, '{"refresh_token":"rt"}', "utf8");
+      reconcileGmailOAuthMirrorAfterBackendExit(userData, true);
+      assert.equal(fs.readFileSync(mirrorPath, "utf8"), '{"refresh_token":"rt"}');
+    } finally {
+      fs.rmSync(userData, { recursive: true, force: true });
+    }
+  });
+
+  it("wipes the mirror when the listen port is free", () => {
+    const userData = fs.mkdtempSync(path.join(os.tmpdir(), "gmail-free-"));
     const mirrorPath = materializedMirrorPath(userData);
     try {
       fs.writeFileSync(mirrorPath, "{}", "utf8");
-      deleteMaterializedGmailOAuthMirror(userData);
+      reconcileGmailOAuthMirrorAfterBackendExit(userData, false);
       assert.ok(!fs.existsSync(mirrorPath));
     } finally {
       fs.rmSync(userData, { recursive: true, force: true });

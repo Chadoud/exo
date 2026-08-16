@@ -17,7 +17,7 @@ const {
 } = require("../integrations/ipc");
 const microsoftIntegration = require("../integrations/microsoft");
 const infomaniakIntegration = require("../integrations/infomaniak");
-const { restartBackend } = require("../backendProcess");
+const { restartBackend } = require("../backendLifecycle");
 const { appendAuditLine } = require("../systemCommandAudit");
 const { validateExecutePayload } = require("../systemCommandsV1");
 const { launchKnownApplication } = require("../knownApplications");
