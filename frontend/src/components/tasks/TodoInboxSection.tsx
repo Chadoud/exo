@@ -11,6 +11,7 @@ import {
   filterInboxNudges,
 } from "../../utils/homeFeed";
 import type { TodoFeedInbox } from "../../hooks/useTodoFeed";
+import TodoInboxFailureCard from "./TodoInboxFailureCard";
 
 interface TodoInboxSectionProps {
   inbox: TodoFeedInbox;
@@ -21,71 +22,6 @@ interface TodoInboxSectionProps {
   onOpenToday: () => void;
   onOpenChat: () => void;
   onRetryFailureInChat: (prompt: string, failureId: number) => void;
-}
-
-function AgentFailureCard({
-  failure,
-  onRetry,
-  onDismiss,
-  t,
-}: {
-  failure: AgentFailure;
-  onRetry: () => void;
-  onDismiss: () => void;
-  t: (key: string, vars?: Record<string, string | number>) => string;
-}) {
-  const parsed = parseAgentFailureContent(failure.content);
-  const timestamp = new Date(failure.created_at).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  return (
-    <li className="flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3">
-      <div className="min-w-0 flex-1 space-y-3">
-        {parsed.goal ? (
-          <div>
-            <p className="text-2xs font-semibold uppercase tracking-wide text-red-300/90">
-              {t("todo.inbox.failureGoalLabel")}
-            </p>
-            <p className="mt-1 text-sm font-medium text-text-primary leading-snug">{parsed.goal}</p>
-          </div>
-        ) : null}
-        {parsed.outcome ? (
-          <div>
-            <p className="text-2xs font-semibold uppercase tracking-wide text-muted">
-              {t("todo.inbox.failureOutcomeLabel")}
-            </p>
-            <p className="mt-1 text-sm text-text-secondary leading-relaxed">{parsed.outcome}</p>
-          </div>
-        ) : !parsed.goal ? (
-          <p className="text-sm text-text-primary whitespace-pre-wrap leading-snug">{parsed.raw}</p>
-        ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-          <p className="text-[11px] text-muted">{timestamp}</p>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="rounded-lg bg-button-primary px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition-opacity"
-          >
-            {t("todo.inbox.retryInChat")}
-          </button>
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={onDismiss}
-        className="shrink-0 rounded p-1 text-muted hover:text-text-primary"
-        aria-label={t("todo.inbox.failureDismissAria")}
-      >
-        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </li>
-  );
 }
 
 export default function TodoInboxSection({
@@ -100,14 +36,6 @@ export default function TodoInboxSection({
 }: TodoInboxSectionProps) {
   const { t } = useI18n();
   const { nudges, failures, needsReview, loading } = inbox;
-
-  const handleDismiss = async (id: number) => {
-    await onDismissNudge(id);
-  };
-
-  const handleDismissAll = async () => {
-    await onDismissAllNudges();
-  };
 
   const visibleNudges = filterInboxNudges(nudges, failures.length);
   const groupedNudges = buildHomeAttentionFromNudges(visibleNudges, 20);
@@ -148,7 +76,7 @@ export default function TodoInboxSection({
           </div>
           <ul className="space-y-2">
             {failures.map((failure: AgentFailure) => (
-              <AgentFailureCard
+              <TodoInboxFailureCard
                 key={failure.id}
                 failure={failure}
                 t={t}
@@ -190,7 +118,7 @@ export default function TodoInboxSection({
             </div>
             <button
               type="button"
-              onClick={() => void handleDismissAll()}
+              onClick={() => void onDismissAllNudges()}
               className="shrink-0 text-2xs text-muted hover:text-text-primary hover:underline"
             >
               {t("briefing.dismissAll")}
@@ -220,7 +148,7 @@ export default function TodoInboxSection({
                 {item.nudgeIds.length > 0 ? (
                   <button
                     type="button"
-                    onClick={() => void Promise.all(item.nudgeIds.map((id: number) => handleDismiss(id)))}
+                    onClick={() => void Promise.all(item.nudgeIds.map((id: number) => onDismissNudge(id)))}
                     className="shrink-0 rounded p-1 text-muted hover:text-text-primary"
                     aria-label={t("briefing.dismissAria")}
                   >

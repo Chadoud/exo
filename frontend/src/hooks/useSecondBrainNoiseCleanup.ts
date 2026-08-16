@@ -38,6 +38,16 @@ export function useSecondBrainNoiseCleanup(options: UseSecondBrainNoiseCleanupOp
   const [preview, setPreview] = useState<CleanupSecondBrainNoiseResult | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [taskCandidateCount, setTaskCandidateCount] = useState(0);
+
+  const refreshPreview = useCallback(async () => {
+    try {
+      const result = await cleanupSecondBrainNoise({ dryRun: true });
+      setTaskCandidateCount(result.tasks.candidates ?? 0);
+    } catch {
+      // Keep last known count; list still works without the banner.
+    }
+  }, []);
 
   const closeDialog = useCallback(() => {
     if (isRunning) return;
@@ -71,6 +81,7 @@ export function useSecondBrainNoiseCleanup(options: UseSecondBrainNoiseCleanupOp
         delete: true,
         includeConversations: true,
       });
+      setTaskCandidateCount(0);
       await options.onSuccess?.(result);
       toast.success(toastMessage(t, result));
       setDialogOpen(false);
@@ -87,6 +98,8 @@ export function useSecondBrainNoiseCleanup(options: UseSecondBrainNoiseCleanupOp
     preview,
     isPreviewing,
     isRunning,
+    taskCandidateCount,
+    refreshPreview,
     openDialog,
     closeDialog,
     execute,

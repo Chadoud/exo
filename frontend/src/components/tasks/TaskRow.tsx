@@ -16,16 +16,22 @@ type TaskRowProps = {
   sourceBadge: TaskSourceBadge;
   dueDisplay: "grouped" | "full" | "none";
   onToggle: (task: Task) => void;
+  onSelect: (task: Task) => void;
+  selected?: boolean;
+  selecting?: boolean;
   onOpenSource?: (task: Task) => void;
   openBusy?: boolean;
 };
 
-/** Single task row — checkbox, title, source badge, optional due line. */
+/** Single task row — checkbox completes; title selects. */
 export default function TaskRow({
   task,
   sourceBadge,
   dueDisplay,
   onToggle,
+  onSelect,
+  selected = false,
+  selecting = false,
   onOpenSource,
   openBusy = false,
 }: TaskRowProps) {
@@ -41,26 +47,43 @@ export default function TaskRow({
 
   return (
     <li
-      className={`rounded-xl border border-border bg-bg-secondary px-4 py-3 transition-colors ${
-        task.completed ? "opacity-75" : ""
-      }`}
+      className={`rounded-xl border px-4 py-3 transition-colors ${
+        selected ? "border-accent bg-accent/10" : "border-border bg-bg-secondary"
+      } ${task.completed && !selected ? "opacity-75" : ""}`}
     >
       <div className="flex items-start gap-3">
         <button
           type="button"
-          onClick={() => onToggle(task)}
+          onClick={() => (selecting ? onSelect(task) : onToggle(task))}
           className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-            task.completed ? "border-accent bg-button-primary text-white" : "border-border hover:border-accent"
+            selecting
+              ? selected
+                ? "border-accent bg-button-primary text-white"
+                : "border-border hover:border-accent"
+              : task.completed
+                ? "border-accent bg-button-primary text-white"
+                : "border-border hover:border-accent"
           }`}
-          aria-label={task.completed ? t("tasks.markIncomplete") : t("tasks.markComplete")}
+          aria-label={
+            selecting
+              ? task.description
+              : task.completed
+                ? t("tasks.markIncomplete")
+                : t("tasks.markComplete")
+          }
+          aria-pressed={selecting ? selected : undefined}
         >
-          {task.completed ? (
+          {(selecting ? selected : task.completed) ? (
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           ) : null}
         </button>
-        <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={() => onSelect(task)}
+          className="min-w-0 flex-1 cursor-pointer text-left"
+        >
           <p
             className={`text-sm leading-snug ${
               task.completed ? "text-muted line-through" : "text-text-primary"
@@ -86,7 +109,7 @@ export default function TaskRow({
               </span>
             ) : null}
           </div>
-        </div>
+        </button>
         {onOpenSource ? (
           <button
             type="button"
