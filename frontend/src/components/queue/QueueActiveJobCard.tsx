@@ -24,6 +24,7 @@ import {
   SlackBrandIcon,
 } from "../../externalSources/ExternalSourceBrandIcons";
 import { deriveSortJobSources, type SortJobSourceId } from "./deriveSortJobSources";
+import { QueueCancelJobButton } from "./QueueCancelJobButton";
 import { SortStructureFlowPreview } from "../sort/structure/SortStructureFlowPreview";
 import type { SortStructureModule } from "../../types/sortStructure";
 
@@ -325,18 +326,7 @@ export function QueueActiveJobCard({
           )}
           {(currentJob.status === "running" ||
             currentJob.status === "paused" ||
-            currentJob.status === "awaiting_approval") && (
-            <button
-              onClick={onCancel}
-              title={t("queue.cancelJobTitle")}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-error-line text-error hover:bg-error-soft transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-              {t("queue.cancel")}
-            </button>
-          )}
+            currentJob.status === "awaiting_approval") && <QueueCancelJobButton onCancel={onCancel} />}
           {currentJob.status === "done" && (
             <button
               type="button"

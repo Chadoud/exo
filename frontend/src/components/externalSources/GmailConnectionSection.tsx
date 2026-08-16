@@ -220,6 +220,7 @@ export default function GmailConnectionSection({
       compact={compact}
       actions={
         <ExternalSourceConnectionButton
+          sourceName={t("sources.gmailTitle")}
           connected={connected}
           loading={loadingStatus}
           busy={oauthBusy || connectWaiting}

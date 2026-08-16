@@ -108,6 +108,7 @@ export default function InfomaniakCalendarConnectionSection({
         actions={
           desktop ? (
             <ExternalSourceConnectionButton
+              sourceName={t("sources.infomaniakCalendarTitle")}
               connected={effectivelyConnected}
               loading={loadingStatus}
               busy={oauthBusy}

@@ -71,6 +71,7 @@ export default function NotionConnectionSection({
         actions={
           desktop ? (
             <ExternalSourceConnectionButton
+              sourceName={t("sources.notionTitle")}
               connected={connected}
               loading={loadingStatus}
               busy={oauthBusy}

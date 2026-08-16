@@ -56,6 +56,7 @@ export default function OneDriveConnectionSection({
       actions={
         desktop ? (
           <ExternalSourceConnectionButton
+            sourceName={t("sources.oneDriveTitle")}
             connected={connected}
             loading={loadingStatus}
             busy={oauthBusy}

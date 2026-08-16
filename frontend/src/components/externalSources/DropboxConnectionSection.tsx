@@ -52,6 +52,7 @@ export default function DropboxConnectionSection({
       actions={
         desktop ? (
           <ExternalSourceConnectionButton
+            sourceName={t("sources.dropboxTitle")}
             connected={connected}
             loading={loadingStatus}
             busy={oauthBusy}

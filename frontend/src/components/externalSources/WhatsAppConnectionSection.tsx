@@ -83,6 +83,7 @@ export default function WhatsAppConnectionSection({
         actions={
           desktop ? (
             <ExternalSourceConnectionButton
+              sourceName={t("sources.whatsappTitle")}
               connected={connected}
               loading={loadingStatus}
               busy={businessBusy}
