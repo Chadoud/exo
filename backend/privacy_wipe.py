@@ -59,6 +59,7 @@ def wipe_local_user_data() -> dict[str, Any]:
     from assistant_memory import clear_all_memory
     from connector_credentials import clear_all_tokens
     from conversation_store import clear_all_conversations
+    from mail_initiative.store import clear_all as clear_mail_replies
     from meeting_store import clear_all_active_meetings
     from orchestrator.audit import clear_all as clear_audit
     from orchestrator.memory import clear_all as clear_episodic_memory
@@ -99,6 +100,7 @@ def wipe_local_user_data() -> dict[str, Any]:
     for filename, tables in (
         ("digests.sqlite", ["digests"]),
         ("nudges.sqlite", ["nudges"]),
+        ("mail_replies.sqlite", ["candidates", "dismissals", "draft_tokens", "harvest_meta", "settings"]),
         ("meetings.sqlite", ["meeting_drafts"]),
     ):
         name, removed = _wipe_sqlite_in_data_dir(filename, tables)
@@ -107,6 +109,10 @@ def wipe_local_user_data() -> dict[str, Any]:
 
     clear_whatsapp_events()
     cleared.append("whatsapp_events")
+
+    mail_removed = clear_mail_replies()
+    if mail_removed:
+        cleared.append(f"mail_replies({mail_removed})")
 
     telemetry_path = Path(__file__).resolve().parent / "telemetry" / "data" / "telemetry.sqlite"
     if data_dir := _data_dir():

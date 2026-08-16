@@ -20,7 +20,7 @@
 - Local-first file sorting on desktop; optional mobile app with encrypted GO SYNC (zero-knowledge relay).
 - **Diagnostics:** coarse usage analytics + crash reports on **legitimate interest** (disclosed in Privacy Policy); **objection** via Settings → Privacy toggles (desktop). On by default; persisted objection honored.
 - **Data rights:** Settings → Account → **Download my data** (JSON); **Delete account** purges cloud telemetry, feedback, **crash reports**, sync metadata, and sessions linked to `account_id`. Local wipe in Settings → Privacy.
-- Optional Google/Microsoft integrations (user-initiated; Google Limited Use).
+- Optional Google/Microsoft integrations (user-initiated; Google Limited Use). Desktop ready-to-send Gmail replies: metadata-only background checks; full message to cloud AI only on Review; send only on explicit confirm (never auto-send).
 - Optional cloud AI providers configured by the user.
 
 ## Sign-off record

@@ -75,6 +75,7 @@ from routes.conversation_routes import router as conversation_router
 from routes.gmail_routes import create_gmail_router
 from routes.history_routes import create_history_router
 from routes.job_routes import create_job_router
+from routes.mail_reply_routes import router as mail_reply_router
 from routes.meeting_routes import router as meeting_router
 from routes.memory_routes import router as memory_router
 from routes.meta_routes import router as meta_router
@@ -172,6 +173,7 @@ def _build_app() -> FastAPI:
     application.include_router(conversation_router)
     application.include_router(activity_router)
     application.include_router(meeting_router)
+    application.include_router(mail_reply_router)
     application.include_router(proactive_router)
     application.include_router(privacy_router)
     application.include_router(recall_router)

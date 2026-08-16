@@ -154,6 +154,12 @@ def list_connected_providers() -> list[str]:
     return connected
 
 
+def clear_token(provider_id: str) -> None:
+    """Evict one relayed OAuth token (disconnect)."""
+    normalized = (provider_id or "").strip().lower()
+    _token_cache.pop(normalized, None)
+
+
 def clear_all_tokens() -> None:
     """Evict all in-memory relayed OAuth tokens (privacy wipe)."""
     _token_cache.clear()

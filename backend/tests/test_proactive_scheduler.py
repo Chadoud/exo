@@ -85,6 +85,7 @@ def test_status_reports_jobs(scheduler):
     names = {j["name"] for j in status["jobs"]}
     assert names == {
         "integration_task_sync",
+        "gmail_ready_replies",
         "nudge_generation",
         "digest_generation",
         "activity_prune",

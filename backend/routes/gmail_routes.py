@@ -138,6 +138,9 @@ def create_gmail_router() -> APIRouter:
     @router.delete("/oauth")
     def gmail_oauth_disconnect():
         delete_gmail_token_file()
+        from mail_initiative.store import clear_all as clear_mail_replies
+
+        clear_mail_replies()
         return {"ok": True, "connected": False}
 
     @router.post("/import-sort")

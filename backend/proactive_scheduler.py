@@ -75,6 +75,7 @@ class _Scheduler:
     def _build_jobs(self) -> list[_Job]:
         return [
             _Job("integration_task_sync", _INTEGRATION_SYNC_INTERVAL, _run_integration_sync),
+            _Job("gmail_ready_replies", _INTEGRATION_SYNC_INTERVAL, _run_gmail_ready_replies),
             _Job("nudge_generation", _NUDGE_INTERVAL, _run_nudge_generation),
             _Job("digest_generation", _DIGEST_INTERVAL, _run_digest_generation),
             _Job("activity_prune", _ACTIVITY_PRUNE_INTERVAL, _run_activity_prune),
@@ -147,6 +148,15 @@ def _run_integration_sync() -> None:
     import tasks_integration_sync
 
     tasks_integration_sync.sync_integration_tasks()
+
+
+def _run_gmail_ready_replies() -> None:
+    """Heuristic unanswered-Gmail harvest. Metadata only; no LLM, not a nudge."""
+    if not _proactive_allowed():
+        return
+    from mail_initiative.harvest import run_harvest
+
+    run_harvest()
 
 
 def _run_nudge_generation() -> None:

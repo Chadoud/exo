@@ -16,6 +16,8 @@ Prompt injection and compromised chat/voice turns must not silently drive deskto
 
 Connector tools (`google_workspace`, `browser_control`, …) classify by operation verb: write-like verbs → SENSITIVE; read-only verbs → SAFE. Missing operation → SENSITIVE.
 
+Ready-to-send Gmail replies (`POST /mail/replies/send`) are **not** a tool. They are not on `initiative.suggest`, the nudge bus, chat, voice, `plan_and_execute`, or Always allow. Send is authorized only by a single-use, TTL’d capability token issued on Review; To/thread are server-locked.
+
 ## Capability matrix (summary)
 
 | Tier | Tools (from `risk_tiers.py`) |

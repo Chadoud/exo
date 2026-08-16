@@ -11,6 +11,12 @@ _lock = threading.Lock()
 _windows: dict[str, Deque[float]] = {}
 
 
+def reset() -> None:
+    """Drop all windows (tests only)."""
+    with _lock:
+        _windows.clear()
+
+
 def allow(key: str, max_events: int, window_seconds: float) -> bool:
     now = time.monotonic()
     cutoff = now - window_seconds
