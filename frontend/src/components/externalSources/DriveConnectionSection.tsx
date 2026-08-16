@@ -50,6 +50,7 @@ export default function DriveConnectionSection({
       actions={
         desktop ? (
           <ExternalSourceConnectionButton
+            sourceName={t("sources.driveTitle")}
             connected={connected}
             loading={loadingStatus}
             busy={oauthBusy}

@@ -2,8 +2,9 @@
  * Settings → Sync — E2E encrypted multi-device sync (GO SYNC).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "../../i18n/I18nContext";
+import { isStaleTrialSyncError, syncLastErrorKind } from "../../utils/syncLastErrorCopy";
 import ProUpgradeCard from "../ProUpgradeCard";
 
 interface SyncStatus {
@@ -17,7 +18,21 @@ interface SyncStatus {
 
 interface Props {
   canUseSync: boolean;
+  licensed?: boolean;
   onUpgrade: () => void;
+}
+
+function syncErrorLine(
+  lastError: string | null | undefined,
+  licensed: boolean,
+  trialEndedCopy: string,
+  sessionExpiredCopy: string,
+): string | null {
+  const kind = syncLastErrorKind(lastError, licensed);
+  if (kind === "hidden" || kind === "stale_trial_retry") return null;
+  if (kind === "trial_ended") return trialEndedCopy;
+  if (kind === "session_expired") return sessionExpiredCopy;
+  return lastError?.trim() || null;
 }
 
 function pairingErrorMessage(
@@ -48,10 +63,11 @@ function pairingErrorMessage(
   return fallback;
 }
 
-export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
+export default function SettingsSyncSection({ canUseSync, licensed = false, onUpgrade }: Props) {
   const { t } = useI18n();
   const [status, setStatus] = useState<SyncStatus>({});
   const [busy, setBusy] = useState(false);
+  const retriedStaleTrialError = useRef(false);
   const [pairQrDataUrl, setPairQrDataUrl] = useState<string | null>(null);
   const [pairError, setPairError] = useState<string | null>(null);
   const [copyHint, setCopyHint] = useState<string | null>(null);
@@ -147,7 +163,7 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
     }
   };
 
-  const runNow = async () => {
+  const runNow = useCallback(async () => {
     const api = window.electronAPI;
     if (!api?.syncRunNow) return;
     setBusy(true);
@@ -157,7 +173,15 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
     } finally {
       setBusy(false);
     }
-  };
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!isStaleTrialSyncError(status.lastError, licensed) || retriedStaleTrialError.current) {
+      return;
+    }
+    retriedStaleTrialError.current = true;
+    void runNow();
+  }, [licensed, status.lastError, runNow]);
 
   const copyPairing = async () => {
     if (!hasSyncedOnce) {
@@ -191,6 +215,13 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
       setBusy(false);
     }
   };
+
+  const syncErrorDetail = syncErrorLine(
+    status.lastError,
+    licensed,
+    t("sync.errorTrialEnded"),
+    t("sync.errorSessionExpired"),
+  );
 
   if (!canUseSync) {
     return (
@@ -231,7 +262,11 @@ export default function SettingsSyncSection({ canUseSync, onUpgrade }: Props) {
       {status.enabled ? (
         <div className="space-y-3 text-xs text-text-secondary">
           <p>{status.lastRunAt ? t("sync.lastRun").replace("{time}", new Date(status.lastRunAt).toLocaleString()) : t("sync.neverRun")}</p>
-          {status.lastError ? <p className="text-red-500">{t("sync.errorPrefix")} {status.lastError}</p> : null}
+          {syncErrorDetail ? (
+            <p className="text-red-500">
+              {t("sync.errorPrefix")} {syncErrorDetail}
+            </p>
+          ) : null}
           <button type="button" disabled={busy} onClick={() => void runNow()} className="text-accent hover:underline">
             {t("sync.runNow")}
           </button>

@@ -132,6 +132,7 @@ export default function S3ConnectionSection({
           </>
         ) : desktop && !showForm ? (
           <ExternalSourceConnectionButton
+            sourceName={t("sources.s3Title")}
             connected={connected}
             loading={loadingStatus}
             busy={busy}

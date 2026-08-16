@@ -671,6 +671,7 @@ export default function SettingsPanel({
         >
           <SettingsSyncSection
             canUseSync={entitlement?.canUseSync !== false}
+            licensed={Boolean(entitlement?.licensed || entitlement?.unlimitedBuild)}
             onUpgrade={() => scrollToSettingsSection("settings-anchor-license")}
           />
         </SettingsGroup>

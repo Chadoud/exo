@@ -62,6 +62,7 @@ export default function SlackConnectionSection({
         actions={
           desktop ? (
             <ExternalSourceConnectionButton
+              sourceName={t("sources.slackTitle")}
               connected={connected}
               loading={loadingStatus}
               busy={oauthBusy}

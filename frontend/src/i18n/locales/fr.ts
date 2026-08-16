@@ -276,6 +276,11 @@ export default {
     title: "Sources externes",
     connectorStatusConnected: "Connecté",
     connectorStatusNotConnected: "Non connecté",
+    disconnectConfirmTitle: "Déconnecter {source} ?",
+    disconnectConfirmBody:
+      "Exo n'utilisera plus {source} sur cet appareil tant que vous ne le reconnecterez pas.",
+    disconnectConfirmAction: "Déconnecter",
+    disconnectConfirmCancel: "Rester connecté",
     connectorOauthNotConfigured: "Ce connecteur n'est pas encore configuré dans votre version. Mettez l'app à jour ou contactez le support.",
     connectorUntrustedSender: "La connexion n'a pas pu démarrer depuis cette fenêtre. Fermez puis rouvrez Sources externes.",
     connectorScopeVerificationFailed: "Google vous a connecté sans accorder toutes les autorisations. Déconnectez, reconnectez et acceptez tout.",
@@ -2572,6 +2577,11 @@ export default {
     pauseTitle: "Pause",
     resumeTitle: "Reprendre",
     cancelJobTitle: "Annuler le lot",
+    cancelJobConfirmTitle: "Annuler ce tri ?",
+    cancelJobConfirmBody:
+      "Les fichiers déjà triés seront replacés à leur emplacement d’origine. Les fichiers pas encore traités resteront où ils sont.",
+    cancelJobConfirmAction: "Annuler le tri",
+    cancelJobConfirmKeepGoing: "Continuer le tri",
     undoSessionTitle: "Annuler tous les déplacements de cette session",
     retryFailedTitle: "Réessayer {count} fichiers en échec",
     retryFailedTitleOne: "Réessayer 1 fichier en échec",

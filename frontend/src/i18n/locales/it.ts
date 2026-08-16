@@ -276,6 +276,11 @@ export default {
     title: "Fonti esterne",
     connectorStatusConnected: "Connesso",
     connectorStatusNotConnected: "Non connesso",
+    disconnectConfirmTitle: "Disconnettere {source}?",
+    disconnectConfirmBody:
+      "Exo non userà più {source} su questo dispositivo finché non lo colleghi di nuovo.",
+    disconnectConfirmAction: "Disconnetti",
+    disconnectConfirmCancel: "Resta connesso",
     connectorOauthNotConfigured: "Questo connettore non è ancora configurato nella tua build. Aggiorna l'app o contatta il supporto.",
     connectorUntrustedSender: "Impossibile avviare la connessione da questa finestra. Chiudi e riapri Fonti esterne.",
     connectorScopeVerificationFailed: "Google ha effettuato l'accesso ma non ha concesso tutte le autorizzazioni. Disconnetti, riconnetti e approva tutto.",
@@ -2571,6 +2576,11 @@ export default {
     pauseTitle: "Pausa",
     resumeTitle: "Riprendi",
     cancelJobTitle: "Annulla lavoro",
+    cancelJobConfirmTitle: "Annullare questo smistamento?",
+    cancelJobConfirmBody:
+      "I file già smistati verranno riportati nella loro posizione originale. I file non ancora elaborati resteranno dove sono.",
+    cancelJobConfirmAction: "Annulla smistamento",
+    cancelJobConfirmKeepGoing: "Continua a smistare",
     undoSessionTitle: "Annulla tutti gli spostamenti di questa sessione",
     retryFailedTitle: "Riprova {count} file falliti",
     retryFailedTitleOne: "Riprova 1 file fallito",

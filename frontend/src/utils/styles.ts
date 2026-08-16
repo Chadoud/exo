@@ -166,3 +166,19 @@ export const OUTLINE_PILL_BTN_CLASS =
 export const ELEVATED_CARD_CLASS =
   "rounded-2xl border border-border bg-bg-card p-6 space-y-4 shadow-lg";
 
+/** Base for every confirm-dialog footer button (size, radius, transition — add a tone class on top). */
+export const CONFIRM_DIALOG_FOOTER_BTN_CLASS =
+  "inline-flex shrink-0 items-center justify-center min-h-[2.5rem] px-4 py-2 rounded-lg text-sm font-medium leading-snug transition-colors";
+
+/** Neutral "keep/cancel" tone — always the non-destructive choice in a confirm dialog. */
+export const CONFIRM_DIALOG_NEUTRAL_TONE_CLASS =
+  "border border-border text-muted hover:text-text-primary hover:bg-hover-overlay";
+
+/** Destructive confirm tone (disconnect, cancel sort, discard). */
+export const CONFIRM_DIALOG_DANGER_TONE_CLASS =
+  "border border-error-line bg-error-soft text-error hover:bg-error-hover";
+
+/** Affirmative confirm tone (save, proceed). */
+export const CONFIRM_DIALOG_PRIMARY_TONE_CLASS =
+  "border border-accent bg-button-primary font-semibold text-white hover:bg-accent-hover";
+

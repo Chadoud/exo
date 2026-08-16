@@ -101,6 +101,7 @@ export default function ICloudConnectionSection({
       actions={
         desktop ? (
           <ExternalSourceConnectionButton
+            sourceName={t("sources.icloudTitle")}
             connected={connected}
             loading={loadingStatus}
             busy={busy}
