@@ -150,8 +150,34 @@ abstract final class SyncUserMessages {
   static const taskCompletedLabel = 'Done';
   static const taskMarkDone = 'Mark done';
   static const taskMarkNotDone = 'Mark not done';
-  static const taskDetailReviewHint =
-      'Soon EXO can draft actions here (for example an email) for you to review before anything is sent.';
+  static const taskRemove = 'Remove';
+  static const taskRemoveConfirmTitle = 'Remove from your list?';
+  static const taskRemoveConfirmBody =
+      'This is not a to-do. Calendar events and mail stay where they are. EXO will not add these again.';
+  static const removedOne = 'Removed from your list';
+  static const removedOther = 'Removed from your list';
+  static const taskFilterOpen = 'Open';
+  static const taskFilterDone = 'Done';
+  static const taskFilterAll = 'All';
+  static const taskSelectAll = 'Select all';
+  static const tasksOpenEmptyTitle = 'Nothing left to do';
+  static const tasksDoneEmptyTitle = 'Nothing marked done yet';
+  static const tasksFilterEmptySubtitle = 'Switch filters to see other tasks.';
+  static const markedDone = 'Marked done';
+  static const markedNotDone = 'Marked not done';
+
+  static String tasksSelected(int count) =>
+      count == 1 ? '1 selected' : '$count selected';
+
+  static String tasksMarkedDone(int count) =>
+      count == 1 ? markedDone : '$count marked done';
+
+  static String tasksMarkedNotDone(int count) =>
+      count == 1 ? markedNotDone : '$count marked not done';
+
+  static String tasksRemoved(int count) =>
+      count == 1 ? removedOne : '$count removed from your list';
+
   // Legacy aliases (tests / older call sites)
   static const actionsEmptyTitle = tasksEmptyTitle;
   static const actionsEmptySubtitle = tasksEmptySubtitle;

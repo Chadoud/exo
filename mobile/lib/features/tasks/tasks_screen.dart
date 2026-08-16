@@ -3,14 +3,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../app/mobile_sync_config.dart';
-import '../../design/exo_colors.dart';
 import '../../design/exo_spacing.dart';
-import '../../sync/local_store.dart';
 import '../../sync/sync_collection_scaffold.dart';
 import '../../sync/sync_list_empty.dart';
+import '../../sync/local_store.dart';
 import '../../sync/task_payload.dart';
 import '../../sync/user_messages.dart';
+import 'task_filter.dart';
 import 'task_list_tile.dart';
+import 'task_select_bar.dart';
 
 /// Tasks tab — synced desktop tasks (sync UI via [SyncCollectionScaffold]).
 class TasksScreen extends StatefulWidget {
@@ -31,6 +32,9 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   List<Map<String, dynamic>> _items = [];
+  TaskListFilter _filter = TaskListFilter.open;
+  final Set<String> _selectedIds = {};
+  bool _selecting = false;
   int _seenEpoch = -1;
   int _loadToken = 0;
 
@@ -96,73 +100,195 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
+  static String? _recordIdOf(Map<String, dynamic> row) {
+    final id = row['record_id']?.toString();
+    if (id == null || id.isEmpty) return null;
+    return id;
+  }
+
+  List<Map<String, dynamic>> get _visible {
+    switch (_filter) {
+      case TaskListFilter.open:
+        return _items
+            .where((row) => !taskPayloadIsCompleted(_payloadOf(row)))
+            .toList();
+      case TaskListFilter.done:
+        return _items
+            .where((row) => taskPayloadIsCompleted(_payloadOf(row)))
+            .toList();
+      case TaskListFilter.all:
+        return _items;
+    }
+  }
+
+  void _clearSelection() {
+    if (!_selecting && _selectedIds.isEmpty) return;
+    setState(() {
+      _selecting = false;
+      _selectedIds.clear();
+    });
+  }
+
+  void _setFilter(TaskListFilter next) {
+    if (next == _filter) return;
+    setState(() {
+      _filter = next;
+      _selecting = false;
+      _selectedIds.clear();
+    });
+  }
+
+  void _enterSelect(String recordId) {
+    setState(() {
+      _selecting = true;
+      _selectedIds
+        ..clear()
+        ..add(recordId);
+    });
+  }
+
+  void _toggleSelect(String recordId) {
+    setState(() {
+      if (_selectedIds.contains(recordId)) {
+        _selectedIds.remove(recordId);
+      } else {
+        _selectedIds.add(recordId);
+      }
+      if (_selectedIds.isEmpty) _selecting = false;
+    });
+  }
+
+  void _selectAllVisible() {
+    setState(() {
+      _selecting = true;
+      _selectedIds
+        ..clear()
+        ..addAll(
+          _visible.map(_recordIdOf).whereType<String>(),
+        );
+    });
+  }
+
+  void _showMarkedSnack(int count, {required bool completed}) {
+    if (count <= 0 || !mounted) return;
+    final text = completed
+        ? SyncUserMessages.tasksMarkedDone(count)
+        : SyncUserMessages.tasksMarkedNotDone(count);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+  }
+
   Future<void> _toggleCompleted(Map<String, dynamic> row) async {
-    final recordId = row['record_id']?.toString();
-    if (recordId == null || recordId.isEmpty) return;
-    final completed = TaskListTile.isCompleted(_payloadOf(row));
-    await widget.config.setTaskCompleted(
-      recordId: recordId,
-      completed: !completed,
+    final recordId = _recordIdOf(row);
+    if (recordId == null) return;
+    final done = taskPayloadIsCompleted(_payloadOf(row));
+    final changed = await widget.config.setTasksCompleted(
+      recordIds: [recordId],
+      completed: !done,
+    );
+    _showMarkedSnack(changed, completed: !done);
+  }
+
+  Future<void> _applySelection({required bool completed}) async {
+    final ids = _selectedIds.toList();
+    _clearSelection();
+    final changed = await widget.config.setTasksCompleted(
+      recordIds: ids,
+      completed: completed,
+    );
+    _showMarkedSnack(changed, completed: completed);
+  }
+
+  Future<void> _confirmRemove() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(SyncUserMessages.taskRemoveConfirmTitle),
+        content: const Text(SyncUserMessages.taskRemoveConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(SyncUserMessages.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(SyncUserMessages.taskRemove),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final ids = _selectedIds.toList();
+    _clearSelection();
+    final changed = await widget.config.deleteTasks(recordIds: ids);
+    if (changed <= 0 || !mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(SyncUserMessages.tasksRemoved(changed))));
+  }
+
+  void _onRowTap(Map<String, dynamic> row) {
+    final recordId = _recordIdOf(row);
+    if (recordId == null) return;
+    if (_selecting) {
+      _toggleSelect(recordId);
+      return;
+    }
+    _enterSelect(recordId);
+  }
+
+  Widget _header() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TaskFilterChips(value: _filter, onChanged: _setFilter),
+        if (_selecting)
+          TaskSelectBar(
+            selectedCount: _selectedIds.length,
+            onMarkDone: () => _applySelection(completed: true),
+            onMarkNotDone: () => _applySelection(completed: false),
+            onRemove: () => _confirmRemove(),
+            onSelectAll: _selectAllVisible,
+            onCancel: _clearSelection,
+          ),
+      ],
     );
   }
 
-  void _openDetail(Map<String, dynamic> row) {
-    final payload = _payloadOf(row);
-    final title = TaskListTile.titleOf(payload);
-    final meta = TaskListTile.metaLine(payload);
-    final done = TaskListTile.isCompleted(payload);
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: ExoColors.bgElevated,
-      showDragHandle: true,
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              ExoSpacing.lg,
-              ExoSpacing.sm,
-              ExoSpacing.lg,
-              ExoSpacing.xl,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(ctx).textTheme.titleLarge),
-                if (meta != null) ...[
-                  const SizedBox(height: ExoSpacing.sm),
-                  Text(meta, style: Theme.of(ctx).textTheme.bodySmall),
-                ],
-                const SizedBox(height: ExoSpacing.lg),
-                Text(
-                  SyncUserMessages.taskDetailReviewHint,
-                  style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                        color: ExoColors.textSecondary,
-                      ),
-                ),
-                const SizedBox(height: ExoSpacing.lg),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: Icon(
-                      done ? Icons.radio_button_unchecked : Icons.check_circle,
-                    ),
-                    label: Text(
-                      done
-                          ? SyncUserMessages.taskMarkNotDone
-                          : SyncUserMessages.taskMarkDone,
-                    ),
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      _toggleCompleted(row);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
+  Widget _syncedEmpty() {
+    return ListenableBuilder(
+      listenable: widget.config,
+      builder: (context, _) {
+        return SyncCollectionEmpty(
+          kind: classifySyncListEmpty(widget.config),
+          syncedEmptyTitle: SyncUserMessages.tasksEmptyTitle,
+          syncedEmptySubtitle: SyncUserMessages.tasksEmptySubtitle,
+          icon: Icons.task_alt_outlined,
+          syncInFlight: widget.config.syncInFlight,
+          onPair: widget.onPairAgain,
         );
       },
+    );
+  }
+
+  Widget _filterEmpty() {
+    final title = _filter == TaskListFilter.done
+        ? SyncUserMessages.tasksDoneEmptyTitle
+        : SyncUserMessages.tasksOpenEmptyTitle;
+    return Padding(
+      padding: const EdgeInsets.all(ExoSpacing.xl),
+      child: Column(
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: ExoSpacing.sm),
+          Text(
+            SyncUserMessages.tasksFilterEmptySubtitle,
+            style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
@@ -172,35 +298,37 @@ class _TasksScreenState extends State<TasksScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           const SizedBox(height: ExoSpacing.xl),
-          ListenableBuilder(
-            listenable: widget.config,
-            builder: (context, _) {
-              return SyncCollectionEmpty(
-                kind: classifySyncListEmpty(widget.config),
-                syncedEmptyTitle: SyncUserMessages.tasksEmptyTitle,
-                syncedEmptySubtitle: SyncUserMessages.tasksEmptySubtitle,
-                icon: Icons.task_alt_outlined,
-                syncInFlight: widget.config.syncInFlight,
-                onPair: widget.onPairAgain,
-              );
-            },
-          ),
+          _syncedEmpty(),
           const SizedBox(height: ExoSpacing.xl),
+        ],
+      );
+    }
+
+    final visible = _visible;
+    if (visible.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: ExoSpacing.xl),
+          _filterEmpty(),
         ],
       );
     }
 
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: _items.length,
+      itemCount: visible.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
-        final row = _items[index];
-        final payload = _payloadOf(row);
+        final row = visible[index];
+        final recordId = _recordIdOf(row) ?? '';
         return TaskListTile(
-          payload: payload,
+          payload: _payloadOf(row),
           updatedAt: row['updated_at']?.toString(),
-          onTap: () => _openDetail(row),
+          selecting: _selecting,
+          selected: _selectedIds.contains(recordId),
+          onTap: () => _onRowTap(row),
+          onLongPress: recordId.isEmpty ? null : () => _enterSelect(recordId),
           onToggleCompleted: () => _toggleCompleted(row),
         );
       },
@@ -213,6 +341,8 @@ class _TasksScreenState extends State<TasksScreen> {
       config: widget.config,
       onSignInAgain: widget.onSignInAgain,
       onPairAgain: widget.onPairAgain,
+      onRefresh: _clearSelection,
+      header: _header(),
       listBody: _listBody(),
     );
   }

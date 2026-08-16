@@ -14,6 +14,7 @@ class SyncCollectionScaffold extends StatelessWidget {
     this.header,
     this.onSignInAgain,
     this.onPairAgain,
+    this.onRefresh,
     this.showReadyWhenSynced = false,
   });
 
@@ -22,9 +23,12 @@ class SyncCollectionScaffold extends StatelessWidget {
   final Widget? header;
   final VoidCallback? onSignInAgain;
   final VoidCallback? onPairAgain;
+  /// Called when the user pulls to refresh or taps Retry (e.g. clear selection).
+  final VoidCallback? onRefresh;
   final bool showReadyWhenSynced;
 
   Future<void> _refresh() async {
+    onRefresh?.call();
     try {
       await config.syncNow();
     } catch (_) {

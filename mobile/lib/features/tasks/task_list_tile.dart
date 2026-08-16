@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../design/exo_colors.dart';
 import '../../design/exo_spacing.dart';
+import '../../sync/task_payload.dart';
 import '../../sync/user_messages.dart';
 
 /// Task row — description, priority, due, and a tappable completed toggle.
@@ -11,15 +12,19 @@ class TaskListTile extends StatelessWidget {
     required this.payload,
     this.updatedAt,
     this.onTap,
+    this.onLongPress,
     this.onToggleCompleted,
+    this.selecting = false,
+    this.selected = false,
   });
 
   final Map<String, dynamic> payload;
   final String? updatedAt;
   final VoidCallback? onTap;
-
-  /// Marks the task done / not done. Null renders a read-only indicator.
+  final VoidCallback? onLongPress;
   final VoidCallback? onToggleCompleted;
+  final bool selecting;
+  final bool selected;
 
   static String titleOf(Map<String, dynamic> payload) {
     final desc = payload['description']?.toString().trim();
@@ -30,10 +35,7 @@ class TaskListTile extends StatelessWidget {
   }
 
   static bool isCompleted(Map<String, dynamic> payload) {
-    final v = payload['completed'];
-    if (v is bool) return v;
-    if (v is num) return v != 0;
-    return v?.toString() == 'true' || v?.toString() == '1';
+    return taskPayloadIsCompleted(payload);
   }
 
   static String? metaLine(Map<String, dynamic> payload) {
@@ -64,11 +66,13 @@ class TaskListTile extends StatelessWidget {
     final title = titleOf(payload);
     final done = isCompleted(payload);
     final meta = metaLine(payload);
+    final leadingAction = selecting ? onTap : onToggleCompleted;
 
     return Material(
-      color: Colors.transparent,
+      color: selected ? ExoColors.accentLight : Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: ExoSpacing.lg,
@@ -77,10 +81,12 @@ class TaskListTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _CompletedToggle(
+              _LeadingControl(
                 done: done,
                 title: title,
-                onToggle: onToggleCompleted,
+                selecting: selecting,
+                selected: selected,
+                onToggle: leadingAction,
               ),
               const SizedBox(width: ExoSpacing.md),
               Expanded(
@@ -111,34 +117,46 @@ class TaskListTile extends StatelessWidget {
   }
 }
 
-/// 48dp toggle target, separate from the row tap that opens the detail sheet.
-class _CompletedToggle extends StatelessWidget {
-  const _CompletedToggle({
+/// 44dp target — completion when browsing, selection when multi-selecting.
+class _LeadingControl extends StatelessWidget {
+  const _LeadingControl({
     required this.done,
     required this.title,
+    required this.selecting,
+    required this.selected,
     this.onToggle,
   });
 
   final bool done;
   final String title;
+  final bool selecting;
+  final bool selected;
   final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
-    final icon = Icon(
-      done ? Icons.check_circle : Icons.radio_button_unchecked,
-      size: 22,
-      color: done ? ExoColors.brandPrimary : ExoColors.textSecondary,
-    );
+    final IconData iconData;
+    final Color color;
+    if (selecting) {
+      iconData = selected ? Icons.check_box : Icons.check_box_outline_blank;
+      color = selected ? ExoColors.brandPrimary : ExoColors.textSecondary;
+    } else {
+      iconData = done ? Icons.check_circle : Icons.radio_button_unchecked;
+      color = done ? ExoColors.brandPrimary : ExoColors.textSecondary;
+    }
+    final icon = Icon(iconData, size: 22, color: color);
     if (onToggle == null) {
       return Padding(padding: const EdgeInsets.all(ExoSpacing.xs), child: icon);
     }
     return Semantics(
       button: true,
-      checked: done,
-      label: done
-          ? SyncUserMessages.taskMarkNotDone
-          : SyncUserMessages.taskMarkDone,
+      checked: selecting ? selected : done,
+      selected: selecting ? selected : null,
+      label: selecting
+          ? title
+          : (done
+              ? SyncUserMessages.taskMarkNotDone
+              : SyncUserMessages.taskMarkDone),
       child: InkWell(
         onTap: onToggle,
         customBorder: const CircleBorder(),
