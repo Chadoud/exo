@@ -226,9 +226,20 @@ class SyncEngine {
 
   /// Push queued local edits (e.g. task completion), then unflag them.
   ///
-  /// Rows edited again mid-push keep their flag (clock guard in the store).
-  Future<int> pushPendingEdits() async {
-    final rows = await _localStore.listPendingPush();
+  /// Drains every page ([pageSize], default 100). Rows edited again mid-push
+  /// keep their flag (clock guard in the store).
+  Future<int> pushPendingEdits({int pageSize = 100}) async {
+    var total = 0;
+    for (var i = 0; i < 50; i++) {
+      final n = await _pushPendingPage(pageSize);
+      if (n == 0) return total;
+      total += n;
+    }
+    return total;
+  }
+
+  Future<int> _pushPendingPage(int pageSize) async {
+    final rows = await _localStore.listPendingPush(limit: pageSize);
     if (rows.isEmpty) return 0;
     final items = <Map<String, dynamic>>[];
     for (final row in rows) {
@@ -237,15 +248,22 @@ class SyncEngine {
         'record_id': row['record_id'],
         'updated_at': row['updated_at'],
         'payload': jsonDecode(row['payload_json'] as String),
+        'deleted': LocalBrainStore.rowIsPendingDelete(row),
       });
     }
     await pushLocalRecords(items);
     for (final row in rows) {
+      final collection = row['collection'] as String;
+      final recordId = row['record_id'] as String;
+      final clock = (row['logical_clock'] as num?)?.toInt() ?? 0;
       await _localStore.clearPendingPush(
-        collection: row['collection'] as String,
-        recordId: row['record_id'] as String,
-        logicalClock: (row['logical_clock'] as num?)?.toInt() ?? 0,
+        collection: collection,
+        recordId: recordId,
+        logicalClock: clock,
       );
+      if (LocalBrainStore.rowIsPendingDelete(row)) {
+        await _localStore.deleteRecord(collection: collection, recordId: recordId);
+      }
     }
     return rows.length;
   }
@@ -266,6 +284,7 @@ class SyncEngine {
       updatedAt: updatedAt,
       plaintext: Uint8List.fromList(payload),
       recordKey: rkey,
+      deleted: item['deleted'] == true,
       accountId: accountId,
     );
   }

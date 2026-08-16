@@ -29,6 +29,21 @@ void main() {
     expect(calls, 2);
   });
 
+  test('getMe reads /me profile', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/v1/me');
+      expect(request.headers['Authorization'], 'Bearer tok');
+      return http.Response('{"email":"chady@example.com","account_id":"a1"}', 200);
+    });
+    final api = CloudApi(
+      baseUrl: 'https://example.test',
+      accessToken: () => 'tok',
+      httpClient: client,
+    );
+    final me = await api.getMe();
+    expect(me['email'], 'chady@example.com');
+  });
+
   test('CloudApiException exposes unauthorized', () {
     final e = CloudApiException(401, 'x');
     expect(e.isUnauthorized, isTrue);

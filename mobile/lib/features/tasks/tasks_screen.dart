@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import '../../app/mobile_sync_config.dart';
 import '../../design/exo_colors.dart';
 import '../../design/exo_spacing.dart';
+import '../../sync/local_store.dart';
 import '../../sync/sync_collection_scaffold.dart';
 import '../../sync/sync_list_empty.dart';
+import '../../sync/task_payload.dart';
 import '../../sync/user_messages.dart';
 import 'task_list_tile.dart';
 
@@ -58,7 +60,7 @@ class _TasksScreenState extends State<TasksScreen> {
     _seenEpoch = epoch;
     final rows = List<Map<String, dynamic>>.from(
       await widget.config.localStore.listByCollection('tasks'),
-    );
+    ).where((row) => !LocalBrainStore.rowIsPendingDelete(row)).toList();
     if (!mounted || token != _loadToken) return;
     rows.sort(_compareTaskRows);
     setState(() => _items = rows);
@@ -68,8 +70,8 @@ class _TasksScreenState extends State<TasksScreen> {
   static int _compareTaskRows(Map<String, dynamic> a, Map<String, dynamic> b) {
     final pa = _payloadOf(a);
     final pb = _payloadOf(b);
-    final ca = TaskListTile.isCompleted(pa);
-    final cb = TaskListTile.isCompleted(pb);
+    final ca = taskPayloadIsCompleted(pa);
+    final cb = taskPayloadIsCompleted(pb);
     if (ca != cb) return ca ? 1 : -1;
     final da = DateTime.tryParse(pa['due_at']?.toString() ?? '');
     final db = DateTime.tryParse(pb['due_at']?.toString() ?? '');

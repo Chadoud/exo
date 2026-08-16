@@ -10,10 +10,11 @@ import '../sync/cloud_api.dart';
 import '../sync/key_value_store.dart';
 import '../sync/local_store.dart';
 import '../sync/pairing_cloud_url.dart';
-import '../sync/sync_crypto.dart';
 import '../sync/sync_engine.dart';
 import '../sync/sync_errors.dart';
 import '../sync/sync_failure.dart';
+import '../sync/stale_pull_cursor.dart';
+import '../sync/task_local_edits.dart';
 
 /// Shared sync + auth configuration persisted in secure storage.
 class MobileSyncConfig extends ChangeNotifier {
@@ -127,6 +128,15 @@ class MobileSyncConfig extends ChangeNotifier {
     _deviceIdSync = deviceId;
     _accountEmail = await _storage.read(_accountEmailKey);
     await _refreshCounts();
+    if (await resetStalePullCursor(
+      storage: _storage,
+      paired: _paired,
+      recordCount: _cachedRecordCount,
+      hasEverSyncedKey: _hasEverSyncedKey,
+    )) {
+      _hasEverSynced = false;
+      _lastSyncLabel = null;
+    }
     if (isConfigured && !_onboardingComplete && _cachedRecordCount > 0) {
       _onboardingComplete = true;
       await _storage.write('setup_onboarding_complete', '1');
@@ -368,38 +378,68 @@ class MobileSyncConfig extends ChangeNotifier {
     }
   }
 
-  /// Toggle a synced task's completion locally and queue it for push.
-  ///
-  /// Optimistic: the cached row updates immediately (with a fresh logical
-  /// clock so stale pulls can't clobber it); push is attempted right away and
-  /// otherwise retried on the next [syncNow]. Returns false for unknown rows.
+  /// Toggle one synced task. False only when [recordId] is unknown.
   Future<bool> setTaskCompleted({
     required String recordId,
     required bool completed,
   }) async {
+    final changed = await setTasksCompleted(
+      recordIds: [recordId],
+      completed: completed,
+    );
+    if (changed > 0) return true;
     final row = await _localStore.readRecord(
       collection: 'tasks',
       recordId: recordId,
     );
-    if (row == null) return false;
-    Map<String, dynamic> payload;
-    try {
-      payload = jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
-    } catch (_) {
-      payload = <String, dynamic>{};
-    }
+    return row != null;
+  }
+
+  /// Mark many tasks done / not done. Skips unknown and already-correct ids.
+  ///
+  /// Writes only `completed` / `completed_at` / `updated_at`. One epoch bump,
+  /// then drains the pending-push queue. Returns how many rows changed.
+  Future<int> setTasksCompleted({
+    required List<String> recordIds,
+    required bool completed,
+  }) async {
     final now = DateTime.now().toUtc().toIso8601String();
-    payload['completed'] = completed;
-    payload['completed_at'] = completed ? now : null;
-    payload['updated_at'] = now;
-    await _localStore.applyLocalEdit(
-      collection: 'tasks',
-      recordId: recordId,
-      payloadJson: jsonEncode(payload),
-      updatedAt: now,
-      logicalClock: SyncCrypto.logicalClock(now, recordId),
-      deviceId: _deviceIdSync,
-    );
+    var changed = 0;
+    for (final recordId in recordIds) {
+      if (recordId.isEmpty) continue;
+      if (await applyTaskCompletion(
+        store: _localStore,
+        recordId: recordId,
+        completed: completed,
+        now: now,
+        deviceId: _deviceIdSync,
+      )) {
+        changed++;
+      }
+    }
+    return _afterTaskEdits(changed);
+  }
+
+  /// Remove tasks from this phone and push tombstones so desktop dismisses them.
+  Future<int> deleteTasks({required List<String> recordIds}) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    var changed = 0;
+    for (final recordId in recordIds) {
+      if (recordId.isEmpty) continue;
+      if (await applyTaskDelete(
+        store: _localStore,
+        recordId: recordId,
+        now: now,
+        deviceId: _deviceIdSync,
+      )) {
+        changed++;
+      }
+    }
+    return _afterTaskEdits(changed);
+  }
+
+  Future<int> _afterTaskEdits(int changed) async {
+    if (changed == 0) return 0;
     _dataEpoch++;
     notifyListeners();
     try {
@@ -407,7 +447,7 @@ class MobileSyncConfig extends ChangeNotifier {
     } catch (_) {
       // Stays queued; next syncNow retries and surfaces failures via banner.
     }
-    return true;
+    return changed;
   }
 
   /// Drop pairing + local sync cache; keep sign-in so the user can paste a fresh code.

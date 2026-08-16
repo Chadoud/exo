@@ -132,6 +132,32 @@ void main() {
     expect(payload2['completed_at'], isNull);
   });
 
+  test('deleteTasks flags a tombstone and hides the row from Open', () async {
+    final store = LocalBrainStore(databasePath: ':memory:');
+    await store.clearAll();
+    await store.upsertRecord(
+      collection: 'tasks',
+      recordId: 'prep',
+      payloadJson: jsonEncode({
+        'description': 'Prepare for: Team standup',
+        'completed': false,
+      }),
+      updatedAt: '2026-08-01T00:00:00Z',
+      logicalClock: 10,
+      deviceId: 'desktop-1',
+    );
+    final config = MobileSyncConfig(
+      storage: MemoryKeyValueStore(),
+      localStore: store,
+    );
+    await config.hydrate();
+
+    expect(await config.deleteTasks(recordIds: ['prep', 'missing']), 1);
+    final row = (await store.listByCollection('tasks')).single;
+    expect(LocalBrainStore.rowIsPendingDelete(row), isTrue);
+    expect(await store.listPendingPush(), hasLength(1));
+  });
+
   testWidgets('TasksScreen lists synced tasks incomplete first', (tester) async {
     final store = LocalBrainStore(databasePath: ':memory:');
     await tester.runAsync(() async {

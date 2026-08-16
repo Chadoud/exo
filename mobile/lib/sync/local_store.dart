@@ -21,7 +21,7 @@ class LocalBrainStore {
     final path = await _resolvePath();
     _db = await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE synced_records (
@@ -32,6 +32,7 @@ class LocalBrainStore {
             logical_clock INTEGER NOT NULL DEFAULT 0,
             device_id TEXT NOT NULL DEFAULT '',
             pending_push INTEGER NOT NULL DEFAULT 0,
+            pending_delete INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (collection, record_id)
           )
         ''');
@@ -48,6 +49,11 @@ class LocalBrainStore {
         if (oldVersion < 3) {
           await db.execute(
             "ALTER TABLE synced_records ADD COLUMN pending_push INTEGER NOT NULL DEFAULT 0",
+          );
+        }
+        if (oldVersion < 4) {
+          await db.execute(
+            "ALTER TABLE synced_records ADD COLUMN pending_delete INTEGER NOT NULL DEFAULT 0",
           );
         }
       },
@@ -94,10 +100,14 @@ class LocalBrainStore {
         'device_id': deviceId,
         // Pull-applied rows supersede any queued local edit (last-writer-wins).
         'pending_push': 0,
+        'pending_delete': 0,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
+
+  static bool rowIsPendingDelete(Map<String, dynamic> row) =>
+      (row['pending_delete'] as int?) == 1;
 
   Future<Map<String, dynamic>?> readRecord({
     required String collection,
@@ -133,6 +143,33 @@ class LocalBrainStore {
         'logical_clock': logicalClock,
         'device_id': deviceId,
         'pending_push': 1,
+        'pending_delete': 0,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Local dismiss awaiting a tombstone push.
+  Future<void> applyLocalDelete({
+    required String collection,
+    required String recordId,
+    required String payloadJson,
+    required String updatedAt,
+    required int logicalClock,
+    required String deviceId,
+  }) async {
+    final database = await db;
+    await database.insert(
+      'synced_records',
+      {
+        'collection': collection,
+        'record_id': recordId,
+        'payload_json': payloadJson,
+        'updated_at': updatedAt,
+        'logical_clock': logicalClock,
+        'device_id': deviceId,
+        'pending_push': 1,
+        'pending_delete': 1,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );

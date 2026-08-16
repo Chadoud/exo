@@ -189,6 +189,61 @@ void main() {
     expect(await engine.pushPendingEdits(), 0);
   });
 
+  test('pushPendingEdits drains more than one page', () async {
+    final master = Uint8List.fromList(List<int>.generate(32, (i) => i + 1));
+    final storage = MemoryKeyValueStore();
+    await storage.write('exosites_sync_master_key_b64', base64Encode(master));
+
+    const account = '550e8400-e29b-41d4-a716-446655440000';
+    final payloadB64 = base64Url
+        .encode(utf8.encode(jsonEncode({'sub': account})))
+        .replaceAll('=', '');
+    final token = 'h.$payloadB64.s';
+
+    final store = LocalBrainStore(databasePath: ':memory:');
+    await store.clearAll();
+    for (var i = 0; i < 5; i++) {
+      final id = '$i';
+      final updatedAt = '2026-08-11T20:00:0$i.000Z';
+      await store.applyLocalEdit(
+        collection: 'tasks',
+        recordId: id,
+        payloadJson: jsonEncode({'description': id, 'completed': true}),
+        updatedAt: updatedAt,
+        logicalClock: SyncCrypto.logicalClock(updatedAt, id),
+        deviceId: 'mobile-1',
+      );
+    }
+
+    var pushCalls = 0;
+    final client = MockClient((request) async {
+      expect(request.url.path, endsWith('/blobs/push'));
+      pushCalls++;
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      final blobs = body['blobs'] as List<dynamic>;
+      return http.Response(
+        jsonEncode({'accepted': blobs.length, 'cursor': pushCalls}),
+        200,
+      );
+    });
+    final engine = SyncEngine(
+      cloudUrl: 'https://example.test',
+      accessToken: token,
+      deviceId: 'mobile-1',
+      api: CloudApi(
+        baseUrl: 'https://example.test',
+        accessToken: () => token,
+        httpClient: client,
+      ),
+      storage: storage,
+      localStore: store,
+    );
+
+    expect(await engine.pushPendingEdits(pageSize: 2), 5);
+    expect(pushCalls, 3);
+    expect(await store.listPendingPush(), isEmpty);
+  });
+
   test('stale pulled row does not clobber a newer pending local edit', () async {
     final master = Uint8List.fromList(List<int>.generate(32, (i) => i + 1));
     final storage = MemoryKeyValueStore();

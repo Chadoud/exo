@@ -90,6 +90,36 @@ void main() {
     expect(storage.contains('exosites_sync_master_key_b64'), isFalse);
   });
 
+  test('hydrate resets leftover cursor when local cache is empty', () async {
+    await storage.write('sync_paired', '1');
+    await storage.write(SyncEngine.cursorStorageKey, '847');
+    await storage.write('has_ever_synced', '1');
+    await storage.write('last_sync_label', '2026-08-14 21:16:10');
+    final again = MobileSyncConfig(storage: storage, localStore: store);
+    await again.hydrate();
+    expect(again.isPaired, isTrue);
+    expect(again.hasEverSynced, isFalse);
+    expect(again.lastSyncLabel, isNull);
+    expect(storage.contains(SyncEngine.cursorStorageKey), isFalse);
+    expect(await store.countAll(), 0);
+  });
+
+  test('hydrate keeps ever-synced when local cache has rows', () async {
+    await storage.write('sync_paired', '1');
+    await storage.write(SyncEngine.cursorStorageKey, '12');
+    await storage.write('has_ever_synced', '1');
+    await store.upsertRecord(
+      collection: 'tasks',
+      recordId: 't1',
+      payloadJson: '{"title":"x"}',
+      updatedAt: '2026-01-01T00:00:00Z',
+    );
+    final again = MobileSyncConfig(storage: storage, localStore: store);
+    await again.hydrate();
+    expect(again.hasEverSynced, isTrue);
+    expect(await storage.read(SyncEngine.cursorStorageKey), '12');
+  });
+
   test('hydrate restores cached account email', () async {
     await storage.write('access_token', 'tok');
     await storage.write('account_email', 'chady@example.com');
