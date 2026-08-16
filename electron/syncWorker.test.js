@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { readPrefs, normalizePullCursor } = require("./syncWorker");
+const { readPrefs, normalizePullCursor, lastErrorFromSyncRun } = require("./syncWorker");
 
 test("readPrefs returns defaults when file missing", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sync-worker-"));
@@ -44,4 +44,13 @@ test("normalizePullCursor coerces to a non-negative integer", () => {
   assert.equal(normalizePullCursor(-5), 0);
   assert.equal(normalizePullCursor("junk"), 0);
   assert.equal(normalizePullCursor(Infinity), 0);
+});
+
+test("lastErrorFromSyncRun keeps pull session_expired when push still ok", () => {
+  assert.equal(lastErrorFromSyncRun({ ok: true, pull: { applied: 1 } }), null);
+  assert.equal(
+    lastErrorFromSyncRun({ ok: true, pull: { error: "session_expired" } }),
+    "session_expired",
+  );
+  assert.equal(lastErrorFromSyncRun({ ok: false, error: "sync_push_failed" }), "sync_push_failed");
 });

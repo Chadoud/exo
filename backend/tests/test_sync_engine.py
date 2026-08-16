@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
+import httpx
+
 import assistant_memory
 import sync_export
 
@@ -104,3 +106,9 @@ class TestSyncEngine(unittest.TestCase):
         self.assertTrue(result["ok"], "push must proceed when pull fails")
         self.assertIn("error", result["pull"])
         self.assertEqual(result["next_pull_cursor"], 9)
+
+    def test_pull_failure_info_maps_401_to_session_expired(self) -> None:
+        req = httpx.Request("GET", "https://relay.example.com/v1/sync/blobs/pull")
+        resp = httpx.Response(401, request=req)
+        exc = httpx.HTTPStatusError("401", request=req, response=resp)
+        self.assertEqual(self.sync_engine.pull_failure_info(exc)["error"], "session_expired")

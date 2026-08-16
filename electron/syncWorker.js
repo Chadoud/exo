@@ -68,6 +68,17 @@ function cloudUrl() {
   }
 }
 
+/** Surface pull auth failures even when push-only still returned ok. */
+function lastErrorFromSyncRun(data) {
+  if (!data || typeof data !== "object") return "sync_failed";
+  if (data.ok === false) return data.error || "sync_failed";
+  const pull = data.pull;
+  if (pull && typeof pull === "object" && typeof pull.error === "string" && pull.error.trim()) {
+    return pull.error.trim();
+  }
+  return null;
+}
+
 /**
  * Change-feed cursor for the pull+apply phase (task completions from phones).
  * First run starts at 0 — replaying history once is safe because the backend
@@ -129,7 +140,7 @@ async function runSyncOnce(deviceRootHint) {
     lastStatus = { ...lastStatus, enabled: false };
     return lastStatus;
   }
-  const session = cloudAuth.readSession(deviceRoot);
+  const session = await cloudAuth.ensureFreshSession(deviceRoot);
   if (!session?.access_token) {
     lastStatus = { ...lastStatus, lastError: "not_logged_in" };
     return lastStatus;
@@ -189,7 +200,7 @@ async function runSyncOnce(deviceRootHint) {
     lastStatus = {
       enabled: true,
       lastRunAt: new Date().toISOString(),
-      lastError: data.ok ? null : data.error || "sync_failed",
+      lastError: lastErrorFromSyncRun(data),
       pendingCount: 0,
       conflictCount: 0,
       lastBlobCount: data.blob_count ?? data.pushed ?? 0,
@@ -218,6 +229,10 @@ function startSyncWorker(deviceRoot) {
 function stopSyncWorker() {
   if (timer) clearInterval(timer);
   timer = null;
+}
+
+function clearLastError() {
+  lastStatus = { ...lastStatus, lastError: null };
 }
 
 function getSyncStatus(deviceRootHint) {
@@ -335,8 +350,10 @@ async function copyPairingPayloadToClipboard(userData) {
 module.exports = {
   startSyncWorker,
   stopSyncWorker,
+  clearLastError,
   runSyncOnce,
   normalizePullCursor,
+  lastErrorFromSyncRun,
   getSyncStatus,
   setSyncEnabled,
   readPrefs,

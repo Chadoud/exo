@@ -66,7 +66,7 @@ def export_conversations(*, since_updated_at: str | None = None) -> list[dict[st
 def export_tasks(*, since_updated_at: str | None = None) -> list[dict[str, Any]]:
     import tasks_store
 
-    rows = tasks_store.list_tasks(include_completed=True)
+    rows = tasks_store.list_tasks(include_completed=True, include_dismissed=True)
     out: list[dict[str, Any]] = []
     for row in rows:
         updated = str(row.get("updated_at") or "")
@@ -75,12 +75,14 @@ def export_tasks(*, since_updated_at: str | None = None) -> list[dict[str, Any]]
         tid = str(row.get("id") or "")
         if not tid:
             continue
+        dismissed = bool(row.get("dismissed"))
         out.append(
             {
                 "collection": "tasks",
                 "record_id": tid,
-                "payload": row,
+                "payload": {} if dismissed else row,
                 "updated_at": updated or datetime.now(UTC).isoformat(),
+                "deleted": dismissed,
             }
         )
     return out

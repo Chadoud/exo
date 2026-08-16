@@ -73,14 +73,17 @@ class TestApplyRemoteTaskCompletion(unittest.TestCase):
         self.assertEqual(self._apply(rec), "skipped_own_device")
         self.assertFalse(self.tasks_store.get_task(int(self.tid))["completed"])
 
-    def test_skips_other_collections_and_deleted(self) -> None:
+    def test_skips_other_collections(self) -> None:
         self.assertEqual(
             self._apply(_record(self.tid, collection="memory_entries")),
             "skipped_collection",
         )
-        self.assertEqual(
-            self._apply(_record(self.tid, deleted=True)), "skipped_deleted"
-        )
+
+    def test_applies_remote_dismiss(self) -> None:
+        self.assertEqual(self._apply(_record(self.tid, deleted=True)), "applied")
+        task = self.tasks_store.get_task(int(self.tid))
+        self.assertTrue(task["dismissed"])
+        self.assertEqual(self.tasks_store.list_tasks(), [])
 
     def test_skips_unknown_and_invalid_ids(self) -> None:
         self.assertEqual(self._apply(_record("999999")), "skipped_unknown")
