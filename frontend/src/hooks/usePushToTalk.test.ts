@@ -80,6 +80,7 @@ function createMockVoice(
     setOnToolResult: vi.fn(),
     setOnToolRunning: vi.fn(),
     setOnBriefingOfferEvent: vi.fn(),
+    setOnBriefingSectionRecord: vi.fn(),
     sendJsonFrame: vi.fn(),
     sendPendingCalendarDeleteSync: vi.fn(),
     voiceTurnTraces: [],

@@ -61,6 +61,21 @@ export interface ConversationMessage {
   briefingSection?: string | null;
   /** Groups briefing section bubbles from the same run_startup_briefing invocation. */
   briefingRunId?: string | null;
+  /**
+   * Closed briefing outcome for muted i18n bodies.
+   * Omit or `spoken` = full-weight gist in `content`.
+   */
+  briefingOutcome?:
+    | "spoken"
+    | "skipped_fail"
+    | "skipped_reconnect"
+    | "nothing"
+    | "empty_captions"
+    | "aborted"
+    | "dropped"
+    | null;
+  /** Plain tasks-honesty line (no briefing header). */
+  briefingTasksHonesty?: boolean;
   /** Assistant reply explaining that the local app service is required for this request. */
   localAppServiceHint?: boolean;
   /** Inline image from composer attach (preview only; content stays a short caption). */

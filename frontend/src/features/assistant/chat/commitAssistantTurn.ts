@@ -10,14 +10,19 @@ import {
 } from "../../../utils/voiceTranscriptQuality";
 import { VOICE_TOOL_START_CODEGEN_STUDIO } from "../../../constants";
 import type { CalendarDeleteDraft } from "../../../utils/calendarDeleteConfirm";
-
-const STARTUP_BRIEFING_TOOL = "run_startup_briefing";
+import {
+  briefingSectionAlreadyRecorded,
+  sanitizeBriefingAssistantText,
+  STARTUP_BRIEFING_TOOL,
+} from "./briefingOutcome";
+import type { BriefingOutcome } from "./briefingOutcome";
 
 /** Metadata captured at voice turn_complete (see useVoiceSession.consumeTurnCommitMeta). */
 export interface VoiceTurnCommitMeta {
   toolName: string | null;
   toolSource: string | null;
   briefingSection: string | null;
+  briefingOutcome?: BriefingOutcome | null;
   /** Server-authoritative transcript payload from the turn_complete frame. */
   serverTurn?: ServerTurnCommitPayload | null;
 }
@@ -114,8 +119,8 @@ export function appendVoiceTurnMessages(
   const normalizedInput = normalizeVoiceTranscriptText(
     server?.userCommitted ? server.userText : input.userText,
   );
-  const normalizedOutput = normalizeVoiceTranscriptText(
-    server?.assistantText ?? input.assistantText,
+  const normalizedOutput = sanitizeBriefingAssistantText(
+    normalizeVoiceTranscriptText(server?.assistantText ?? input.assistantText),
   );
   const nowIso = input.nowIso ?? new Date().toISOString();
   const next = [...prev];
@@ -184,7 +189,28 @@ export function appendVoiceTurnMessages(
     }
   }
 
+  const briefingTurn = isBriefingTurn(input.meta, input.briefingRunId);
+  const section = input.meta?.briefingSection ?? null;
+  if (
+    briefingTurn &&
+    briefingSectionAlreadyRecorded(next, input.briefingRunId, section)
+  ) {
+    return next;
+  }
+
   if (!normalizedOutput) {
+    if (briefingTurn && section && input.briefingRunId) {
+      next.push({
+        id: input.makeMessageId(),
+        role: "assistant",
+        content: "",
+        createdAt: nowIso,
+        voiceSource: STARTUP_BRIEFING_TOOL,
+        briefingSection: section,
+        briefingRunId: input.briefingRunId,
+        briefingOutcome: "empty_captions",
+      });
+    }
     return next;
   }
 
@@ -206,7 +232,6 @@ export function appendVoiceTurnMessages(
   }
 
   const voiceSource = resolveVoiceSource(input.meta);
-  const briefingTurn = isBriefingTurn(input.meta, input.briefingRunId);
 
   next.push({
     id: input.makeMessageId(),
@@ -216,6 +241,7 @@ export function appendVoiceTurnMessages(
     voiceSource: voiceSource ?? (briefingTurn ? STARTUP_BRIEFING_TOOL : undefined),
     briefingSection: input.meta?.briefingSection ?? undefined,
     briefingRunId: briefingTurn ? input.briefingRunId ?? undefined : undefined,
+    briefingOutcome: briefingTurn ? "spoken" : undefined,
     calendarDeleteDraft: input.calendarDeleteDraft ?? undefined,
   });
 

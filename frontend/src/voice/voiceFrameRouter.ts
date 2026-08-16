@@ -35,6 +35,8 @@ import {
   type TranscriptResetTimer,
 } from "./voiceTranscriptCommit";
 import type { BriefingOfferServerEvent } from "./briefingOfferTypes";
+import { isBriefingSectionRecordOutcome } from "../features/assistant/chat/briefingOutcome";
+import type { BriefingSectionRecordPayload } from "./briefingSectionRecord";
 
 export interface VoiceTurnTraceEntry {
   commit_reason: string;
@@ -126,6 +128,8 @@ export interface VoiceFrameRouterDeps {
   onTurnComplete?: (payload: ServerTurnCommitPayload) => void;
   /** Startup BriefingOffer chrome — Offering / Loading / Error / clear. */
   onBriefingOfferEvent?: (event: BriefingOfferServerEvent) => void;
+  /** Durable briefing section outcome (skip / abort / nothing) — no fetch payloads. */
+  onBriefingSectionRecord?: (payload: BriefingSectionRecordPayload) => void;
   resolveAction?: (id: ErrorActionId) => (() => void) | undefined;
   /** When false, quota/connection toasts are suppressed (Exo uses inline banner). */
   shouldNotifyToast?: () => boolean;
@@ -251,6 +255,20 @@ export function routeVoiceFrame(frame: Record<string, unknown>, deps: VoiceFrame
 
   if (type === "briefing_offer_clear") {
     emitBriefingOffer(deps, { type: "briefing_offer_clear" });
+    return;
+  }
+
+  if (type === "briefing_section_record") {
+    const section = typeof frame.section === "string" ? frame.section.trim() : "";
+    const outcome = typeof frame.outcome === "string" ? frame.outcome.trim() : "";
+    if (section && isBriefingSectionRecordOutcome(outcome)) {
+      deps.onBriefingSectionRecord?.({ kind: "section", section, outcome });
+    }
+    return;
+  }
+
+  if (type === "briefing_tasks_honesty") {
+    deps.onBriefingSectionRecord?.({ kind: "tasks_honesty" });
     return;
   }
 

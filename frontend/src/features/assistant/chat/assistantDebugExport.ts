@@ -91,6 +91,8 @@ interface AssistantDebugPayload {
       voiceSource: string | null;
       briefingSection: string | null;
       briefingRunId: string | null;
+      briefingOutcome: string | null;
+      briefingTasksHonesty: boolean;
       agentTaskId: string | null;
       agentGoal: string | null;
       calendarEventDraftPresent: boolean;
@@ -183,6 +185,8 @@ export function buildDebugPayload(opts: BuildDebugPayloadOptions): AssistantDebu
         voiceSource: m.voiceSource ?? null,
         briefingSection: m.briefingSection ?? null,
         briefingRunId: m.briefingRunId ?? null,
+        briefingOutcome: m.briefingOutcome ?? null,
+        briefingTasksHonesty: Boolean(m.briefingTasksHonesty),
         agentTaskId: m.agentTaskId ?? null,
         agentGoal: m.agentGoal ?? null,
         calendarEventDraftPresent: Boolean(m.calendarEventDraft),

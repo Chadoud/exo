@@ -221,6 +221,21 @@ async def voice_ws(
         # section=None signals the briefing is over so the UI hides the indicator.
         await _send_frame(json.dumps({"type": "briefing_progress", "section": section_label}))
 
+    async def _send_section_record(section: str, outcome: str) -> None:
+        # Closed enum only — never attach fetch payloads or error strings.
+        await _send_frame(
+            json.dumps(
+                {
+                    "type": "briefing_section_record",
+                    "section": section,
+                    "outcome": outcome,
+                }
+            )
+        )
+
+    async def _send_tasks_honesty() -> None:
+        await _send_frame(json.dumps({"type": "briefing_tasks_honesty"}))
+
     # Late-bound so the receive loop can forward offer frames once ready.
     offer_ref: dict[str, BriefingOfferController | None] = {"ctrl": None}
 
@@ -422,6 +437,8 @@ async def voice_ws(
             turn_done=_turn_done,
             user_spoke=_user_spoke,
             send_progress=_send_progress,
+            send_section_record=_send_section_record,
+            send_tasks_honesty=_send_tasks_honesty,
         )
 
     offer = BriefingOfferController(

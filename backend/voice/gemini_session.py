@@ -254,6 +254,10 @@ async def run_gemini_live_session(
                                                         "transcript_user_full",
                                                         text=turn_buffer.canonical,
                                                     )
+                                                # Echo/noise must not abort the briefing. Only kept STT
+                                                # is a real barge-in.
+                                                if user_spoke is not None:
+                                                    user_spoke.set()
                                             partial = turn_buffer.canonical
                                             if partial:
                                                 audio_send_state.last_user_text = partial[:4000]
@@ -270,8 +274,6 @@ async def run_gemini_live_session(
                                                         "[voice] persisted briefing "
                                                         "decline from speech"
                                                     )
-                                            if user_spoke is not None:
-                                                user_spoke.set()
 
                                 if hasattr(sc, "output_transcription") and sc.output_transcription:
                                     text = getattr(sc.output_transcription, "text", None) or ""

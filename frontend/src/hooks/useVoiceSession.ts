@@ -34,6 +34,7 @@ import type {
   VoiceTurnTraceEntry,
 } from "../voice/voiceFrameRouter";
 import type { BriefingOfferServerEvent } from "../voice/briefingOfferTypes";
+import type { BriefingSectionRecordPayload } from "../voice/briefingSectionRecord";
 import { cancelDelayedTranscriptReset } from "../voice/voiceTranscriptCommit";
 import { useVoiceAudio } from "../voice/useVoiceAudio";
 import { useVoiceWebSocket } from "../voice/useVoiceWebSocket";
@@ -135,6 +136,9 @@ export interface UseVoiceSessionReturn {
   setOnBriefingOfferEvent: (
     handler: ((event: BriefingOfferServerEvent) => void) | null,
   ) => void;
+  setOnBriefingSectionRecord: (
+    handler: ((payload: BriefingSectionRecordPayload) => void) | null,
+  ) => void;
   /** Send an arbitrary JSON frame on the open voice WebSocket (no-op when disconnected). */
   sendJsonFrame: (frame: Record<string, unknown>) => void;
   /** Sync a pending calendar delete draft to the voice backend (survives Gemini reconnect). */
@@ -203,6 +207,9 @@ export function useVoiceSession(options?: UseVoiceSessionOptions): UseVoiceSessi
   onToolRunningRef.current = options?.onToolRunning;
   const onToolRunningChainedRef = useRef<((payload: VoiceToolRunningPayload) => void) | null>(null);
   const onBriefingOfferEventRef = useRef<((event: BriefingOfferServerEvent) => void) | null>(null);
+  const onBriefingSectionRecordRef = useRef<((payload: BriefingSectionRecordPayload) => void) | null>(
+    null,
+  );
 
   const memoryEnabledRef = useRef(options?.memoryEnabled ?? true);
   memoryEnabledRef.current = options?.memoryEnabled ?? true;
@@ -420,6 +427,7 @@ export function useVoiceSession(options?: UseVoiceSessionOptions): UseVoiceSessi
     onTurnTrace: (traces) => setVoiceTurnTraces(traces),
     onTurnComplete: (payload) => onTurnCompleteRef.current?.(payload),
     onBriefingOfferEvent: (event) => onBriefingOfferEventRef.current?.(event),
+    onBriefingSectionRecord: (payload) => onBriefingSectionRecordRef.current?.(payload),
     resolveAction: resolveActionRef.current,
     shouldNotifyToast: shouldNotifyErrorRef.current,
     ws: null,
@@ -624,6 +632,13 @@ export function useVoiceSession(options?: UseVoiceSessionOptions): UseVoiceSessi
     [],
   );
 
+  const setOnBriefingSectionRecord = useCallback(
+    (handler: ((payload: BriefingSectionRecordPayload) => void) | null) => {
+      onBriefingSectionRecordRef.current = handler;
+    },
+    [],
+  );
+
   const sendJsonFrame = useCallback(
     (frame: Record<string, unknown>) => {
       const ws = wsRef.current;
@@ -705,6 +720,7 @@ export function useVoiceSession(options?: UseVoiceSessionOptions): UseVoiceSessi
     setOnToolResult,
     setOnToolRunning,
     setOnBriefingOfferEvent,
+    setOnBriefingSectionRecord,
     sendJsonFrame,
     sendPendingCalendarDeleteSync,
     voiceTurnTraces,

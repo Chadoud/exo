@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   conversationPersistedMessagesEqual,
+  normalizeConversationMessages,
   type ConversationMessage,
 } from "./useConversations";
 
@@ -25,5 +26,13 @@ describe("conversationPersistedMessagesEqual", () => {
       { id: "a2", role: "assistant", content: "partial…", streaming: true },
     ];
     expect(conversationPersistedMessagesEqual(base, withStreamingTail)).toBe(true);
+  });
+
+  it("treats a store write of normalized local messages as equal (no persist loop)", () => {
+    const stored = normalizeConversationMessages(base);
+    expect(conversationPersistedMessagesEqual(stored, base)).toBe(true);
+    expect(conversationPersistedMessagesEqual(stored, normalizeConversationMessages(stored))).toBe(
+      true,
+    );
   });
 });

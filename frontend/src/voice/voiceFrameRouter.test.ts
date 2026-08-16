@@ -158,6 +158,29 @@ describe("routeVoiceFrame", () => {
     });
   });
 
+  it("forwards closed briefing section records and ignores unknown outcomes", () => {
+    const onBriefingSectionRecord = vi.fn();
+    const deps = createDeps({ onBriefingSectionRecord });
+
+    routeVoiceFrame(
+      { type: "briefing_section_record", section: "mail", outcome: "skipped_fail" },
+      deps,
+    );
+    routeVoiceFrame(
+      { type: "briefing_section_record", section: "mail", outcome: "leaked_subject" },
+      deps,
+    );
+    routeVoiceFrame({ type: "briefing_tasks_honesty" }, deps);
+
+    expect(onBriefingSectionRecord).toHaveBeenCalledTimes(2);
+    expect(onBriefingSectionRecord).toHaveBeenNthCalledWith(1, {
+      kind: "section",
+      section: "mail",
+      outcome: "skipped_fail",
+    });
+    expect(onBriefingSectionRecord).toHaveBeenNthCalledWith(2, { kind: "tasks_honesty" });
+  });
+
   it("stores server-authoritative turn payload on turn_complete", () => {
     const onTurnComplete = vi.fn();
     const refs = createMockRefs({

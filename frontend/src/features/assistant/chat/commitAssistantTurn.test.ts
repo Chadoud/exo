@@ -170,6 +170,46 @@ describe("appendVoiceTurnMessages", () => {
     expect(next).toHaveLength(1);
   });
 
+  it("does not persist [BRIEFING:] injection text as chat content", () => {
+    const next = appendVoiceTurnMessages([], {
+      userText: "",
+      assistantText:
+        "[BRIEFING: MAIL — From: a@b.com — Subject: secret — Preview: invoice]\n[/BRIEFING: MAIL]",
+      meta: {
+        toolName: "run_startup_briefing",
+        toolSource: "run_startup_briefing",
+        briefingSection: "mail",
+      },
+      briefingRunId: "run-sec",
+      recentAssistantLines: [],
+      userCommitContext: baseContext,
+      makeMessageId: () => "inj-1",
+    });
+    expect(next).toHaveLength(1);
+    expect(next[0].content.startsWith("[BRIEFING:")).toBe(false);
+    expect(next[0].briefingOutcome).toBe("empty_captions");
+    expect(next[0].briefingSection).toBe("mail");
+  });
+
+  it("writes empty_captions when a briefing turn has no assistant text", () => {
+    const next = appendVoiceTurnMessages([], {
+      userText: "",
+      assistantText: "",
+      meta: {
+        toolName: "run_startup_briefing",
+        toolSource: "run_startup_briefing",
+        briefingSection: "weather",
+      },
+      briefingRunId: "run-empty",
+      recentAssistantLines: [],
+      userCommitContext: baseContext,
+      makeMessageId: () => "empty-1",
+    });
+    expect(next).toHaveLength(1);
+    expect(next[0].briefingOutcome).toBe("empty_captions");
+    expect(next[0].content).toBe("");
+  });
+
   it("skips near-duplicate calendar recaps that only repeat the time in the title", () => {
     const first =
       "demain à 15h, 1 heure — Bord du lac avec Alexandre. Je crée l'événement ?";

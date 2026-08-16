@@ -9,6 +9,10 @@ import { useI18n } from "../i18n/I18nContext";
 import { CARD_SHELL_CLASS } from "../utils/styles";
 import { chatBrandAssetUrl } from "../brands/chatBrandAssetUrl";
 import type { ConversationMessage } from "../hooks/useConversations";
+import {
+  briefingOutcomeBodyKey,
+  isBriefingMuted,
+} from "../features/assistant/chat/briefingOutcome";
 import AssistantCalendarContextContent from "./AssistantCalendarContextContent";
 import AssistantMailRecapContent from "./AssistantMailRecapContent";
 import AssistantEventCreateCard from "./AssistantEventCreateCard";
@@ -92,8 +96,18 @@ export default function AssistantMessageBubble({
     !!msg.calendarDeleteDraft ||
     !!msg.mailComposeDraft;
 
+  const outcomeBodyKey = briefingOutcomeBodyKey(msg.briefingOutcome);
+  const tasksHonestyBody = msg.briefingTasksHonesty
+    ? t("assistant.briefingOutcomeTasksHonesty")
+    : "";
+  const visibleBody = outcomeBodyKey
+    ? t(outcomeBodyKey)
+    : tasksHonestyBody || (typeof msg.content === "string" ? msg.content : String(msg.content ?? ""));
+  const mutedBriefing = isBriefingMuted(msg.briefingOutcome);
+  const headerId = msg.briefingSection ? `briefing-h-${msg.id}` : undefined;
+
   const handleCopy = () => {
-    onCopy(msg.id, msg.content);
+    onCopy(msg.id, visibleBody);
     setCopied(true);
     setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
   };
@@ -102,7 +116,7 @@ export default function AssistantMessageBubble({
     !msg.streaming && !msg.prefetching && formatMessageEmittedAt(msg.createdAt);
 
   const showCopyButton =
-    msg.role === "assistant" && !msg.streaming && !msg.prefetching && !!msg.content;
+    msg.role === "assistant" && !msg.streaming && !msg.prefetching && !!visibleBody;
 
   return (
     <div
@@ -130,6 +144,12 @@ export default function AssistantMessageBubble({
               ? "whitespace-pre-wrap bg-button-primary text-white"
               : `${CARD_SHELL_CLASS} text-text-primary ${isStructured ? "" : "whitespace-pre-wrap"}`
           }`}
+          {...(msg.role === "assistant" && msg.briefingSection
+            ? { role: "article", "aria-labelledby": headerId }
+            : {})}
+          data-briefing-weight={
+            msg.briefingSection ? (mutedBriefing ? "muted" : "full") : undefined
+          }
         >
         {/* Content variants */}
         {msg.calendarDeleteDraft ? (
@@ -166,9 +186,12 @@ export default function AssistantMessageBubble({
         ) : (
           <>
             {msg.role === "assistant" && msg.briefingSection ? (
-              <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-muted">
+              <h3
+                id={headerId}
+                className="mb-2 text-2xs font-semibold uppercase tracking-wide text-muted"
+              >
                 {briefingSectionLabel(msg.briefingSection, t)}
-              </p>
+              </h3>
             ) : null}
             {msg.role === "assistant" && msg.voiceSource && TOOL_SOURCE_ICON[msg.voiceSource] && (
               <div className="flex items-center gap-2 mb-2">
@@ -214,7 +237,9 @@ export default function AssistantMessageBubble({
               </div>
             ) : (
               <>
-                {typeof msg.content === "string" ? msg.content : String(msg.content ?? "")}
+                <p className={mutedBriefing ? "text-muted" : undefined}>
+                  {visibleBody}
+                </p>
                 {msg.streaming && (
                   <span className={`animate-pulse opacity-70${msg.content ? " ml-0.5" : ""}`}>▍</span>
                 )}

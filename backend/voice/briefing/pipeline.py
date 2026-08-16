@@ -7,6 +7,12 @@ import logging
 from typing import Callable
 
 from tool_registry import dispatch_sync
+from voice.briefing.records import (
+    briefing_outcome_injection,
+    remaining_section_labels,
+    requested_section_labels,
+    routine_requests_tasks,
+)
 from voice.briefing.sections import SECTION_REGISTRY, _extract_city
 
 logger = logging.getLogger(__name__)
@@ -54,25 +60,9 @@ def drain_queued_briefing_injections(audio_queue: asyncio.Queue) -> int:
 
 
 def _briefing_skip_message(label: str, needs_reconnect: bool) -> str | None:
-    """One short, honest spoken line when an expected section couldn't be fetched.
-
-    Returns None for sections where a silent skip is better (e.g. news/weather,
-    which are not account-gated and where a missing item isn't actionable).
-    """
-    if label not in ("calendar", "mail"):
-        return None
-    what = "calendar" if label == "calendar" else "unread mail"
-    if needs_reconnect:
-        detail = (
-            f"I couldn't reach your {what} — the account may need reconnecting in "
-            "Settings, External sources."
-        )
-    else:
-        detail = f"I couldn't reach your {what} right now."
-    return (
-        f"[BRIEFING: {label.upper()} SKIP — say exactly this once, briefly, then continue: "
-        f"\"{detail}\" Do NOT call any tools or add anything else.]"
-    )
+    """Spoken skip line when a requested section could not be fetched."""
+    outcome = "skipped_reconnect" if needs_reconnect else "skipped_fail"
+    return briefing_outcome_injection(label, outcome)
 
 
 async def _wait_turn(
@@ -107,6 +97,15 @@ async def _wait_turn(
         )
 
 
+async def _emit_aborted_remaining(
+    requested: list[str],
+    from_label: str,
+    send_section_record: Callable[[str, str], object],
+) -> None:
+    for label in remaining_section_labels(requested, from_label):
+        await send_section_record(label, "aborted")
+
+
 async def stream_briefing_sections(
     routine: str,
     audio_queue: asyncio.Queue,
@@ -114,6 +113,8 @@ async def stream_briefing_sections(
     turn_done: asyncio.Queue,
     user_spoke: asyncio.Event,
     send_progress: Callable[[str | None], None],
+    send_section_record: Callable[[str, str], object] | None = None,
+    send_tasks_honesty: Callable[[], object] | None = None,
 ) -> None:
     """
     Fetch all briefing sections concurrently, then speak them one-at-a-time
@@ -151,9 +152,22 @@ async def stream_briefing_sections(
             sublabels.append(sublabel)
         section_sublabels[label] = sublabels
 
+    async def _record(section: str, outcome: str) -> None:
+        if send_section_record is None:
+            return
+        await send_section_record(section, outcome)
+
+    async def _tasks_honesty() -> None:
+        if send_tasks_honesty is None or not routine_requests_tasks(routine):
+            return
+        await send_tasks_honesty()
+
     if not section_sublabels:
         logger.debug("[briefing] no sections detected in routine: %.80r", routine)
+        await _tasks_honesty()
         return
+
+    requested = requested_section_labels(section_sublabels)
 
     # Launch token-free fetches immediately (no credentials needed).
     tasks: dict[str, asyncio.Task] = {
@@ -196,6 +210,8 @@ async def stream_briefing_sections(
             # Abort if the user has spoken — yield the floor.
             if user_spoke.is_set():
                 logger.info("[briefing] aborted by user barge-in before section '%s'", label)
+                await _emit_aborted_remaining(requested, label, _record)
+                await _tasks_honesty()
                 return
 
             # Ensure token-gated tasks were started before we await them.
@@ -233,24 +249,37 @@ async def stream_briefing_sections(
                 except Exception as exc:
                     logger.info("[briefing] %s raised: %s", sublabel, exc)
 
+            if user_spoke.is_set():
+                logger.info("[briefing] aborted by user barge-in during '%s'", label)
+                await _emit_aborted_remaining(requested, label, _record)
+                await _tasks_honesty()
+                return
+
             if not results:
-                # A section the user asked for failed entirely. For account-gated
-                # sections (calendar, mail) a reconnect is actionable, so say so
-                # briefly and honestly instead of silently dropping it.
+                outcome = "skipped_reconnect" if needs_reconnect else "skipped_fail"
+                await _record(label, outcome)
                 skip_msg = _briefing_skip_message(label, needs_reconnect)
                 if skip_msg and not user_spoke.is_set():
                     await audio_queue.put(skip_msg)
                     await send_progress(label)
                     await _wait_turn(turn_done, _TURN_PACING_TIMEOUT_S, drain_first=True)
-                continue  # nothing to report for this section
+                continue
 
             msg = spec.fmt(results, city, routine)
             if not msg:
+                await _record(label, "nothing")
+                nothing_msg = briefing_outcome_injection(label, "nothing")
+                if nothing_msg and not user_spoke.is_set():
+                    await audio_queue.put(nothing_msg)
+                    await send_progress(label)
+                    await _wait_turn(turn_done, _TURN_PACING_TIMEOUT_S, drain_first=True)
                 continue
 
             # Final abort check immediately before injecting.
             if user_spoke.is_set():
                 logger.info("[briefing] aborted by user barge-in before injecting '%s'", label)
+                await _emit_aborted_remaining(requested, label, _record)
+                await _tasks_honesty()
                 return
 
             await audio_queue.put(msg)
@@ -259,6 +288,8 @@ async def stream_briefing_sections(
 
             # Pace: drain stale signals, then await one fresh turn_complete.
             await _wait_turn(turn_done, _TURN_PACING_TIMEOUT_S, drain_first=True)
+
+        await _tasks_honesty()
 
     finally:
         # Cancel any tasks still running after the pipeline finishes/aborts.
