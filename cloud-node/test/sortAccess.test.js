@@ -39,6 +39,16 @@ test("accountHasSortAccess denies stale active free_trial entitlement once trial
   );
 });
 
+test("accountHasSortAccess allows offline_license entitlement after trial ends", () => {
+  assert.equal(
+    accountHasSortAccess({
+      trial_active: false,
+      entitlements: [{ feature: "sort", source: "offline_license", active: true }],
+    }),
+    true,
+  );
+});
+
 test("accountHasSortAccess allows active stripe entitlement after trial ends", () => {
   assert.equal(
     accountHasSortAccess({

@@ -6,8 +6,8 @@
  * is written once at signup and never revisited afterwards, so its `active`
  * flag goes stale the moment the trial ends — it must never be trusted here,
  * or an expired trial keeps granting cloud sort credentials forever. Paid
- * (`stripe`-sourced) entitlements are kept in sync by the Stripe webhook, so
- * those remain a valid fallback.
+ * (`stripe`-sourced) entitlements are kept in sync by the Stripe webhook.
+ * Offline keys attach an `offline_license` row when desktop activates with a session.
  *
  * @param {{ trial_active?: boolean; entitlements?: Array<{ feature?: string; source?: string; active?: boolean }> } | null | undefined} profile
  */

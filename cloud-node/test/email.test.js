@@ -94,3 +94,36 @@ test("sendEmail reports sent:false without throwing when the client itself throw
     assert.deepEqual(result, { sent: false });
   });
 });
+
+test("sendEmail reports sent:false instead of throwing when the Resend client can't even be constructed", async () => {
+  // Regression: a missing/broken "resend" package (require() throws) must
+  // degrade like any other send failure, not bubble up as an uncaught 500
+  // in every route that calls sendEmail (forgot-password, verify-email).
+  await withEnv({ EMAIL_ENABLED: "1", RESEND_API_KEY: "re_test" }, async () => {
+    const email = freshEmailModule();
+    email.getResendClient = () => {
+      throw new Error("Cannot find module 'resend'");
+    };
+    await assert.doesNotReject(async () => {
+      const result = await email.sendEmail({ to: "a@b.com", subject: "Hi", html: "<p>hi</p>", text: "hi" });
+      assert.deepEqual(result, { sent: false });
+    });
+  });
+});
+
+test("sendEmail logs a grep-able outcome= line for each terminal state, never logging the recipient", async () => {
+  await withEnv({ EMAIL_ENABLED: "0" }, async () => {
+    const email = freshEmailModule();
+    const logs = [];
+    const originalError = console.error;
+    console.error = (...args) => logs.push(args.join(" "));
+    try {
+      await email.sendEmail({ to: "should-not-appear@example.com", subject: "Hi", html: "<p>hi</p>", text: "hi" });
+    } finally {
+      console.error = originalError;
+    }
+    assert.equal(logs.length, 1);
+    assert.match(logs[0], /outcome=disabled/);
+    assert.doesNotMatch(logs[0], /should-not-appear@example\.com/);
+  });
+});

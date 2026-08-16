@@ -1,8 +1,14 @@
 /**
  * Transactional email via Resend. Config-gated like Stripe billing — when
- * disabled/unconfigured, sends are logged as an ALERT and reported as
- * `{ sent: false }` rather than thrown, so registration/reset/verification
- * flows never hard-fail because email delivery had a hiccup.
+ * disabled/unconfigured, sends are logged and reported as `{ sent: false }`
+ * rather than thrown, so registration/reset/verification flows never
+ * hard-fail because email delivery had a hiccup.
+ *
+ * Every call logs a single `[email] outcome=<disabled|sent|rejected|error>`
+ * line (grep for `outcome=` to alert on non-`sent` rates) — deliberately
+ * never includes the recipient, since call sites only reach this when an
+ * account already matched, so logging `to` would turn ops logs into an
+ * account-existence oracle for anyone who can read them.
  */
 
 const config = require("./config");
@@ -29,11 +35,14 @@ function getResendClient() {
  */
 async function sendEmail({ to, subject, html, text }) {
   if (!config.email.enabled || !config.email.apiKey) {
-    console.error(`[email] ALERT email disabled/unconfigured — dropped "${subject}" send`);
+    // Deliberately omits `to` — this fires on every send while email is
+    // disabled, so logging the recipient here would make server logs an
+    // account-existence oracle for whoever can read them.
+    console.error(`[email] outcome=disabled subject="${subject}"`);
     return { sent: false };
   }
-  const client = module.exports.getResendClient();
   try {
+    const client = module.exports.getResendClient();
     const { error } = await client.emails.send({
       from: config.email.from,
       to,
@@ -42,12 +51,13 @@ async function sendEmail({ to, subject, html, text }) {
       text,
     });
     if (error) {
-      console.error(`[email] ALERT Resend rejected "${subject}" send:`, error.message || error);
+      console.error(`[email] outcome=rejected subject="${subject}" detail=${error.message || error}`);
       return { sent: false };
     }
+    console.log(`[email] outcome=sent subject="${subject}"`);
     return { sent: true };
   } catch (e) {
-    console.error(`[email] ALERT "${subject}" send threw:`, e?.message || e);
+    console.error(`[email] outcome=error subject="${subject}" detail=${e?.message || e}`);
     return { sent: false };
   }
 }

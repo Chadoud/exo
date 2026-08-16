@@ -1,4 +1,5 @@
 const { decodeToken } = require("../lib/tokens");
+const { optionalAuth } = require("./optionalAuth");
 
 /** Require Bearer access token; sets req.accountId */
 function requireAuth(req, res, next) {
@@ -15,4 +16,4 @@ function requireAuth(req, res, next) {
   return next();
 }
 
-module.exports = { requireAuth };
+module.exports = { requireAuth, optionalAuth };

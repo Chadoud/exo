@@ -30,10 +30,19 @@ async function signTestLicense(sk, licenseConstants, overrides = {}) {
 
 /** Mocks the DB pool and swaps in a throwaway signing keypair for the router under test. */
 async function mountLicensesRouterWithTestKeypair() {
-  for (const name of ["../lib/db", "../lib/licenseConstants", "../lib/licenseVerify", "../lib/licenseActivations", "../routes/licenses"]) {
+  for (const name of [
+    "../lib/db",
+    "../lib/licenseConstants",
+    "../lib/licenseVerify",
+    "../lib/licenseActivations",
+    "../lib/offlineLicenseEntitlement",
+    "../middleware/requireAuth",
+    "../routes/licenses",
+  ]) {
     delete require.cache[require.resolve(name)];
   }
   const rows = [];
+  const entitlements = [];
   const conn = {
     async beginTransaction() {},
     async commit() {},
@@ -59,7 +68,27 @@ async function mountLicensesRouterWithTestKeypair() {
     release() {},
   };
   const db = require("../lib/db");
-  db.getPool = () => ({ getConnection: async () => conn });
+  const pool = {
+    getConnection: async () => conn,
+    async execute(sql, params = []) {
+      const normalized = sql.replace(/\s+/g, " ").trim().toLowerCase();
+      if (normalized.startsWith("insert into entitlements")) {
+        entitlements.push({
+          account_id: params[0],
+          feature: params[1],
+          source: params[2],
+          extra: params[3],
+        });
+        return [{ affectedRows: 1 }];
+      }
+      if (normalized.startsWith("update entitlements set active = 0")) {
+        entitlements.length = 0;
+        return [{ affectedRows: 1 }];
+      }
+      return conn.execute(sql, params);
+    },
+  };
+  db.getPool = () => pool;
 
   const licenseConstants = require("../lib/licenseConstants");
   const ed = await import("@noble/ed25519");
@@ -71,7 +100,7 @@ async function mountLicensesRouterWithTestKeypair() {
   const app = express();
   app.use(express.json());
   app.use("/v1", licensesRouter);
-  return { app, sk, licenseConstants, rows };
+  return { app, sk, licenseConstants, rows, entitlements };
 }
 
 test("activates a fresh license for a device", async () => {
@@ -146,6 +175,30 @@ test("rejects an invalid signature", async () => {
     assert.equal(res.status, 400);
     const body = await res.json();
     assert.equal(body.detail, "invalid_license:sig_verify");
+  } finally {
+    await server.close();
+  }
+});
+
+test("attaches a sort entitlement when a session token is present", async () => {
+  const { app, sk, licenseConstants, entitlements } = await mountLicensesRouterWithTestKeypair();
+  const { signAccessToken } = require("../lib/tokens");
+  const accountId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const server = await listenApp(app);
+  try {
+    const licenseKey = await signTestLicense(sk, licenseConstants);
+    const res = await server.fetch("/v1/licenses/activate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${signAccessToken(accountId)}`,
+      },
+      body: JSON.stringify({ license_key: licenseKey, machine_id: MACHINE_A }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(entitlements.length, 1);
+    assert.equal(entitlements[0].account_id, accountId);
+    assert.equal(entitlements[0].source, "offline_license");
   } finally {
     await server.close();
   }
