@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from typing import Any
 
 from license_verify import verify_license_key
@@ -14,6 +15,9 @@ from trial_state import get_trial_status, is_trial_active
 logger = logging.getLogger(__name__)
 
 _ENT_FILENAME = "entitlement.json"
+_ACTIVE_PROFILE_FILE = "active_profile.json"
+_PROFILES_DIR = "profiles"
+_PROFILE_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{1,128}$")
 _TRIAL_EXPIRED = "trial_expired"
 
 
@@ -39,11 +43,29 @@ def _entitlement_unrestricted() -> bool:
     return _dev_entitlement_bypass_enabled() or _unlimited_entitlement_enabled()
 
 
-def _read_saved_license_key() -> str | None:
-    base = _user_data_dir()
-    if not base:
+def _active_profile_dir(base: str) -> str | None:
+    """If USER_DATA is the device root, the key lives under profiles/<active>/."""
+    marker = os.path.join(base, _ACTIVE_PROFILE_FILE)
+    if not os.path.isfile(marker):
         return None
-    p = os.path.join(base, _ENT_FILENAME)
+    try:
+        with open(marker, encoding="utf-8") as f:
+            data: dict[str, Any] = json.load(f)
+        raw = data.get("activeId") if isinstance(data, dict) else None
+        if not isinstance(raw, str):
+            return None
+        ident = raw.strip()
+        if ident != "guest" and not _PROFILE_ID_RE.fullmatch(ident):
+            return None
+        profile = os.path.join(base, _PROFILES_DIR, ident)
+        return profile if os.path.isdir(profile) else None
+    except Exception as exc:  # noqa: BLE001 — corrupt marker → skip fallback
+        logger.warning("Could not read active profile marker %s: %s", marker, exc)
+        return None
+
+
+def _read_license_key_from_dir(folder: str) -> str | None:
+    p = os.path.join(folder, _ENT_FILENAME)
     if not os.path.isfile(p):
         return None
     try:
@@ -54,6 +76,19 @@ def _read_saved_license_key() -> str | None:
             return k.strip()
     except Exception as exc:  # noqa: BLE001 — corrupt entitlement file → treat as unlicensed
         logger.warning("Could not read entitlement file %s: %s", p, exc)
+    return None
+
+
+def _read_saved_license_key() -> str | None:
+    base = _user_data_dir()
+    if not base:
+        return None
+    key = _read_license_key_from_dir(base)
+    if key:
+        return key
+    profile = _active_profile_dir(base)
+    if profile:
+        return _read_license_key_from_dir(profile)
     return None
 
 

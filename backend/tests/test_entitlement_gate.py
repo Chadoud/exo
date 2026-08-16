@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from entitlement_constants import FREE_TRIAL_DAYS  # noqa: E402
+from entitlement_constants import FREE_TRIAL_DAYS, LICENSE_PREFIX, PRODUCT_SLUG  # noqa: E402
 
 
 def _write_trial(user_dir: pathlib.Path, *, active: bool) -> None:
@@ -22,6 +22,38 @@ def _write_trial(user_dir: pathlib.Path, *, active: bool) -> None:
         "source": "test",
     }
     (user_dir / "trial.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def _write_valid_license(user_dir: pathlib.Path) -> None:
+    """Sign a throwaway key and point license_verify at that public key."""
+    import base64
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+    import license_verify
+
+    sk = Ed25519PrivateKey.generate()
+    pk = sk.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+    license_verify.EMBEDDED_LICENSE_PUBLIC_KEY_HEX = pk.hex()
+    payload = {
+        "iat": 1,
+        "license_id": "11111111-1111-4111-8111-111111111111",
+        "max_seats": 1,
+        "product": PRODUCT_SLUG,
+        "tier": "full",
+    }
+    message = license_verify._canonical_payload(payload).encode("utf-8")
+    sig = sk.sign(message)
+
+    def _b64url(raw: bytes) -> str:
+        return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+    key = f"{LICENSE_PREFIX}.{_b64url(message)}.{_b64url(sig)}"
+    (user_dir / "entitlement.json").write_text(
+        json.dumps({"v": 1, "licenseKey": key}),
+        encoding="utf-8",
+    )
 
 
 class TestEntitlementGate(unittest.TestCase):
@@ -180,6 +212,81 @@ class TestEntitlementGate(unittest.TestCase):
                 os.environ.pop("EXOSITES_DEV_BYPASS_ENTITLEMENT", None)
             else:
                 os.environ["EXOSITES_DEV_BYPASS_ENTITLEMENT"] = prev_bypass
+
+    def test_valid_license_allows_analyze_after_trial_expired(self):
+        import os
+
+        from entitlement_gate import get_entitlement_status, may_start_analyze
+
+        prev = os.environ.get("EXOSITES_USER_DATA")
+        prev_bypass = os.environ.get("EXOSITES_DEV_BYPASS_ENTITLEMENT")
+        prev_node = os.environ.get("NODE_ENV")
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                os.environ["EXOSITES_USER_DATA"] = tmp
+                os.environ.pop("EXOSITES_DEV_BYPASS_ENTITLEMENT", None)
+                os.environ.pop("NODE_ENV", None)
+                _write_trial(pathlib.Path(tmp), active=False)
+                _write_valid_license(pathlib.Path(tmp))
+                ok, detail = may_start_analyze()
+                self.assertTrue(ok)
+                self.assertIsNone(detail)
+                status = get_entitlement_status()
+                self.assertTrue(status["licensed"])
+                self.assertTrue(status["canAnalyze"])
+                self.assertTrue(status["canUseSync"])
+        finally:
+            if prev is None:
+                os.environ.pop("EXOSITES_USER_DATA", None)
+            else:
+                os.environ["EXOSITES_USER_DATA"] = prev
+            if prev_bypass is None:
+                os.environ.pop("EXOSITES_DEV_BYPASS_ENTITLEMENT", None)
+            else:
+                os.environ["EXOSITES_DEV_BYPASS_ENTITLEMENT"] = prev_bypass
+            if prev_node is None:
+                os.environ.pop("NODE_ENV", None)
+            else:
+                os.environ["NODE_ENV"] = prev_node
+
+    def test_license_in_active_profile_when_user_data_is_device_root(self):
+        import os
+
+        from entitlement_gate import may_start_analyze
+
+        prev = os.environ.get("EXOSITES_USER_DATA")
+        prev_bypass = os.environ.get("EXOSITES_DEV_BYPASS_ENTITLEMENT")
+        prev_node = os.environ.get("NODE_ENV")
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = pathlib.Path(tmp)
+                profile = root / "profiles" / "acctA"
+                profile.mkdir(parents=True)
+                (root / "active_profile.json").write_text(
+                    json.dumps({"v": 1, "activeId": "acctA"}),
+                    encoding="utf-8",
+                )
+                _write_trial(root, active=False)
+                _write_valid_license(profile)
+                os.environ["EXOSITES_USER_DATA"] = tmp
+                os.environ.pop("EXOSITES_DEV_BYPASS_ENTITLEMENT", None)
+                os.environ.pop("NODE_ENV", None)
+                ok, detail = may_start_analyze()
+                self.assertTrue(ok)
+                self.assertIsNone(detail)
+        finally:
+            if prev is None:
+                os.environ.pop("EXOSITES_USER_DATA", None)
+            else:
+                os.environ["EXOSITES_USER_DATA"] = prev
+            if prev_bypass is None:
+                os.environ.pop("EXOSITES_DEV_BYPASS_ENTITLEMENT", None)
+            else:
+                os.environ["EXOSITES_DEV_BYPASS_ENTITLEMENT"] = prev_bypass
+            if prev_node is None:
+                os.environ.pop("NODE_ENV", None)
+            else:
+                os.environ["NODE_ENV"] = prev_node
 
     def test_node_env_development_bypasses_trial(self):
         import os
