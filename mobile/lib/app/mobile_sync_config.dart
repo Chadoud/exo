@@ -31,6 +31,7 @@ class MobileSyncConfig extends ChangeNotifier {
   static const _uuid = Uuid();
 
   static const _hasEverSyncedKey = 'has_ever_synced';
+  static const _accountEmailKey = 'account_email';
 
   String _cloudUrlSync = ExoConfig.cloudUrl;
   String _tokenSync = '';
@@ -40,6 +41,7 @@ class MobileSyncConfig extends ChangeNotifier {
   bool _onboardingComplete = false;
   int _dataEpoch = 0;
   String? _lastSyncLabel;
+  String? _accountEmail;
   bool _hasEverSynced = false;
   int _cachedRecordCount = 0;
   int _cachedMemoryCount = 0;
@@ -57,6 +59,8 @@ class MobileSyncConfig extends ChangeNotifier {
   int get dataEpoch => _dataEpoch;
   /// Display string for last successful sync (Settings / legacy).
   String? get lastSyncLabel => _lastSyncLabel;
+  /// Signed-in account email from `/me` (Settings). Null until fetched.
+  String? get accountEmail => _accountEmail;
   /// True only after at least one successful pull (empty-state classification).
   bool get hasEverSynced => _hasEverSynced;
   int get cachedRecordCount => _cachedRecordCount;
@@ -121,12 +125,36 @@ class MobileSyncConfig extends ChangeNotifier {
       await _storage.write('device_id', deviceId);
     }
     _deviceIdSync = deviceId;
+    _accountEmail = await _storage.read(_accountEmailKey);
     await _refreshCounts();
     if (isConfigured && !_onboardingComplete && _cachedRecordCount > 0) {
       _onboardingComplete = true;
       await _storage.write('setup_onboarding_complete', '1');
     }
     notifyListeners();
+  }
+
+  /// Load email for Settings. Cached; network failure keeps the last value.
+  Future<void> refreshAccountProfile() async {
+    if (!isSignedIn) {
+      if (_accountEmail != null) {
+        _accountEmail = null;
+        await _storage.delete(_accountEmailKey);
+        notifyListeners();
+      }
+      return;
+    }
+    try {
+      final me = await api.getMe();
+      final email = me['email'];
+      if (email is! String || !email.contains('@')) return;
+      if (email == _accountEmail) return;
+      _accountEmail = email;
+      await _storage.write(_accountEmailKey, email);
+      notifyListeners();
+    } catch (_) {
+      // Keep cached email; Settings still shows “Signed in”.
+    }
   }
 
   Future<void> _refreshCounts() async {
@@ -409,6 +437,8 @@ class MobileSyncConfig extends ChangeNotifier {
     await _storage.delete('access_token');
     await _storage.delete('refresh_token');
     await _storage.delete('cloud_url');
+    await _storage.delete(_accountEmailKey);
+    _accountEmail = null;
     _tokenSync = '';
     _cloudUrlSync = ExoConfig.cloudUrl;
     await clearPairing();

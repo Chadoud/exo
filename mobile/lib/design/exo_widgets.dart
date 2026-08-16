@@ -70,9 +70,14 @@ class ExoSurface extends StatelessWidget {
         borderRadius: BorderRadius.circular(ExoTheme.radius),
         border: Border.all(color: ExoColors.border),
       ),
-      child: Padding(
-        padding: padding ?? const EdgeInsets.all(ExoSpacing.lg),
-        child: child,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(ExoTheme.radius),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: padding ?? const EdgeInsets.all(ExoSpacing.lg),
+          child: child,
+        ),
       ),
     );
   }

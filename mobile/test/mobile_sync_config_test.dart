@@ -90,6 +90,14 @@ void main() {
     expect(storage.contains('exosites_sync_master_key_b64'), isFalse);
   });
 
+  test('hydrate restores cached account email', () async {
+    await storage.write('access_token', 'tok');
+    await storage.write('account_email', 'chady@example.com');
+    final again = MobileSyncConfig(storage: storage, localStore: store);
+    await again.hydrate();
+    expect(again.accountEmail, 'chady@example.com');
+  });
+
   test('clearSession wipes tokens, pairing, cursor, and local cache', () async {
     await config.saveSession(accessToken: 'tok', refreshToken: 'ref');
     await config.applyPairingPayload({

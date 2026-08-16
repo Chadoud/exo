@@ -23,6 +23,11 @@ class CloudApi {
         'Content-Type': 'application/json',
       };
 
+  Future<Map<String, dynamic>> getMe() async {
+    final res = await _send(() => _http.get(Uri.parse('$baseUrl/v1/me'), headers: _headers));
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> syncStatus() async {
     final res = await _send(() => _http.get(Uri.parse('$baseUrl/v1/sync/status'), headers: _headers));
     return jsonDecode(res.body) as Map<String, dynamic>;

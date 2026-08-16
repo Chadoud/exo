@@ -32,6 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     widget.config.addListener(_onConfig);
+    widget.config.refreshAccountProfile();
   }
 
   @override
@@ -111,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Text(
                         cfg.isSignedIn
-                            ? SyncUserMessages.settingsAccountSignedIn
+                            ? (cfg.accountEmail ?? SyncUserMessages.settingsAccountSignedIn)
                             : SyncUserMessages.settingsAccountSignedOut,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
