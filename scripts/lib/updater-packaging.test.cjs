@@ -42,3 +42,23 @@ test("assertDynamicImportsCovered fails when uncovered package is imported", () 
   assert.equal(result.ok, false);
   assert.ok(result.missing.includes("totally-missing-pkg"));
 });
+
+test("assertDynamicImportsCovered ignores vendored build output (resources/dev-macos)", () => {
+  // Regression: the staged PyInstaller backend under electron/resources/
+  // bundles playwright's own vite-built trace viewer, whose third-party
+  // dynamic imports (vite, kerberos, ...) must never surface here — they
+  // aren't our code and were never meant to be asar-packaged.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "asar-gate-vendor-"));
+  for (const vendored of ["resources", "dev-macos"]) {
+    const dir = path.join(tmp, vendored);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "vendored.js"),
+      'async function x() { await import("kerberos/lib/thing"); }\n',
+      "utf8"
+    );
+  }
+  const result = assertDynamicImportsCovered({ electronDir: tmp });
+  assert.equal(result.ok, true);
+  assert.ok(!result.missing.includes("kerberos"));
+});

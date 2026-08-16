@@ -202,6 +202,8 @@ function read(rel) {
     "electron/authorizedPaths.js",
     "electron/mainProcessDiagnostics.js",
     "electron/integrations/chromeAutopilot.js",
+    "electron/billingDeepLink.js",
+    "electron/ipc/billingHandlers.js",
   ]);
 
   const userDataCall = /(?:app\.)?getPath\(\s*["']userData["']\s*\)/;

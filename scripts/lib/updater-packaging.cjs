@@ -168,7 +168,12 @@ function assertDynamicImportsCovered(opts = {}) {
     for (const ent of entries) {
       const full = path.join(dir, ent.name);
       if (ent.isDirectory()) {
-        if (ent.name === "node_modules" || ent.name === "fixtures") continue;
+        // "resources"/"dev-macos" are staged build output + a vendored dev
+        // Electron.app (gitignored) — e.g. the Python backend's PyInstaller
+        // bundle drags in playwright's own vite-built trace viewer, whose
+        // *third-party* dynamic imports (vite, kerberos, ...) aren't ours to
+        // asar-package and must never leak into this scan.
+        if (["node_modules", "fixtures", "resources", "dev-macos"].includes(ent.name)) continue;
         walk(full);
         continue;
       }

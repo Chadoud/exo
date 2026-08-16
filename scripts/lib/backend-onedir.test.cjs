@@ -8,6 +8,7 @@ const {
   nestedBackendExecutable,
   resolveBackendInSlice,
   stageOnedirDirectory,
+  collectMachOFilesDeepestFirst,
 } = require("./backend-onedir.cjs");
 
 test("nestedBackendExecutable uses platform-specific launcher name", () => {
@@ -37,6 +38,33 @@ test("resolveBackendInSlice supports onedir and legacy one-file", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test(
+  "collectMachOFilesDeepestFirst skips framework symlinks, keeping only the real binary",
+  { skip: process.platform !== "darwin" && "Mach-O detection only applies on macOS" },
+  () => {
+    // Mirrors Python.framework: Python -> Versions/Current/Python -> Versions/3.x/Python.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-macho-"));
+    try {
+      const framework = path.join(dir, "Python.framework");
+      const versionDir = path.join(framework, "Versions", "3.13");
+      fs.mkdirSync(versionDir, { recursive: true });
+      const realBinary = path.join(versionDir, "Python");
+      fs.copyFileSync(process.execPath, realBinary);
+      fs.symlinkSync("3.13", path.join(framework, "Versions", "Current"));
+      fs.symlinkSync(path.join("Versions", "Current", "Python"), path.join(framework, "Python"));
+
+      const found = collectMachOFilesDeepestFirst(dir);
+      assert.ok(found.includes(realBinary), "real framework binary must be signed");
+      assert.ok(
+        !found.includes(path.join(framework, "Python")),
+        "framework symlink must never be codesigned directly (bundle format is ambiguous)",
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
 
 test("stageOnedirDirectory replaces destination with a fresh copy", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-stage-"));

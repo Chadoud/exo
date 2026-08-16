@@ -61,24 +61,25 @@ function stageOnedirDirectory(srcDir, destDir) {
 }
 
 /**
- * Codesign every Mach-O in an onedir slice (inner libs first, launcher last).
+ * Find every Mach-O file under a slice, deepest paths first (so nested
+ * dylibs get signed before the binaries that depend on them).
  * @param {string} sliceDir
- * @param {string} identity
- * @param {string} entitlementsPath
+ * @returns {string[]}
  */
-function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
-  if (!fs.existsSync(sliceDir)) {
-    throw new Error(`codesign: missing slice ${sliceDir}`);
-  }
-  const launcher = resolveBackendInSlice(sliceDir, "darwin");
-  if (!launcher) {
-    throw new Error(`codesign: no backend executable in ${sliceDir}`);
-  }
-
+function collectMachOFilesDeepestFirst(sliceDir) {
   const machOFiles = [];
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
+      // Frameworks (e.g. Python.framework/Python) expose their real binary
+      // through a "Versions/Current/..." symlink chain. `readdirSync`'s
+      // Dirent type can follow that chain on some Node/APFS combinations,
+      // making the symlink look like a plain file — codesign then fails
+      // with "bundle format is ambiguous" because it's signing a framework
+      // shortcut path instead of the real one. lstat is the source of
+      // truth: never sign or recurse through a symlink directly, only the
+      // real file it points at (which this walk visits on its own).
+      if (fs.lstatSync(full).isSymbolicLink()) continue;
       if (entry.isDirectory()) {
         walk(full);
         continue;
@@ -100,8 +101,26 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
     machOFiles.push(sliceDir);
   }
 
-  // Deepest paths first so nested dylibs are signed before dependents.
   machOFiles.sort((a, b) => b.length - a.length || b.localeCompare(a));
+  return machOFiles;
+}
+
+/**
+ * Codesign every Mach-O in an onedir slice (inner libs first, launcher last).
+ * @param {string} sliceDir
+ * @param {string} identity
+ * @param {string} entitlementsPath
+ */
+function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
+  if (!fs.existsSync(sliceDir)) {
+    throw new Error(`codesign: missing slice ${sliceDir}`);
+  }
+  const launcher = resolveBackendInSlice(sliceDir, "darwin");
+  if (!launcher) {
+    throw new Error(`codesign: no backend executable in ${sliceDir}`);
+  }
+
+  const machOFiles = collectMachOFilesDeepestFirst(sliceDir);
 
   const signArgs = (filePath) => [
     "--force",
@@ -140,6 +159,7 @@ module.exports = {
   nestedBackendExecutable,
   resolveBackendInSlice,
   stageOnedirDirectory,
+  collectMachOFilesDeepestFirst,
   codesignMacOnedirSlice,
   fileOutputMatches,
 };
