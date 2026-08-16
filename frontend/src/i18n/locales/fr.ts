@@ -1355,6 +1355,14 @@ export default {
     privacyTitle: "Diagnostics",
     privacyDesc:
       "L’analytique d’usage et les rapports de plantage reposent sur notre intérêt légitime (Politique de confidentialité). Opposition possible ci-dessous — jamais noms de fichiers, chemins ou contenu organisé.",
+    mailReply: {
+      privacySentence:
+        "Les réponses Gmail prêtes à l'envoi (Tâches → Boîte de réception) vérifient périodiquement les threads Gmail récents, uniquement les métadonnées (expéditeur, objet) ; le message complet ne va à l'IA cloud que lorsque vous ouvrez Revoir, et rien n'est envoyé sans votre confirmation.",
+      toggleLabel: "Suggérer des réponses dans la boîte de réception",
+      toggleHint: "La boîte de réception indique qui attend une réponse, avec un brouillon prêt à revoir.",
+      reconnectHint: "Connectez Gmail avec l'accès à l'envoi pour activer ceci.",
+      firstCheck: "La première vérification peut prendre quelques minutes.",
+    },
     privacyTelemetryLabel: "Analytique d’usage",
     privacyTelemetryDisclosure:
       "Activé par défaut. Événements génériques (version, langue, navigation) — jamais noms de fichiers ni chemins. Décocher = opposition.",

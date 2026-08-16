@@ -31,6 +31,11 @@ Single reference for product telemetry and crash enrichment fields. When adding 
 | `sort_structure_enabled` | Sort job started with structure template on | `structure_depth`, `structure_themes`, `has_structure_caps` |
 | `sort_structure_cap_applied` | Job finished with cap overflow rewrites | `overflow_count_bucket` (`0`, `1-5`, `6-20`, `21+`) |
 | `sort_structure_pack_imported` | User imported a structure pack in Settings | `pack_id` (filename only) |
+| `mail_reply_proposed` | Inbox shows a waiting-Gmail card | — |
+| `mail_reply_opened` | User taps Review on a waiting-Gmail card | — |
+| `mail_reply_sent` | Confirmed send succeeded | — |
+| `mail_reply_dismissed` | User dismisses a waiting-Gmail card | — |
+| `mail_reply_failed` | Draft or send failed | `error_class` only |
 | `codegen_session_start` | Codegen Studio build starts | `follow_up` |
 | `codegen_preview_ready` | Live preview reached healthy state | `stack` |
 | `codegen_error` | Build/install error or self-correct triggered | `selection` (`install`, `self_correct`), `error_class` |

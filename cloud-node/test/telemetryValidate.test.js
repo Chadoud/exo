@@ -71,6 +71,27 @@ test("validateEventsBatch accepts granular sort events", () => {
   assert.equal(result.rows.length, 3);
 });
 
+test("validateEventsBatch accepts mail reply events", () => {
+  const names = [
+    "mail_reply_proposed",
+    "mail_reply_opened",
+    "mail_reply_sent",
+    "mail_reply_dismissed",
+    "mail_reply_failed",
+  ];
+  for (const name of names) {
+    const result = validateEventsBatch({
+      instance_id: "desktop-abc12345",
+      app_version: "1.0.0",
+      platform: "electron",
+      locale: "en",
+      events: [{ name, props: name === "mail_reply_failed" ? { error_class: "network" } : {} }],
+    });
+    assert.ok("rows" in result, `expected rows for ${name}`);
+    assert.equal(result.rows[0].event_name, name);
+  }
+});
+
 test("validateEventsBatch accepts lifecycle events", () => {
   const names = [
     "account_signed_in",

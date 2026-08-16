@@ -1350,6 +1350,14 @@ export default {
     privacyTitle: "Diagnose",
     privacyDesc:
       "Grobe Nutzungsanalyse und Absturzberichte basieren auf unserem berechtigten Interesse (Datenschutzerklärung). Widerspruch jederzeit unten — nie Dateinamen, Pfade oder organisierte Inhalte.",
+    mailReply: {
+      privacySentence:
+        "Gmail-Antwortvorschläge (Aufgaben → Posteingang) prüfen periodisch aktuelle Gmail-Threads nur auf Metadaten (Absender, Betreff); die vollständige Nachricht geht erst an die Cloud-KI, wenn Sie Überprüfen öffnen, und ohne Ihre Bestätigung wird nichts gesendet.",
+      toggleLabel: "Antworten im Posteingang vorschlagen",
+      toggleHint: "Der Posteingang zeigt, wer auf eine Antwort wartet, mit einem Entwurf zur Überprüfung.",
+      reconnectHint: "Verbinden Sie Gmail mit Sendezugriff, um dies zu aktivieren.",
+      firstCheck: "Die erste Prüfung kann einige Minuten dauern.",
+    },
     privacyTelemetryLabel: "Nutzungsanalyse",
     privacyTelemetryDisclosure:
       "Standardmäßig aktiv. Grobe Ereignisse wie Version, Sprache, Navigation — nie Dateinamen oder Pfade. Abwählen = Widerspruch.",

@@ -9,6 +9,7 @@ import {
   type AgentFailure,
   type Nudge,
 } from "../api/proactive";
+import { dismissMailReply, fetchMailReplies, type MailReplyItem } from "../api/mailReplies";
 import { fetchTasks } from "../api/tasks";
 import { countInboxAttentionItems } from "../utils/homeFeed";
 import { countNeedsReview } from "../utils/memoryUi";
@@ -25,6 +26,7 @@ export type TodoFeedInbox = {
   nudges: Nudge[];
   failures: AgentFailure[];
   needsReview: number;
+  mailReplies: MailReplyItem[];
   loading: boolean;
 };
 
@@ -35,6 +37,7 @@ export type TodoFeed = {
   dismissInboxNudge: (id: number) => Promise<void>;
   dismissAllInboxNudges: () => Promise<void>;
   dismissInboxFailure: (id: number) => Promise<void>;
+  dismissMailReply: (id: number) => Promise<void>;
 };
 
 const EMPTY_COUNTS: TodoFeedCounts = { inbox: 0, today: 0, open: 0, loaded: false };
@@ -43,6 +46,7 @@ const EMPTY_INBOX: TodoFeedInbox = {
   nudges: [],
   failures: [],
   needsReview: 0,
+  mailReplies: [],
   loading: false,
 };
 
@@ -59,20 +63,22 @@ export function useTodoFeed(backendOnline: boolean): TodoFeed {
     }
     setInbox((prev) => ({ ...prev, loading: true }));
     try {
-      const [tasks, nudges, failures, memories] = await Promise.all([
+      const [tasks, nudges, failures, memories, mailList] = await Promise.all([
         fetchTasks(false).catch(() => []),
         fetchNudges().catch(() => []),
         fetchAgentFailures().catch(() => []),
         fetchAllScopedMemory().catch(() => []),
+        fetchMailReplies().catch(() => null),
       ]);
       const needsReview = countNeedsReview(memories);
+      const mailReplies = mailList?.gated_reason ? [] : mailList?.items ?? [];
       setCounts({
-        inbox: countInboxAttentionItems(nudges, failures, needsReview),
+        inbox: countInboxAttentionItems(nudges, failures, needsReview, mailReplies.length),
         today: countTodayOpenTasks(tasks),
         open: countOpenTasks(tasks),
         loaded: true,
       });
-      setInbox({ nudges, failures, needsReview, loading: false });
+      setInbox({ nudges, failures, needsReview, mailReplies, loading: false });
     } catch {
       setCounts((prev) => ({ ...prev, loaded: true }));
       setInbox((prev) => ({ ...prev, loading: false }));
@@ -114,12 +120,37 @@ export function useTodoFeed(backendOnline: boolean): TodoFeed {
         const next = { ...prev, failures };
         setCounts((c) => ({
           ...c,
-          inbox: countInboxAttentionItems(next.nudges, failures, next.needsReview),
+          inbox: countInboxAttentionItems(
+            next.nudges,
+            failures,
+            next.needsReview,
+            next.mailReplies.length,
+          ),
         }));
         return next;
       });
       try {
         await dismissAgentFailure(id);
+      } catch {
+        await refresh();
+      }
+    },
+    [refresh],
+  );
+
+  const dismissInboxMailReply = useCallback(
+    async (id: number) => {
+      setInbox((prev) => {
+        const mailReplies = prev.mailReplies.filter((m) => m.id !== id);
+        const next = { ...prev, mailReplies };
+        setCounts((c) => ({
+          ...c,
+          inbox: countInboxAttentionItems(next.nudges, next.failures, next.needsReview, mailReplies.length),
+        }));
+        return next;
+      });
+      try {
+        await dismissMailReply(id);
       } catch {
         await refresh();
       }
@@ -141,5 +172,6 @@ export function useTodoFeed(backendOnline: boolean): TodoFeed {
     dismissInboxNudge,
     dismissAllInboxNudges,
     dismissInboxFailure,
+    dismissMailReply: dismissInboxMailReply,
   };
 }

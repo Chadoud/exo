@@ -30,11 +30,12 @@ export function countInboxAttentionItems(
   nudges: Nudge[],
   failures: AgentFailure[],
   needsReview: number,
+  mailReplyCount = 0,
   maxNudges = 20,
 ): number {
   const filtered = filterInboxNudges(nudges, failures.length);
   const grouped = buildHomeAttentionFromNudges(filtered, maxNudges);
-  return grouped.length + failures.length + (needsReview > 0 ? 1 : 0);
+  return grouped.length + failures.length + (needsReview > 0 ? 1 : 0) + mailReplyCount;
 }
 
 /** Human-readable due line instead of raw ISO timestamps in nudge bodies. */

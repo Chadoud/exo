@@ -399,6 +399,8 @@ export default function TasksPanel({
                   onDismissNudge={todoFeed.dismissInboxNudge}
                   onDismissAllNudges={todoFeed.dismissAllInboxNudges}
                   onDismissFailure={todoFeed.dismissInboxFailure}
+                  onDismissMailReply={todoFeed.dismissMailReply}
+                  onMailReplySent={() => void todoFeed.refresh()}
                   onOpenMemoryReview={() => onOpenMemoryReview?.()}
                   onOpenToday={() => onSelectSubTab?.("today")}
                   onOpenChat={() => onOpenConversation?.()}
@@ -425,6 +427,8 @@ export default function TasksPanel({
                 onDismissNudge={todoFeed.dismissInboxNudge}
                 onDismissAllNudges={todoFeed.dismissAllInboxNudges}
                 onDismissFailure={todoFeed.dismissInboxFailure}
+                onDismissMailReply={todoFeed.dismissMailReply}
+                onMailReplySent={() => void todoFeed.refresh()}
                 onOpenMemoryReview={() => onOpenMemoryReview?.()}
                 onOpenToday={() => onSelectSubTab?.("today")}
                 onOpenChat={() => onOpenConversation?.()}

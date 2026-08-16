@@ -18,6 +18,7 @@ import { describeIntegrationConnectFailure } from "../../utils/externalSourceCon
 import { describeOAuthConnectError } from "../../utils/userFacingErrors";
 import ExternalSourceCard from "./ExternalSourceCard";
 import ExternalSourceConnectionButton from "./ExternalSourceConnectionButton";
+import GmailReplySuggestToggle from "./GmailReplySuggestToggle";
 import { externalSourceConnectionPill } from "./externalSourceConnectionPill";
 import { externalSourceConnectDisabled } from "../../utils/externalSourceConnectUi";
 import { relayConnectorTokens } from "../../assistant/connectorContext";
@@ -238,6 +239,9 @@ export default function GmailConnectionSection({
     >
       {connected && !compact ? (
         <p className="text-2xs leading-snug text-muted">{t("sources.gmailFiltersReconnectHint")}</p>
+      ) : null}
+      {!compact ? (
+        <GmailReplySuggestToggle connected={connected} backendOnline={backendOnline} />
       ) : null}
     </ExternalSourceCard>
   );

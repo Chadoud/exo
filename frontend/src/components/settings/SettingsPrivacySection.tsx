@@ -59,6 +59,7 @@ export default function SettingsPrivacySection({
       <div>
         <h3 className="text-sm font-semibold text-text-primary">{t("settings.privacyTitle")}</h3>
         <p className="text-xs text-muted mt-1 leading-relaxed">{t("settings.privacyDesc")}</p>
+        <p className="text-xs text-muted mt-2 leading-relaxed">{t("settings.mailReply.privacySentence")}</p>
       </div>
 
       <div className="rounded-xl border border-border bg-bg-secondary/50 px-4 py-3 space-y-3">

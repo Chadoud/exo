@@ -1498,6 +1498,14 @@ export default {
     privacyTitle: "Diagnostics",
     privacyDesc:
       "Coarse usage analytics and crash reports run on our legitimate interest in product reliability and improvement, as described in the Privacy Policy. You can object anytime below — never file names, paths, or what you organize.",
+    mailReply: {
+      privacySentence:
+        "Ready-to-send Gmail replies (Tasks → Inbox) periodically checks recent Gmail threads for metadata only (sender, subject); the full message goes to cloud AI only when you open Review, and nothing sends without your confirmation.",
+      toggleLabel: "Suggest replies in Inbox",
+      toggleHint: "Inbox shows who is waiting on a reply, with a draft ready for you to review and send.",
+      reconnectHint: "Connect Gmail with send access to turn this on.",
+      firstCheck: "First check can take a few minutes.",
+    },
     privacyTelemetryLabel: "Usage analytics",
     privacyTelemetryDisclosure:
       "On by default. Coarse events such as app version, locale, and navigation — never file names or paths. Uncheck to object.",

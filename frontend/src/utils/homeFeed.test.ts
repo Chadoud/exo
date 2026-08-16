@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildHomeAttentionFromNudges,
+  countInboxAttentionItems,
   filterInboxNudges,
   formatNudgeBody,
 } from "./homeFeed";
@@ -92,5 +93,14 @@ describe("filterInboxNudges", () => {
     ];
     expect(filterInboxNudges(nudges, 1)).toHaveLength(1);
     expect(filterInboxNudges(nudges, 1)[0].title).toBe("Other reminder");
+  });
+});
+
+describe("countInboxAttentionItems", () => {
+  it("includes visible mail-reply cards in the inbox badge", () => {
+    const withoutMail = countInboxAttentionItems([], [], 0, 0);
+    const withMail = countInboxAttentionItems([], [], 0, 2);
+    expect(withoutMail).toBe(0);
+    expect(withMail).toBe(2);
   });
 });

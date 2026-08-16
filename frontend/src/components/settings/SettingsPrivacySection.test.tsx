@@ -43,6 +43,7 @@ describe("SettingsPrivacySection", () => {
     });
     expect(container.textContent).toContain("Usage analytics");
     expect(container.textContent).toContain("Crash reports");
+    expect(container.textContent).toContain("periodically checks recent Gmail threads");
     const boxes = container.querySelectorAll('input[type="checkbox"]');
     expect(boxes.length).toBeGreaterThanOrEqual(2);
   });

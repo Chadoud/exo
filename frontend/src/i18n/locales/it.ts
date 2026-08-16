@@ -1355,6 +1355,14 @@ export default {
     privacyTitle: "Diagnostica",
     privacyDesc:
       "Analisi d’uso e segnalazioni di arresto anomalo si basano sul nostro interesse legittimo (Informativa privacy). Opposizione in qualsiasi momento — mai nomi file, percorsi o contenuti organizzati.",
+    mailReply: {
+      privacySentence:
+        "Le risposte Gmail pronte per l'invio (Attività → Posta in arrivo) controllano periodicamente i thread Gmail recenti solo per i metadati (mittente, oggetto); il messaggio completo va all'IA cloud solo quando apri Rivedi, e nulla viene inviato senza la tua conferma.",
+      toggleLabel: "Suggerisci risposte in Posta in arrivo",
+      toggleHint: "La posta in arrivo mostra chi è in attesa di una risposta, con una bozza pronta da rivedere.",
+      reconnectHint: "Collega Gmail con l'accesso all'invio per attivare questa funzione.",
+      firstCheck: "Il primo controllo può richiedere alcuni minuti.",
+    },
     privacyTelemetryLabel: "Analisi d’uso",
     privacyTelemetryDisclosure:
       "Attiva per impostazione predefinita. Eventi generici (versione, lingua, navigazione) — mai nomi file o percorsi. Deseleziona = opposizione.",

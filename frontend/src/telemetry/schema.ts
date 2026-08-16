@@ -60,6 +60,11 @@ export const TelemetryEventNames = {
   sortStructureEnabled: "sort_structure_enabled",
   sortStructureCapApplied: "sort_structure_cap_applied",
   sortStructurePackImported: "sort_structure_pack_imported",
+  mailReplyProposed: "mail_reply_proposed",
+  mailReplyOpened: "mail_reply_opened",
+  mailReplySent: "mail_reply_sent",
+  mailReplyDismissed: "mail_reply_dismissed",
+  mailReplyFailed: "mail_reply_failed",
 } as const;
 
 export type TelemetryEventName = (typeof TelemetryEventNames)[keyof typeof TelemetryEventNames];
@@ -204,6 +209,11 @@ export const uiEventItemSchema = z.object({
     "sort_structure_enabled",
     "sort_structure_cap_applied",
     "sort_structure_pack_imported",
+    "mail_reply_proposed",
+    "mail_reply_opened",
+    "mail_reply_sent",
+    "mail_reply_dismissed",
+    "mail_reply_failed",
   ]),
   props: propsSchema.default({}),
 });

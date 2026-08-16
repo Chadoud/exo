@@ -217,7 +217,8 @@ Accurate, readable, legally complete. Plain-language intro, then structured sect
    - Link: https://developers.google.com/terms/api-services-user-data-policy
 4. **Google scopes (plain language table)** — map each to user-visible feature:
    - Gmail read/modify/label/move — sort mail attachments, assistant mail tools
-   - Gmail send — only when you ask the assistant to send mail
+   - Gmail send — when you ask the assistant to send mail, **or** when you confirm Send on a ready-to-send Inbox reply (never auto-send)
+   - Ready-to-send Gmail replies (desktop Tasks → Inbox): background harvest reads **metadata only** (thread ids, From/Subject). Cloud AI sees the full thread **only after Review**. A reply is sent **only after** you confirm Send.
    - Drive — list/import/sort/move files you choose
    - Calendar read + events — briefing and calendar-aware assistant actions
 5. **Other integrations** — Microsoft Graph, Dropbox, Notion, Slack, S3, iCloud, Infomaniak: what’s stored (tokens on device), when accessed, staging files for sort.
@@ -278,7 +279,7 @@ If `/fr/` routes exist: mirror structure and meaning in clear French. Same URL p
 
 - Desktop Google OAuth scopes: `gmail.modify`, `gmail.send`, `gmail.settings.basic`, `drive`, `calendar.readonly`, `calendar.events`
 - Cloud sign-in: `openid`, `email`, `profile`
-- Gmail/Drive access triggered by user flows, not background scanning
+- Gmail/Drive access triggered by user flows, not background scanning — except optional ready-to-send Gmail replies (default on when Pro + Gmail send scope): periodic **metadata-only** inbox checks; full body to cloud AI only on Review; send only on confirm
 - Telemetry/crash: **on by default** after Terms acceptance (desktop); opt out in Settings → Privacy & diagnostics
 - Activity timeline: opt-in; screenshots → one-line summaries; images deleted
 - Sync: end-to-end encrypted memories/tasks; server cannot read plaintext

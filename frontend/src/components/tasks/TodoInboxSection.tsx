@@ -12,12 +12,15 @@ import {
 } from "../../utils/homeFeed";
 import type { TodoFeedInbox } from "../../hooks/useTodoFeed";
 import TodoInboxFailureCard from "./TodoInboxFailureCard";
+import MailReplyInboxSection from "./MailReplyInboxSection";
 
 interface TodoInboxSectionProps {
   inbox: TodoFeedInbox;
   onDismissNudge: (id: number) => Promise<void>;
   onDismissAllNudges: () => Promise<void>;
   onDismissFailure: (id: number) => Promise<void>;
+  onDismissMailReply: (id: number) => Promise<void>;
+  onMailReplySent: () => void;
   onOpenMemoryReview: () => void;
   onOpenToday: () => void;
   onOpenChat: () => void;
@@ -29,20 +32,26 @@ export default function TodoInboxSection({
   onDismissNudge,
   onDismissAllNudges,
   onDismissFailure,
+  onDismissMailReply,
+  onMailReplySent,
   onOpenMemoryReview,
   onOpenToday,
   onOpenChat,
   onRetryFailureInChat,
 }: TodoInboxSectionProps) {
   const { t } = useI18n();
-  const { nudges, failures, needsReview, loading } = inbox;
+  const { nudges, failures, needsReview, mailReplies, loading } = inbox;
 
   const visibleNudges = filterInboxNudges(nudges, failures.length);
   const groupedNudges = buildHomeAttentionFromNudges(visibleNudges, 20);
   const isEmpty =
-    !loading && failures.length === 0 && needsReview === 0 && groupedNudges.length === 0;
+    !loading &&
+    failures.length === 0 &&
+    needsReview === 0 &&
+    mailReplies.length === 0 &&
+    groupedNudges.length === 0;
 
-  if (loading && nudges.length === 0 && failures.length === 0) {
+  if (loading && nudges.length === 0 && failures.length === 0 && mailReplies.length === 0) {
     return <ListSkeleton />;
   }
 
@@ -92,6 +101,12 @@ export default function TodoInboxSection({
           </ul>
         </section>
       ) : null}
+
+      <MailReplyInboxSection
+        items={mailReplies}
+        onDismiss={onDismissMailReply}
+        onSent={onMailReplySent}
+      />
 
       {needsReview > 0 ? (
         <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">

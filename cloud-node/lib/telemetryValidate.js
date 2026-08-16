@@ -55,6 +55,11 @@ const ALLOWED_EVENT_NAMES = new Set([
   "sort_structure_enabled",
   "sort_structure_cap_applied",
   "sort_structure_pack_imported",
+  "mail_reply_proposed",
+  "mail_reply_opened",
+  "mail_reply_sent",
+  "mail_reply_dismissed",
+  "mail_reply_failed",
 ]);
 
 const ALLOWED_PROP_KEYS = new Set([
