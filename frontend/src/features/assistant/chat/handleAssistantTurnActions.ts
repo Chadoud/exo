@@ -13,6 +13,16 @@ import { resolveChatProviderCredentials } from "../../../utils/resolveChatProvid
 import { apiKeyForBackendRequest } from "../../../utils/geminiConnection";
 import type { RunAssistantSendMessageParams } from "./assistantSendTypes";
 
+export function capabilityRefuseCopyKey(reason: string): string {
+  if (reason === "cannot_produce_video") return "assistant.capabilityRefuseVideo";
+  if (reason === "how_to") return "assistant.capabilityRefuseAdvice";
+  if (reason === "status_or_followup" || reason === "prior_refusal") {
+    return "assistant.capabilityRefuseStatus";
+  }
+  if (reason === "ambiguous_artifact") return "assistant.capabilityRefuseAmbiguous";
+  return "assistant.capabilityRefuseNotSoftware";
+}
+
 export function applyCompletedTurnMessage(
   turn: AssistantTurnJsonResponse,
   params: RunAssistantSendMessageParams,

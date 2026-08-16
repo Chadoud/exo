@@ -93,7 +93,12 @@ export function useWorkspaceVoiceToolHandlers({
       }
 
       if (payload.tool === VOICE_TOOL_START_CODEGEN_STUDIO) {
-        const r = payload.result as { ok?: boolean; data?: { goal?: string }; error?: string };
+        const r = payload.result as {
+          ok?: boolean;
+          data?: { goal?: string; action?: string };
+          error?: string;
+        };
+        if (r?.data?.action === "refuse") return;
         if (r?.ok && r.data?.goal) {
           onVoiceCodegenRequested(r.data.goal);
           return;

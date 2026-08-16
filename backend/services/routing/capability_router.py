@@ -18,6 +18,7 @@ from services.calendar.draft import (
     infer_calendar_create_args,
     user_speech_implies_calendar_event,
 )
+from services.routing.artifact_admit import LastRefusal, admit_proposed_tool
 
 _CALENDAR_TOOLS = frozenset({"google_workspace", "microsoft_graph", "infomaniak_services"})
 _LIST_OPS = frozenset({"list_calendar_events", "list_events"})
@@ -90,6 +91,7 @@ class RouteContext:
     pending_calendar_create: Any | None = None
     last_listed_calendar_events: list[dict[str, Any]] = field(default_factory=list)
     last_calendar_list_tool: str = "google_workspace"
+    last_refusal: LastRefusal | None = None
 
 
 @dataclass
@@ -102,6 +104,9 @@ class RouteResult:
     reason: str | None = None
     bulk_delete_event_ids: list[str] | None = None
     bulk_delete_tool_name: str = "google_workspace"
+    refused: bool = False
+    refuse_hint: str | None = None
+    last_refusal: LastRefusal | None = None
 
 
 def _normalize_text(text: str) -> str:
@@ -281,11 +286,33 @@ class CapabilityRouter:
         When ``bulk_delete_event_ids`` is set, dispatch must call
         ``CalendarService.bulk_delete`` instead of a single delete op.
         """
-        if not capability_router_enabled():
-            return RouteResult(name, dict(args))
-
         speech = _normalize_text(ctx.user_speech)
         merged_args = dict(args)
+        decision = admit_proposed_tool(
+            name,
+            merged_args,
+            user_speech=speech,
+            last_refusal=ctx.last_refusal,
+        )
+        if decision.action == "refuse":
+            return RouteResult(
+                name,
+                merged_args,
+                refused=True,
+                reason=decision.reason,
+                refuse_hint=decision.model_hint,
+                last_refusal=decision.as_last_refusal(),
+            )
+        if decision.action == "redirect":
+            return RouteResult(
+                decision.name,
+                decision.args,
+                redirected=True,
+                reason=decision.reason,
+            )
+
+        if not capability_router_enabled():
+            return RouteResult(name, merged_args)
 
         reminder = _redirect_schedule_reminder(name, merged_args, speech)
         if reminder is not None:

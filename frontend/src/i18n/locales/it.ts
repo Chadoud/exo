@@ -216,6 +216,14 @@ export default {
     chatHistorySectionLast7: "Ultimi 7 giorni",
     chatHistorySectionLast30: "Ultimi 30 giorni",
     chatHistorySectionOlder: "PiÃ¹ vecchie",
+    capabilityRefuseVideo:
+      "Non posso creare quel video. Posso scrivere una sceneggiatura o uno storyboard, oppure creare una pagina web se è quello che desideri.",
+    capabilityRefuseAdvice: "Posso spiegarti come fare — non posso produrre quel file da qui.",
+    capabilityRefuseStatus:
+      "Non ho quel file. Non posso creare un video qui — posso scrivere una sceneggiatura, o creare una pagina web se ne vuoi una.",
+    capabilityRefuseAmbiguous: "Vuoi un file video, o un'app web che posso creare e mostrare in anteprima?",
+    capabilityRefuseNotSoftware:
+      "Codegen Studio crea un'app web con anteprima live. Dimmi se vuoi una pagina o un'app.",
     codegen: {
       tabChat: "Chat",
       tabPreview: "Anteprima",

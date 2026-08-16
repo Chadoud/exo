@@ -33,6 +33,11 @@ from services.calendar import (
     resolve_calendar_tool_name,
 )
 from services.calendar.schemas import CalendarDeleteDraftPayload
+from services.routing.artifact_admit import (
+    AdmitDecision,
+    admit_proposed_tool,
+    infer_wanted_artifact,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +68,26 @@ class AssistantTurnResult:
     prefetch_mail_messages: list[dict[str, Any]] | None = None
     stream_system_prompt: str | None = None
     stream_messages: list[dict[str, str]] | None = None
+
+
+def _turn_from_admit(decision: AdmitDecision, text: str) -> AssistantTurnResult | None:
+    """Map an admit-door decision onto a chat turn, or None when the tool may run."""
+    if decision.action == "refuse":
+        return AssistantTurnResult(
+            mode="complete",
+            intent="generic_chat",
+            assistant_content=decision.user_message or "",
+            action="capability_refuse",
+            action_payload={"reason": decision.reason, "artifact": decision.wanted_artifact},
+        )
+    if decision.action == "redirect" and decision.name == "start_codegen_studio":
+        return AssistantTurnResult(
+            mode="action",
+            intent="codegen_studio",
+            action="codegen_studio",
+            action_payload={"goal": text},
+        )
+    return None
 
 
 def _parse_text_confirm(user_text: str) -> Literal["none", "confirm", "reject"]:
@@ -369,6 +394,12 @@ def handle_assistant_turn(
         text = extract_agent_retry_goal(text)
 
     if intent == "codegen_studio":
+        gated = _turn_from_admit(
+            admit_proposed_tool("start_codegen_studio", {"goal": text}, user_speech=text),
+            text,
+        )
+        if gated is not None:
+            return gated
         return AssistantTurnResult(
             mode="action",
             intent=intent,
@@ -377,6 +408,12 @@ def handle_assistant_turn(
         )
 
     if intent in ("agent_task", "external_source_task", "send_message"):
+        gated = _turn_from_admit(
+            admit_proposed_tool("plan_and_execute", {"goal": text}, user_speech=text),
+            text,
+        )
+        if gated is not None:
+            return gated
         if not assistant_agent_enabled and intent == "send_message":
             return AssistantTurnResult(
                 mode="complete",
@@ -413,6 +450,14 @@ def handle_assistant_turn(
         return _handle_calendar_delete(text)
 
     if intent == "write_calendar":
+        wanted = infer_wanted_artifact(text)
+        if wanted in {"video", "advice", "ambiguous"}:
+            gated = _turn_from_admit(
+                admit_proposed_tool("start_codegen_studio", {"goal": text}, user_speech=text),
+                text,
+            )
+            if gated is not None:
+                return gated
         if not assistant_tools_enabled:
             return AssistantTurnResult(
                 mode="complete",

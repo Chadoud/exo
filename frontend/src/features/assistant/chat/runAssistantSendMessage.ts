@@ -24,6 +24,7 @@ import { handleAssistantTurnStream } from "./handleAssistantTurnStream";
 import { handleClientCalendarRead, handleClientMailManage, handleClientMailRead } from "./handleAssistantTurnReads";
 import {
   applyCompletedTurnMessage,
+  capabilityRefuseCopyKey,
   handleAgentTaskAction,
   handleCodegenStudioAction,
   handleMailComposeAction,
@@ -206,6 +207,17 @@ export async function runAssistantSendMessage(
   ]);
   onDraftClear();
   setIsStreaming(true);
+
+  if (turn.action === "capability_refuse") {
+    const refuseKey = capabilityRefuseCopyKey(String(turn.action_payload?.reason ?? ""));
+    applyCompletedTurnMessage(
+      { ...turn, assistant_content: params.t(refuseKey) },
+      params,
+      assistantMsgId,
+    );
+    trackAssistantTurnCompleted((Date.now() - turnStartedAt) / 1000, 0);
+    return { ok: true };
+  }
 
   if (turn.mode === "complete") {
     applyCompletedTurnMessage(turn, params, assistantMsgId);

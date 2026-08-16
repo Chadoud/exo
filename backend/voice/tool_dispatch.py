@@ -38,7 +38,8 @@ from services.calendar import (
 )
 from services.calendar.delete_confirm import is_delete_followup_reply
 from services.calendar.delete_draft import resolve_delete_draft_from_events
-from services.routing import RouteContext, RouteResult, get_capability_router
+from services.routing import LastRefusal, RouteContext, RouteResult, get_capability_router
+from services.routing.artifact_admit import AdmitDecision, refusal_tool_result
 from services.routing.capability_router import match_calendar_events_for_delete
 from tool_registry import TOOLS_NEEDING_APPROVAL, dispatch_sync
 from voice.frames import frame
@@ -632,6 +633,7 @@ class ToolDispatchState:
     last_calendar_delete_source: str = ""
     last_listed_calendar_events: list[dict[str, Any]] = field(default_factory=list)
     last_calendar_list_tool: str = "google_workspace"
+    last_refusal: LastRefusal | None = None
 
 
 async def handle_voice_tool_calls(
@@ -671,8 +673,14 @@ async def handle_voice_tool_calls(
             pending_calendar_create=dispatch_state.pending_calendar_create,
             last_listed_calendar_events=dispatch_state.last_listed_calendar_events,
             last_calendar_list_tool=dispatch_state.last_calendar_list_tool,
+            last_refusal=dispatch_state.last_refusal,
         )
         routed = get_capability_router().route(name, args, route_ctx)
+        if routed.refused:
+            dispatch_state.last_refusal = routed.last_refusal
+            prepared.append((fc, call_id, routed.name, routed.args, None, None, routed))
+            continue
+        dispatch_state.last_refusal = None
         name, args = routed.name, routed.args
         if routed.redirected and routed.reason:
             logger.info(
@@ -706,7 +714,7 @@ async def handle_voice_tool_calls(
             )
 
     if prepared:
-        names = [p[2] for p in prepared if p[2]]
+        names = [p[2] for p in prepared if p[2] and not p[6].refused]
         if names:
             first_args = prepared[0][3]
             tool_source = derive_tool_source(names[0], first_args)
@@ -725,7 +733,9 @@ async def handle_voice_tool_calls(
 
         approved_tool = True
         approval_fut: asyncio.Future[bool] | None = None
-        if name in TOOLS_NEEDING_APPROVAL:
+        if routed.refused:
+            approved_tool = True
+        elif name in TOOLS_NEEDING_APPROVAL:
             skip_prompt = (
                 name == "screen_capture"
                 and approval_waiter is not None
@@ -770,7 +780,19 @@ async def handle_voice_tool_calls(
                     approved_tool = False
                     logger.warning("[voice] approval   name=%s timed out", name)
 
-        if not approved_tool:
+        if routed.refused:
+            artifact = routed.last_refusal.artifact if routed.last_refusal else None
+            result = refusal_tool_result(
+                AdmitDecision(
+                    action="refuse",
+                    name=name,
+                    args=args,
+                    reason=routed.reason,
+                    wanted_artifact=artifact,
+                    model_hint=routed.refuse_hint,
+                )
+            )
+        elif not approved_tool:
             result = {"ok": False, "error": "User denied or approval unavailable"}
         elif policy_block := _policy_block_result(
             name, args, allow_sensitive=allow_sensitive, approved_tool=approved_tool

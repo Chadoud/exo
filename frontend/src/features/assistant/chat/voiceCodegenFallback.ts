@@ -1,4 +1,3 @@
-import { VOICE_TOOL_START_CODEGEN_STUDIO } from "../../../constants";
 import { isCodegenTask } from "../../../systemCommands/assistantIntentHelpers";
 import type { VoiceTurnCommitMeta } from "./commitAssistantTurn";
 
@@ -9,17 +8,6 @@ const CODEGEN_STUDIO_SPOKEN_RE =
 /** Short confirmations — not enough to be a build goal by themselves. */
 const SHORT_FOLLOW_UP_RE =
   /^(?:do\s+it|go\s+ahead|yes(?:\s+do\s+it)?|yep|yeah|please|now|continue|try\s+again|same\s+thing|make\s+it\s+happen|ok(?:ay)?|sure)(?:\s*[.!]*)?$/i;
-
-/**
- * Tools that already own the turn — do not also launch Codegen Studio.
- * Soft tools like save_memory must NOT block: the model often saves a preference
- * while promising to open Codegen Studio, and users still expect the build.
- */
-const BLOCKING_CODEGEN_FALLBACK_TOOLS = new Set([
-  VOICE_TOOL_START_CODEGEN_STUDIO,
-  "plan_and_execute",
-  "dev_scaffold_project",
-]);
 
 export function assistantSpokeCodegenStudioIntent(assistantText: string): boolean {
   return CODEGEN_STUDIO_SPOKEN_RE.test(assistantText.trim());
@@ -58,12 +46,11 @@ export function resolveVoiceCodegenFallbackGoal(
  * True when the voice model skipped `start_codegen_studio` but the turn was an app-build request.
  */
 export function shouldLaunchVoiceCodegenFallback(
-  userText: string,
-  assistantText: string,
-  meta: VoiceTurnCommitMeta | null,
-  recentCodegenUserUtterances: readonly string[] = [],
+  _userText: string,
+  _assistantText: string,
+  _meta: VoiceTurnCommitMeta | null,
+  _recentCodegenUserUtterances: readonly string[] = [],
 ): boolean {
-  if (meta?.briefingSection) return false;
-  if (meta?.toolName && BLOCKING_CODEGEN_FALLBACK_TOOLS.has(meta.toolName)) return false;
-  return resolveVoiceCodegenFallbackGoal(userText, assistantText, recentCodegenUserUtterances) !== null;
+  // Spoken words never launch. Only an admitted start_codegen_studio tool_result may.
+  return false;
 }

@@ -106,15 +106,13 @@ def build_declarations() -> list["genai_types.FunctionDeclaration"]:
                 decl(
             "start_codegen_studio",
             (
-                "Build a real software application — a web app, website, or multi-file "
-                "React / TypeScript / HTML / Tailwind project. Opens Codegen Studio, which "
-                "generates the project files, installs dependencies, starts a dev server, and "
-                "shows a LIVE PREVIEW. Use this whenever the user asks to 'make / build / create "
-                "an app, site, page, or tool' (e.g. 'make a social feed app', 'build a todo app'). "
-                "Returns immediately and runs in the background — say one short sentence like "
-                "'Opening that in Codegen Studio' and do NOT wait for a result. Pass the user's "
-                "FULL request as 'goal'. This is NOT plan_and_execute (which cannot build apps) "
-                "and NOT dev_scaffold_project (Python-only)."
+                "Build a web app or website and show a live preview (files, install, dev server). "
+                "Use only when the user wants that software artifact — e.g. a React todo app or "
+                "a landing page. Do NOT use for a video, clip, reel, image, song, PDF, how-to, "
+                "or asking where a file is. Memory about a demo app must not upgrade a video "
+                "request into this tool. Returns immediately. Mention Codegen Studio only after "
+                "ok=true. Pass the user's FULL request as 'goal'. Not plan_and_execute "
+                "(cannot build apps or render video) and not dev_scaffold_project (Python-only)."
             ),
             {
                 "goal": {
