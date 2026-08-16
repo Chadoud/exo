@@ -249,14 +249,18 @@ async function pullBlobs(accountId, cursor, limit, snapshotOffset = 0) {
     [accountId],
   );
   const resumeCursor = Number(maxRows[0]?.max_seq || 0);
+  const [blobCountRows] = await pool.query(
+    "SELECT COUNT(*) AS total FROM sync_blobs WHERE account_id = ?",
+    [accountId],
+  );
+  const blobCount = Number(blobCountRows[0]?.total || 0);
 
-  // Cursor fell behind compacted history — rebuild from current blob state.
-  if (after > 0 && resyncFloor > 0 && after < resyncFloor - 1) {
-    const [countRows] = await pool.query(
-      "SELECT COUNT(*) AS total FROM sync_blobs WHERE account_id = ?",
-      [accountId],
-    );
-    const total = Number(countRows[0]?.total || 0);
+  // Snapshot when the change log cannot rebuild full state:
+  // compacted history, first pull after compaction, or blobs with no change rows.
+  const compactedBehind = after > 0 && resyncFloor > 0 && after < resyncFloor - 1;
+  const firstPullAfterCompact = after === 0 && resyncFloor > 1;
+  const orphanBlobs = after === 0 && resyncFloor === 0 && blobCount > 0;
+  if (compactedBehind || firstPullAfterCompact || orphanBlobs) {
     const [rows] = await pool.query(
       `SELECT collection, record_id, device_id, logical_clock, updated_at, deleted,
               schema_version, ciphertext, content_hash
@@ -270,7 +274,7 @@ async function pullBlobs(accountId, cursor, limit, snapshotOffset = 0) {
     return {
       blobs: rows.map((r) => mapBlobRow(r, null)),
       cursor: after,
-      has_more: nextOffset < total,
+      has_more: nextOffset < blobCount,
       feed_version: FEED_VERSION,
       resync_required: true,
       resync_floor: resyncFloor,

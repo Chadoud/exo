@@ -71,10 +71,17 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE tasks ADD COLUMN external_id TEXT DEFAULT NULL")
     if "source_url" not in cols:
         conn.execute("ALTER TABLE tasks ADD COLUMN source_url TEXT DEFAULT NULL")
+    if "dismissed" not in cols:
+        conn.execute("ALTER TABLE tasks ADD COLUMN dismissed INTEGER NOT NULL DEFAULT 0")
+    if "dismissed_at" not in cols:
+        conn.execute("ALTER TABLE tasks ADD COLUMN dismissed_at TEXT DEFAULT NULL")
     conn.commit()
     conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_external_unique "
         "ON tasks (external_id) WHERE external_id IS NOT NULL"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tasks_dismissed ON tasks (dismissed)"
     )
     conn.commit()
 
@@ -110,6 +117,8 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         "source_conversation_id": row["source_conversation_id"],
         "external_id": row["external_id"],
         "source_url": row["source_url"],
+        "dismissed": bool(row["dismissed"]) if "dismissed" in row.keys() else False,
+        "dismissed_at": row["dismissed_at"] if "dismissed_at" in row.keys() else None,
         "created_at": str(row["created_at"]),
         "updated_at": str(row["updated_at"]),
     }
@@ -189,14 +198,18 @@ def list_tasks(
     only_due_before: str | None = None,
     exclude_manual: bool = False,
     map_eligible: bool = False,
+    include_dismissed: bool = False,
 ) -> list[dict[str, Any]]:
     """List tasks newest-first; incomplete before completed.
 
     ``only_due_before`` (ISO string) filters to incomplete tasks with a due date
     at or before the given instant — used by the reminder scheduler.
+    Dismissed rows stay hidden unless ``include_dismissed`` (GO SYNC export).
     """
     clauses: list[str] = []
     params: list[Any] = []
+    if not include_dismissed:
+        clauses.append("dismissed = 0")
     if not include_completed:
         clauses.append("completed = 0")
     if exclude_manual:
@@ -285,8 +298,18 @@ def set_completed(task_id: int, completed: bool = True) -> dict[str, Any] | None
 
 
 def delete_task(task_id: int) -> bool:
+    """Remove from lists without forgetting the source.
+
+    Soft-dismiss keeps ``external_id`` so calendar/mail sync cannot recreate
+    a "Prepare for…" item the user already said is not a to-do.
+    """
+    now = datetime.now(UTC).isoformat()
     with _conn() as conn:
-        cur = conn.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+        cur = conn.execute(
+            "UPDATE tasks SET dismissed=1, dismissed_at=?, updated_at=? "
+            "WHERE id=? AND dismissed=0",
+            (now, now, task_id),
+        )
         conn.commit()
         return cur.rowcount > 0
 
@@ -306,7 +329,8 @@ def task_exists(description: str) -> bool:
         return False
     with _conn() as conn:
         row = conn.execute(
-            "SELECT 1 FROM tasks WHERE LOWER(TRIM(description))=? AND completed=0 LIMIT 1",
+            "SELECT 1 FROM tasks WHERE LOWER(TRIM(description))=? AND completed=0 "
+            "AND dismissed=0 LIMIT 1",
             (norm,),
         ).fetchone()
         return row is not None
@@ -318,7 +342,7 @@ def cleanup_noise_tasks(*, dry_run: bool = False) -> dict[str, Any]:
 
     with _conn() as conn:
         rows = conn.execute(
-            "SELECT id, description, source FROM tasks WHERE completed = 0"
+            "SELECT id, description, source FROM tasks WHERE completed = 0 AND dismissed = 0"
         ).fetchall()
 
     candidates: list[int] = []
@@ -335,10 +359,5 @@ def cleanup_noise_tasks(*, dry_run: bool = False) -> dict[str, Any]:
     if dry_run:
         return {"ok": True, "candidates": len(candidates), "ids": candidates[:50]}
 
-    removed = 0
-    with _conn() as conn:
-        for task_id in candidates:
-            cur = conn.execute("DELETE FROM tasks WHERE id=?", (task_id,))
-            removed += cur.rowcount
-        conn.commit()
+    removed = sum(1 for task_id in candidates if delete_task(task_id))
     return {"ok": True, "candidates": len(candidates), "removed": removed}

@@ -27,3 +27,14 @@ class TestSyncExport(unittest.TestCase):
         collections = {i["collection"] for i in items}
         self.assertIn("memory_entries", collections)
         self.assertIn("tasks", collections)
+        live = [i for i in items if i["collection"] == "tasks"]
+        self.assertEqual(len(live), 1)
+        self.assertFalse(live[0].get("deleted"))
+
+    def test_export_dismissed_task_as_tombstone(self) -> None:
+        task = tasks_store.create_task("Not a real to-do", source="google-calendar")
+        tasks_store.delete_task(task["id"])
+        items = [i for i in sync_export.export_tasks() if i["record_id"] == str(task["id"])]
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0]["deleted"])
+        self.assertEqual(items[0]["payload"], {})

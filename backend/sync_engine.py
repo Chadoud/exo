@@ -108,6 +108,7 @@ def export_encrypted_blobs(
                 updated_at=updated_at,
                 plaintext=plaintext,
                 record_key=rkey,
+                deleted=bool(item.get("deleted")),
                 schema_version=SCHEMA_V3,
                 account_id=account_id,
             )
@@ -136,6 +137,15 @@ def push_blobs(
             accepted += int(data.get("accepted", len(batch)))
             cursor = int(data.get("cursor", cursor))
     return {"accepted": accepted, "cursor": cursor, "pushed": len(blobs)}
+
+
+def pull_failure_info(exc: BaseException) -> dict[str, Any]:
+    """Map a pull exception to a storeable payload (no secrets)."""
+    response = getattr(exc, "response", None)
+    status = getattr(response, "status_code", None)
+    if status in (401, 403):
+        return {"error": "session_expired", "http_status": int(status)}
+    return {"error": str(exc)}
 
 
 def pull_blobs(
@@ -284,8 +294,11 @@ def run_sync_cycle(
         )
         next_pull_cursor = int(pull_stats.get("cursor") or pull_cursor)
     except Exception as exc:
-        logger.exception("sync pull/apply failed — continuing with push")
-        pull_stats = {"error": str(exc)}
+        pull_stats = pull_failure_info(exc)
+        if pull_stats.get("error") == "session_expired":
+            logger.warning("sync pull unauthorized — continuing with push")
+        else:
+            logger.exception("sync pull/apply failed — continuing with push")
     try:
         blobs = export_encrypted_blobs(
             master_key=master_key,

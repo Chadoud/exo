@@ -182,6 +182,59 @@ test("pullBlobs behind compaction floor returns sync_blobs snapshot", async () =
   assert.equal(snap.has_more, false);
 });
 
+test("pullBlobs cursor 0 snapshots when change feed is empty but blobs exist", async () => {
+  const mock = createSyncMockPool();
+  const syncRelay = loadSyncRelayWithMock(mock);
+  await mock.query(
+    `INSERT INTO sync_blobs (
+      account_id, collection, record_id, device_id, logical_clock, updated_at,
+      deleted, schema_version, ciphertext, content_hash
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      ACCOUNT,
+      "memory_entries",
+      "mem-legacy",
+      "dev-a",
+      1,
+      "2026-06-16T10:00:00Z",
+      0,
+      2,
+      "cipher-legacy",
+      "9".repeat(64),
+    ],
+  );
+  const snap = await syncRelay.pullBlobs(ACCOUNT, 0, 10, 0);
+  assert.equal(snap.resync_required, true);
+  assert.equal(snap.snapshot, true);
+  assert.equal(snap.blobs.length, 1);
+  assert.equal(snap.blobs[0].ciphertext, "cipher-legacy");
+});
+
+test("pullBlobs cursor 0 snapshots after compaction removed early changes", async () => {
+  const mock = createSyncMockPool();
+  const syncRelay = loadSyncRelayWithMock(mock);
+  await syncRelay.pushBlobs(ACCOUNT, [
+    envelope({ logical_clock: 1, ciphertext: "old", content_hash: "1".repeat(64) }),
+  ]);
+  await syncRelay.pushBlobs(ACCOUNT, [
+    envelope({
+      logical_clock: 2,
+      ciphertext: "cur",
+      content_hash: "2".repeat(64),
+      updated_at: "2026-06-16T11:00:00Z",
+    }),
+  ]);
+  await mock.query("DELETE FROM sync_changes WHERE account_id = ? AND change_seq < ?", [
+    ACCOUNT,
+    2,
+  ]);
+  const snap = await syncRelay.pullBlobs(ACCOUNT, 0, 10, 0);
+  assert.equal(snap.resync_required, true);
+  assert.equal(snap.snapshot, true);
+  assert.equal(snap.blobs.length, 1);
+  assert.equal(snap.blobs[0].ciphertext, "cur");
+});
+
 test("pushBlobs rejects unknown collection", async () => {
   const mock = createSyncMockPool();
   const syncRelay = loadSyncRelayWithMock(mock);

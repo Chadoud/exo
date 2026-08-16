@@ -59,8 +59,28 @@ def test_update_fields(store):
 def test_delete(store):
     task = store.create_task("Temp")
     assert store.delete_task(task["id"]) is True
-    assert store.get_task(task["id"]) is None
+    gone = store.get_task(task["id"])
+    assert gone is not None
+    assert gone["dismissed"] is True
+    assert store.list_tasks() == []
     assert store.delete_task(task["id"]) is False
+
+
+def test_delete_keeps_external_id_so_sync_cannot_recreate(store):
+    task = store.create_task(
+        "Prepare for: Team standup",
+        source="google-calendar",
+        external_id="google-calendar:cal:evt-1",
+    )
+    assert store.delete_task(task["id"]) is True
+    again = store.create_task(
+        "Prepare for: Team standup",
+        source="google-calendar",
+        external_id="google-calendar:cal:evt-1",
+    )
+    assert again["id"] == task["id"]
+    assert again["dismissed"] is True
+    assert store.list_tasks() == []
 
 
 def test_dedupe_check(store):

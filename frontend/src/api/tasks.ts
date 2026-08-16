@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { requestValidated } from "./client";
+import { request, requestValidated } from "./client";
 
 const TASK_PRIORITIES = ["low", "normal", "high"] as const;
 
@@ -53,6 +53,11 @@ export async function setTaskCompleted(id: number, completed: boolean): Promise<
     method: "PATCH",
     body: JSON.stringify({ completed }),
   });
+}
+
+/** Remove from EXO. Calendar/mail stay; the same source will not come back on sync. */
+export async function deleteTask(id: number): Promise<void> {
+  await request<unknown>(`/tasks/${id}`, { method: "DELETE" });
 }
 
 const TaskOpenTargetSchema = z.object({

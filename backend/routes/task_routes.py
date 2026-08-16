@@ -5,7 +5,7 @@ GET    /tasks            — list (filterable by status)
 POST   /tasks            — create {description, due_at?, priority?}
 PUT    /tasks/{id}       — patch description/due_at/priority
 PATCH  /tasks/{id}/done  — mark complete / reopen
-DELETE /tasks/{id}       — remove
+DELETE /tasks/{id}       — dismiss (stays gone on next account sync)
 """
 
 from __future__ import annotations
