@@ -472,6 +472,7 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
 
       <Suspense fallback={tab === "exo" ? <PanelRouteFallback /> : null}>
         <LazyExoPanel
+        persistConversationMessages={tab !== "assistant"}
         voice={shellVoiceSession}
         briefingOffer={briefingOffer}
         centerAnchorRef={exoCenterAnchorRef}

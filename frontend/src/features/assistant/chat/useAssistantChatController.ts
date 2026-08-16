@@ -95,10 +95,22 @@ export function useAssistantChatController({
   const planWatchCleanupRef = useRef<Map<string, () => void>>(new Map());
   const onConversationChangeRef = useRef(onConversationChange);
   onConversationChangeRef.current = onConversationChange;
+  const storeMessagesRef = useRef(conversation.messages);
+  storeMessagesRef.current = conversation.messages;
 
   useEffect(() => {
     setLocalMessages(normalizeConversationMessages(conversation.messages));
-  }, [conversation.id]);
+  }, [conversation.id, persistConversationMessages]);
+
+  // Follower instance (Exo rail while Chat is open): mirror the store, do not write back.
+  useEffect(() => {
+    if (persistConversationMessages) return;
+    setLocalMessages((prev) =>
+      conversationPersistedMessagesEqual(prev, conversation.messages)
+        ? prev
+        : normalizeConversationMessages(conversation.messages),
+    );
+  }, [conversation.messages, persistConversationMessages]);
 
   useEffect(() => {
     setActiveConversationId(conversation.id);
@@ -232,9 +244,11 @@ export function useAssistantChatController({
   useEffect(() => {
     if (!persistConversationMessages) return;
     const persisted = localMessages.filter((m) => !m.streaming && !m.prefetching);
-    if (conversationPersistedMessagesEqual(conversation.messages, persisted)) return;
+    // Compare against a ref so a store write from the other chat mount cannot
+    // retrigger this effect and ping-pong setState (max update depth).
+    if (conversationPersistedMessagesEqual(storeMessagesRef.current, persisted)) return;
     onConversationChangeRef.current(persisted);
-  }, [localMessages, conversation.messages, persistConversationMessages]);
+  }, [localMessages, persistConversationMessages]);
 
   const { approveCodegenConsent, denyCodegenConsent } = useCodegenConsentHandlers(
     settings,

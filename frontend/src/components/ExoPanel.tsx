@@ -96,6 +96,12 @@ interface ExoPanelProps {
   /** Opens the full-width Chat AI tab from the AI Manager chat rail's expand control. */
   onExpandToChat?: () => void;
   /**
+   * When false, this rail must not write the shared conversation store — Chat
+   * workspace is mounted and is the persist owner. Default true so briefing
+   * still lands while Exo is hidden on other tabs.
+   */
+  persistConversationMessages?: boolean;
+  /**
    * When false, Exo subtree is minimally laid out off-screen rather than display:none â€”
    * keeps audio / Web Audio paths reliable while switching tabs.
    */
@@ -136,6 +142,7 @@ export default function ExoPanel({
   onGoToAiSettings,
   onOpenVoiceInteractionSettings,
   onExpandToChat,
+  persistConversationMessages = true,
   visuallyHidden = false,
   setVisualAnalysisSuspended,
   suppressPermissionPrompt = false,
@@ -532,7 +539,7 @@ export default function ExoPanel({
                           />
                         ) : (
                         <AssistantChatPanelWithSharedVoice
-                          key={`${activeId}-${fileKey}-${visuallyHidden ? "bg" : "fg"}`}
+                          key={`${activeId}-${fileKey}`}
                           voice={voice}
                           conversation={active}
                           onConversationChange={handleConversationChange}
@@ -547,7 +554,7 @@ export default function ExoPanel({
                           hideInputAccessories
                           collapseSuggestionsInitially
                           acceptQueuedChatDraft={!visuallyHidden}
-                          persistConversationMessages={!visuallyHidden}
+                          persistConversationMessages={persistConversationMessages}
                           chatDraftTarget="exo"
                           onComposerInlineAttachment={handleComposerAttach}
                         />
