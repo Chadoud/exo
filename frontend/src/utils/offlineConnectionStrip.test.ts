@@ -103,4 +103,53 @@ describe("shouldShowAppServiceStartupOverlay", () => {
       }),
     ).toBe(true);
   });
+
+  it("hides a mid-session health flap after the service was already up", () => {
+    expect(
+      shouldShowAppServiceStartupOverlay({
+        isDesktopManaged: true,
+        backendOnline: false,
+        backendHealthProbing: false,
+        backendServiceStarting: true,
+        lastHealthOkAt: 80_000,
+      }),
+    ).toBe(false);
+  });
+
+  it("still covers the window on Restart service after a prior healthy session", () => {
+    expect(
+      shouldShowAppServiceStartupOverlay({
+        isDesktopManaged: true,
+        backendOnline: false,
+        backendHealthProbing: true,
+        backendServiceStarting: true,
+        lastHealthOkAt: 80_000,
+      }),
+    ).toBe(true);
+  });
+
+  it("covers the window on cold start before any successful health", () => {
+    expect(
+      shouldShowAppServiceStartupOverlay({
+        isDesktopManaged: true,
+        backendOnline: false,
+        backendHealthProbing: false,
+        backendServiceStarting: true,
+        lastHealthOkAt: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("covers the window after startup failed even if health succeeded earlier", () => {
+    expect(
+      shouldShowAppServiceStartupOverlay({
+        isDesktopManaged: true,
+        backendOnline: false,
+        backendHealthProbing: false,
+        backendServiceStarting: false,
+        backendStartupFailed: true,
+        lastHealthOkAt: 80_000,
+      }),
+    ).toBe(true);
+  });
 });

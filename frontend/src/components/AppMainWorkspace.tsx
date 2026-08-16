@@ -161,13 +161,15 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
   useOAuthAutopilotToasts(t);
   useExoFullscreenShortcut(tab);
 
-  const deferTesseractIntro = shouldShowAppServiceStartupOverlay({
+  const showAppServiceStartupOverlay = shouldShowAppServiceStartupOverlay({
     isDesktopManaged: hasEntitlementIpc(),
     backendOnline,
     backendHealthProbing,
     backendServiceStarting,
+    backendStartupFailed,
+    lastHealthOkAt,
   });
-  const { exoChromeRevealed, revealExoChrome } = useExoChromeReveal(tab, deferTesseractIntro);
+  const { exoChromeRevealed, revealExoChrome } = useExoChromeReveal(tab, showAppServiceStartupOverlay);
 
   const isDesktopElectron = isWindowsElectronClient() || isMacElectronClient();
   const showSidebarCornerBranding = shouldShowSidebarCornerBranding(tab, exoChromeRevealed, {
@@ -234,13 +236,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
 
   return (
     <>
-      {shouldShowAppServiceStartupOverlay({
-        isDesktopManaged: hasEntitlementIpc(),
-        backendOnline,
-        backendHealthProbing,
-        backendServiceStarting,
-        backendStartupFailed,
-      }) ? (
+      {showAppServiceStartupOverlay ? (
         <AppServiceStartupOverlay
           failed={backendStartupFailed}
           autoRecoveryExhausted={backendAutoRecoveryExhausted}
@@ -433,7 +429,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
             openVoiceInteractionSettings={openVoiceInteractionSettings}
             exoChromeRevealed={exoChromeRevealed}
             onExoChromeRevealed={revealExoChrome}
-            deferTesseractIntro={deferTesseractIntro}
+            deferTesseractIntro={showAppServiceStartupOverlay}
             exoCenterAnchorRef={exoCenterRef}
           />
         </main>

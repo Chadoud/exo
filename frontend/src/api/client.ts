@@ -125,7 +125,10 @@ function extractApiErrorFromText(body: string): string {
 /** Consistent message when fetch fails before an HTTP response (offline, wrong port, etc.). */
 export function mapFetchFailureToError(e: unknown): Error {
   const msg = formatError(e);
-  if (msg.toLowerCase().includes("failed to fetch") || e instanceof TypeError) {
+  if (
+    e instanceof TypeError ||
+    /failed to fetch|fetch failed|econnrefused|econnreset/i.test(msg)
+  ) {
     return new Error(
       `Cannot reach the API at ${API_BASE} (is the backend running on port ${BACKEND_PORT}?)`
     );
@@ -171,6 +174,9 @@ async function proxyBackendHttp(
     bodyBase64,
     contentType,
   });
+  if (result.status === 0) {
+    throw mapFetchFailureToError(new TypeError(extractApiErrorFromText(result.text || "fetch failed")));
+  }
   return proxyResultToResponse(result);
 }
 

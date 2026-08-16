@@ -8,7 +8,11 @@ import { isProductDebugEnabled } from "./productDebugAccess";
 function formatUserBackendDetail(detail: string): string {
   if (import.meta.env.DEV || isProductDebugEnabled()) return detail;
   const low = detail.toLowerCase();
-  if (low.includes("cannot reach the api") || low.includes("failed to fetch")) {
+  if (
+    low.includes("cannot reach the api") ||
+    low.includes("failed to fetch") ||
+    low.includes("fetch failed")
+  ) {
     return `${APP_DISPLAY_NAME} could not reach the local assistant service yet.`;
   }
   return detail.replace(new RegExp(`127\\.0\\.0\\.1:${BACKEND_PORT}|localhost:${BACKEND_PORT}`, "g"), "the local service");
@@ -41,6 +45,7 @@ export function userFacingErrorDetail(e: unknown): {
 
   if (
     low.includes("failed to fetch") ||
+    low.includes("fetch failed") ||
     low.includes("networkerror") ||
     low.includes("load failed") ||
     low.includes("network error") ||

@@ -41,6 +41,8 @@ export function shouldShowAppServiceStartupOverlay(args: {
   backendHealthProbing: boolean;
   backendServiceStarting: boolean;
   backendStartupFailed?: boolean;
+  /** Unix ms of last successful /health this session. */
+  lastHealthOkAt?: number | null;
 }): boolean {
   const {
     isDesktopManaged,
@@ -48,8 +50,13 @@ export function shouldShowAppServiceStartupOverlay(args: {
     backendHealthProbing,
     backendServiceStarting,
     backendStartupFailed = false,
+    lastHealthOkAt = null,
   } = args;
   if (!isDesktopManaged || backendOnline) return false;
   if (backendStartupFailed) return true;
-  return backendHealthProbing || backendServiceStarting;
+  // Cold start + explicit Restart service (beginBackendStartupProbe).
+  if (backendHealthProbing) return true;
+  // Mid-session: service was up. A slow /health must not cover the window.
+  if (lastHealthOkAt != null) return false;
+  return backendServiceStarting;
 }

@@ -206,9 +206,9 @@ export default function TitleBar({
         </button>
 
         {/* Backend status — Retry respawns Python API in Electron if it died (port conflict / crash). */}
-        {backendHealthProbing ? (
+        {backendHealthProbing || backendServiceStarting ? (
           <LiveStatusPill variant="checking" size="sm">
-            {backendServiceStarting ? t("api.startingLocalService") : t("api.checking")}
+            {backendServiceStarting ? t("api.startingTitleBar") : t("api.checking")}
           </LiveStatusPill>
         ) : backendOnline ? (
           <LiveStatusPill variant="online" size="sm">
