@@ -50,6 +50,7 @@ export default function GoogleCalendarConnectionSection({
       actions={
         desktop ? (
           <ExternalSourceConnectionButton
+            sourceName={t("sources.googleCalendarTitle")}
             connected={connected}
             loading={loadingStatus}
             busy={oauthBusy}

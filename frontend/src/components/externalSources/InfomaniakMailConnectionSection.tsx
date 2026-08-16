@@ -108,6 +108,7 @@ export default function InfomaniakMailConnectionSection({
         actions={
           desktop ? (
             <ExternalSourceConnectionButton
+              sourceName={t("sources.infomaniakMailTitle")}
               connected={effectivelyConnected}
               loading={loadingStatus}
               busy={oauthBusy}

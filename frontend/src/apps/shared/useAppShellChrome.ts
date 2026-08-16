@@ -25,6 +25,7 @@ import { useWelcomeFlow } from "../../hooks/useWelcomeFlow";
 import { useTourFirstRunAutoOpen } from "../../hooks/useTourFirstRunAutoOpen";
 import { useCloudSortActive } from "../../hooks/useCloudSortActive";
 import { useCloudSortConnectionStatus } from "../../hooks/useCloudSortConnectionStatus";
+import { useEntitlementBlockedToast } from "../../hooks/useEntitlementBlockedToast";
 import {
   buildProductTourStepMeta,
   productTourHighlightId,
@@ -388,13 +389,7 @@ export function useAppShellChrome(opts: {
     openTour,
   });
 
-  const toastEntitlementBlocked = useCallback(() => {
-    toast.error(translate(uiLocale, "toast.entitlementBlockedTitle"), {
-      description: translate(uiLocale, "toast.entitlementBlockedDesc"),
-      duration: 12000,
-    });
-    openPrimarySettings("license");
-  }, [uiLocale, openPrimarySettings]);
+  const { toastEntitlementBlocked } = useEntitlementBlockedToast(entitlement, uiLocale, openPrimarySettings);
 
   const toastCloudAccountRequired = useCallback(() => {
     toast.error(translate(uiLocale, "toast.cloudAccountRequiredTitle"), {

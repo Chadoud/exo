@@ -276,6 +276,11 @@ export default {
     title: "Externe Quellen",
     connectorStatusConnected: "Verbunden",
     connectorStatusNotConnected: "Nicht verbunden",
+    disconnectConfirmTitle: "{source} trennen?",
+    disconnectConfirmBody:
+      "Exo verwendet {source} auf diesem Gerät erst wieder, wenn Sie die Verbindung erneut herstellen.",
+    disconnectConfirmAction: "Trennen",
+    disconnectConfirmCancel: "Verbunden lassen",
     connectorOauthNotConfigured: "Dieser Connector ist in Ihrer App-Version noch nicht eingerichtet. App aktualisieren oder Support kontaktieren.",
     connectorUntrustedSender: "Verbindung konnte aus diesem Fenster nicht gestartet werden. Schließen Sie Externe Quellen und öffnen Sie sie erneut.",
     connectorScopeVerificationFailed: "Google hat angemeldet, aber nicht alle nötigen Berechtigungen erteilt. Trennen, erneut verbinden und alle Zugriffe bestätigen.",
@@ -2566,6 +2571,11 @@ export default {
     pauseTitle: "Pause",
     resumeTitle: "Fortsetzen",
     cancelJobTitle: "Auftrag abbrechen",
+    cancelJobConfirmTitle: "Diesen Sortiervorgang abbrechen?",
+    cancelJobConfirmBody:
+      "Bereits sortierte Dateien werden an ihren ursprünglichen Ort zurückverschoben. Noch nicht verarbeitete Dateien bleiben, wo sie sind.",
+    cancelJobConfirmAction: "Sortierung abbrechen",
+    cancelJobConfirmKeepGoing: "Weiter sortieren",
     undoSessionTitle: "Alle Verschiebungen dieser Sitzung rückgängig",
     retryFailedTitle: "{count} fehlgeschlagene Dateien erneut",
     retryFailedTitleOne: "1 fehlgeschlagene Datei erneut",

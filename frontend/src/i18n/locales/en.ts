@@ -279,6 +279,11 @@ export default {
     title: "External sources",
     connectorStatusConnected: "Connected",
     connectorStatusNotConnected: "Not connected",
+    disconnectConfirmTitle: "Disconnect {source}?",
+    disconnectConfirmBody:
+      "Exo will stop using {source} on this device until you connect again.",
+    disconnectConfirmAction: "Disconnect",
+    disconnectConfirmCancel: "Keep connected",
     connectorOauthNotConfigured:
       "This connector is not configured in your app build yet. Update the app or contact support if Connect still fails.",
     connectorUntrustedSender: "Connection could not start from this window. Close and reopen External sources, then try again.",
@@ -2735,6 +2740,11 @@ export default {
     pauseTitle: "Pause",
     resumeTitle: "Resume",
     cancelJobTitle: "Cancel job",
+    cancelJobConfirmTitle: "Cancel this sort?",
+    cancelJobConfirmBody:
+      "Files already sorted will be moved back to their original location. Files not yet processed will stay where they are.",
+    cancelJobConfirmAction: "Cancel sort",
+    cancelJobConfirmKeepGoing: "Keep sorting",
     undoSessionTitle: "Undo all moves in this session",
     retryFailedTitle: "Retry {count} failed files",
     retryFailedTitleOne: "Retry 1 failed file",

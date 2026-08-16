@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { EntitlementStatus } from "../../api";
 import { useI18n } from "../../i18n/I18nContext";
+import { ENTITLEMENT_BLOCKED_TOAST_ID } from "../../utils/entitlementBlockedToast";
 import { trialBarPercent, trialDurationDays, trialLineVars } from "../../utils/entitlementUi";
 import SettingsBillingStatusCard from "./SettingsBillingStatusCard";
 
@@ -62,6 +63,7 @@ export default function SettingsLicenseSection({
         });
         return;
       }
+      toast.dismiss(ENTITLEMENT_BLOCKED_TOAST_ID);
       toast.success(t("settings.licenseActivated"));
       setLicenseInput("");
       onEntitlementRefresh();

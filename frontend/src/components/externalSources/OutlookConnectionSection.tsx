@@ -53,6 +53,7 @@ export default function OutlookConnectionSection({
       actions={
         desktop ? (
           <ExternalSourceConnectionButton
+            sourceName={t("sources.outlookTitle")}
             connected={connected}
             loading={loadingStatus}
             busy={oauthBusy}
