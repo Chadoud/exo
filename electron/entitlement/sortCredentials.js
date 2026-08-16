@@ -5,7 +5,8 @@ const {
   readBackendEnvOverridesRaw,
   writeBackendEnvOverrides,
 } = require("../backendEnvOverrides");
-const { restartBackend, readRemoteLlmEnvForBackendSpawn, normalizeRemoteLlmHost } = require("../backendProcess");
+const { readRemoteLlmEnvForBackendSpawn, normalizeRemoteLlmHost } = require("../backendProcess");
+const { restartBackend } = require("../backendLifecycle");
 const {
   getCloudSortLlmApiKey,
   setCloudSortLlmApiKey,

@@ -6,7 +6,7 @@ const fs = require("fs");
 const { ipcMain, app } = require("electron");
 const { APP_NAME } = require("../constants");
 const { getOcrCapabilities } = require("../setup/runSetup");
-const { restartBackend, getManagedBackendStatus } = require("../backendProcess");
+const { restartBackend, getManagedBackendStatus } = require("../backendLifecycle");
 const state = require("../state");
 const {
   readBackendEnvOverridesRaw,
@@ -285,18 +285,25 @@ function registerAppHandlers() {
     if (!v.ok) {
       return { ok: false, reason: v.reason ?? "invalid" };
     }
-    // Binds this key to the current device on first use — silent, no ID
-    // exchange needed from the client (see tools/license-keygen/README.md).
-    const activation = await activateLicenseOnline(raw, getMachineFingerprint());
+    const sess = await cloudAuth.ensureFreshSession(ud());
+    const activation = await activateLicenseOnline(
+      raw,
+      getMachineFingerprint(),
+      sess?.access_token,
+    );
     if (!activation.ok) {
       return { ok: false, reason: activation.reason };
     }
     saveLicenseKey(app.getPath("userData"), raw);
+    const { applySavedLicenseToRuntime } = require("../entitlement/applyLicenseRuntime");
+    await applySavedLicenseToRuntime(ud());
     return { ok: true };
   });
 
-  ipcMain.handle("entitlement:clearLicense", () => {
+  ipcMain.handle("entitlement:clearLicense", async () => {
     clearLicense(app.getPath("userData"));
+    const { revokeSavedLicenseRuntime } = require("../entitlement/applyLicenseRuntime");
+    await revokeSavedLicenseRuntime(ud());
     return { ok: true };
   });
 

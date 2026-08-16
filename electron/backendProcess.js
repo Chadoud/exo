@@ -2,7 +2,6 @@
 
 const path = require("path");
 const fs = require("fs");
-const http = require("http");
 const { spawn, execSync, execFileSync } = require("child_process");
 const state = require("./state");
 const {
@@ -11,11 +10,7 @@ const {
   IS_MAC,
   BACKEND_PORT,
   ELECTRON_CAPTURE_PORT,
-  BACKEND_HEALTH_RETRIES,
-  BACKEND_PACKAGED_HEALTH_RETRIES,
-  BACKEND_PACKAGED_HEALTH_DELAY_MS,
   BACKEND_MAX_CRASHES_BEFORE_GIVE_UP,
-  POLL_INTERVAL_MS,
 } = require("./constants");
 const { readBackendEnvOverrides, readBackendEnvOverridesRaw, writeBackendEnvOverrides } = require("./backendEnvOverrides");
 const {
@@ -35,9 +30,9 @@ const {
 const {
   materializeGmailOAuthMirrorForBackend,
   deleteMaterializedGmailOAuthMirror,
+  reconcileGmailOAuthMirrorAfterBackendExit,
   migrateLegacyHomeGmailMirror,
 } = require("./gmailOAuthMirrorStore");
-const { delay } = require("./utils");
 const { resolvePackagedBackendBin } = require("./packagedBackendPath");
 const { googleCredentialsFromJsonPath } = require("./googleCredentialsJson");
 
@@ -331,9 +326,14 @@ function attachBackendProcess(proc) {
         notifyRendererBackendStartupFailed();
       }
     }
-    state.backendProcess = null;
+    if (state.backendProcess === proc) {
+      state.backendProcess = null;
+    }
     try {
-      deleteMaterializedGmailOAuthMirror(exositesUserDataEnv());
+      reconcileGmailOAuthMirrorAfterBackendExit(
+        exositesUserDataEnv(),
+        findPortListeners().size > 0,
+      );
     } catch {
       /* ignore */
     }
@@ -568,22 +568,22 @@ function startBackend() {
     console.log("[main] Dev mode: backend managed externally, skipping spawn");
     return;
   }
-  if (state.backendProcess && !state.backendProcess.killed) {
+  if (state.backendProcess && state.backendProcess.exitCode === null) {
     return;
   }
 
-  // Orphan / prior failed-bind listeners keep 7799 busy while Electron thinks
-  // there is no managed child — free the port before spawning so we do not
-  // pile up "address already in use" uvicorn processes.
   const busyPids = findPortListeners();
-  if (busyPids.length > 0) {
+  if (busyPids.size > 0) {
+    // Never SIGKILL a live listener from spawn — that drops in-flight Sort /
+    // Gmail import (`fetch failed`). Recovery belongs in getManagedBackendStatus
+    // only when /health is actually down.
     console.warn(
       "[backend] port",
       BACKEND_PORT,
-      "already in use before spawn — freeing listeners",
-      busyPids.join(","),
+      "already in use — not spawning another listener",
+      [...busyPids].join(","),
     );
-    freeBackendPort();
+    return;
   }
 
   // Generate a per-run secret shared only between Electron and the backend process.
@@ -702,66 +702,11 @@ function startBackend() {
 }
 
 /**
- * Force-kill a process and its entire child tree.
- *
- * The backend is a bundled PyInstaller exe (which spawns a child) or a `python`
- * process that may fork workers. A plain `proc.kill()` only signals the direct
- * child, orphaning grandchildren that keep port 7799 bound. On Windows we use
- * `taskkill /T /F`; on POSIX we escalate SIGTERM → SIGKILL.
- *
- * @param {import("child_process").ChildProcess | null} proc
+ * Return the set of PIDs currently listening on the backend port.
+ * Kept here (not in backendLifecycle.js) — `startBackend`/`attachBackendProcess`
+ * call it directly, and backendLifecycle.js imports it back, so moving it too
+ * would create a require cycle between the two files.
  */
-function forceKillTree(proc) {
-  if (!proc || typeof proc.pid !== "number") return;
-  const { pid } = proc;
-  if (IS_WIN) {
-    try {
-      execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
-      return;
-    } catch (err) {
-      console.warn("[backend] taskkill failed, falling back to signal:", err && err.message);
-    }
-  }
-  try {
-    proc.kill("SIGTERM");
-  } catch (_) {
-    /* already gone */
-  }
-  const killEscalationMs = IS_DEV ? 400 : 2000;
-  setTimeout(() => {
-    try {
-      if (!proc.killed) proc.kill("SIGKILL");
-    } catch (_) {
-      /* already gone */
-    }
-  }, killEscalationMs);
-}
-
-/**
- * Best-effort recovery of the backend listen port. When a previous backend was
- * orphaned, the new process cannot bind 7799. We find the PID that owns the port
- * and kill its tree so the respawn can succeed. Implemented per-platform:
- * `netstat`/`taskkill` on Windows, `lsof`/`kill` on macOS/Linux.
- */
-function freeBackendPort() {
-  const pids = findPortListeners();
-  for (const pid of pids) {
-    if (pid === String(process.pid)) continue;
-    try {
-      if (IS_WIN) {
-        execFileSync("taskkill", ["/PID", pid, "/T", "/F"], { stdio: "ignore" });
-      } else {
-        // SIGKILL the listener; its children are reaped by the OS on POSIX.
-        execFileSync("kill", ["-9", pid], { stdio: "ignore" });
-      }
-      console.warn(`[backend] freed port ${BACKEND_PORT} by killing stale PID ${pid}`);
-    } catch (_) {
-      /* process may have already exited */
-    }
-  }
-}
-
-/** Return the set of PIDs currently listening on the backend port. */
 function findPortListeners() {
   const pids = new Set();
   try {
@@ -791,302 +736,12 @@ function findPortListeners() {
   return pids;
 }
 
-function killBackend() {
-  if (state.backendProcess) {
-    forceKillTree(state.backendProcess);
-    state.backendProcess = null;
-  }
-  try {
-    deleteMaterializedGmailOAuthMirror(exositesUserDataEnv());
-  } catch {
-    /* ignore */
-  }
-}
-
-/** Wait until the backend child has exited (frees the listen port). Used before respawn. */
-async function killBackendAndWait(timeoutMs = 8000) {
-  const proc = state.backendProcess;
-  if (!proc) return;
-  await new Promise((resolve) => {
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      if (state.backendProcess === proc) state.backendProcess = null;
-      resolve();
-    };
-    proc.once("exit", finish);
-    try {
-      forceKillTree(proc);
-    } catch {
-      finish();
-    }
-    // If the tree kill did not surface an exit in time, escalate once more and
-    // free the port directly so the respawn is not blocked by an orphan.
-    setTimeout(() => {
-      if (!settled) {
-        freeBackendPort();
-        finish();
-      }
-    }, timeoutMs);
-  });
-}
-
-function ensureBackendRunning() {
-  if (IS_DEV && process.env.SKIP_BACKEND === "1") return;
-  if (state.backendStartupGiveUp) return;
-  if (!state.backendProcess || state.backendProcess.killed) {
-    startBackend();
-  }
-}
-
-/** Coalesce concurrent restart requests into one kill/spawn/wait cycle. */
-let restartBackendInFlight = null;
-
-/** Kill running backend (if any) and start a new process; wait until /health responds. */
-async function restartBackend() {
-  if (IS_DEV && process.env.SKIP_BACKEND === "1") {
-    console.warn("[backend] SKIP_BACKEND=1 — manage uvicorn yourself (e.g. python -m uvicorn main:app --port 7799)");
-    return { ok: false, reason: "skip_backend" };
-  }
-  if (restartBackendInFlight) return restartBackendInFlight;
-
-  restartBackendInFlight = (async () => {
-    const coldStartMaxMs = BACKEND_PACKAGED_HEALTH_RETRIES * BACKEND_PACKAGED_HEALTH_DELAY_MS;
-    const child = state.backendProcess;
-    if (
-      !IS_DEV &&
-      child &&
-      !child.killed &&
-      child.exitCode === null &&
-      state.backendSpawnedAt > 0
-    ) {
-      const elapsed = Date.now() - state.backendSpawnedAt;
-      if (elapsed < coldStartMaxMs) {
-        const remainingRetries = Math.max(
-          1,
-          Math.ceil((coldStartMaxMs - elapsed) / BACKEND_PACKAGED_HEALTH_DELAY_MS),
-        );
-        console.log(
-          "[backend] Restart skipped — service still in cold start; waiting up to",
-          Math.round((remainingRetries * BACKEND_PACKAGED_HEALTH_DELAY_MS) / 1000),
-          "s",
-        );
-        const up = await waitForBackend(remainingRetries, BACKEND_PACKAGED_HEALTH_DELAY_MS);
-        return { ok: up, reason: up ? undefined : "starting" };
-      }
-    }
-
-    state.backendStartupGiveUp = false;
-    state.backendCrashCount = 0;
-    state.backendLastCrashAt = 0;
-    await killBackendAndWait();
-    await delay(150);
-    startBackend();
-    const restartWaitRetries = IS_DEV ? 45 : BACKEND_PACKAGED_HEALTH_RETRIES;
-    const restartWaitDelayMs = IS_DEV ? 350 : BACKEND_PACKAGED_HEALTH_DELAY_MS;
-    let up = await waitForBackend(restartWaitRetries, restartWaitDelayMs);
-    if (!up) {
-      // A stale process may still own the port (failed bind / orphaned child).
-      // Free it and retry once before giving up.
-      console.warn("[backend] /health not ready — freeing port and retrying once");
-      await killBackendAndWait();
-      freeBackendPort();
-      await delay(250);
-      startBackend();
-      up = await waitForBackend(restartWaitRetries, restartWaitDelayMs);
-    }
-    if (!up) {
-      console.error("[backend] /health did not become ready after restart");
-    }
-    return { ok: up, reason: up ? undefined : "health_timeout" };
-  })();
-
-  try {
-    return await restartBackendInFlight;
-  } finally {
-    restartBackendInFlight = null;
-  }
-}
-
-/**
- * When Electron spawns the backend, /health must belong to our child — not a stale process
- * still bound to BACKEND_PORT after a failed bind (e.g. WinError 10048).
- */
-function healthBelongsToManagedBackend() {
-  if (IS_DEV && process.env.SKIP_BACKEND === "1") return true;
-  const p = state.backendProcess;
-  return p != null && !p.killed && p.exitCode === null;
-}
-
-async function waitForBackend(retries = BACKEND_HEALTH_RETRIES, delayMs = POLL_INTERVAL_MS) {
-  let warnedForeignHealth = false;
-  for (let i = 0; i < retries; i++) {
-    try {
-      await new Promise((resolve, reject) => {
-        const req = http.get(`http://127.0.0.1:${BACKEND_PORT}/health`, resolve);
-        req.on("error", reject);
-        req.setTimeout(1000, () => {
-          req.destroy();
-          reject(new Error("timeout"));
-        });
-      });
-      if (!healthBelongsToManagedBackend()) {
-        if (!warnedForeignHealth) {
-          warnedForeignHealth = true;
-          console.warn(
-            "[backend] /health responded but this app's Python process is not running — port",
-            BACKEND_PORT,
-            "may be in use by another instance. Free the port or run `npm run dev:kill-ports`."
-          );
-        }
-        await delay(delayMs);
-        continue;
-      }
-      return true;
-    } catch {
-      await delay(delayMs);
-    }
-  }
-  return false;
-}
-
-/**
- * Cold-start progress from the same spawn timestamp and wait window as managed health checks.
- *
- * @param {boolean} [healthReady]
- * @returns {{ elapsedMs: number; maxWaitMs: number; percent: number }}
- */
-function getManagedStartupProgress(healthReady = false) {
-  const maxWaitMs = BACKEND_PACKAGED_HEALTH_RETRIES * BACKEND_PACKAGED_HEALTH_DELAY_MS;
-  if (healthReady) {
-    return { elapsedMs: maxWaitMs, maxWaitMs, percent: 100 };
-  }
-  const spawnedAt = state.backendSpawnedAt;
-  if (!spawnedAt) {
-    return { elapsedMs: 0, maxWaitMs, percent: 0 };
-  }
-  const elapsedMs = Math.min(maxWaitMs, Math.max(0, Date.now() - spawnedAt));
-  const percent = Math.min(99, Math.round((elapsedMs / maxWaitMs) * 100));
-  return { elapsedMs, maxWaitMs, percent };
-}
-
-/**
- * Health check that only succeeds when this app's managed backend child is running.
- * Used by the renderer instead of raw /health (which can succeed on a stale foreign process).
- *
- * @returns {Promise<{ ok: boolean; managed: boolean; reason?: string; startupProgress?: { elapsedMs: number; maxWaitMs: number; percent: number } }>}
- */
-async function getManagedBackendStatus() {
-  if (IS_DEV && process.env.SKIP_BACKEND === "1") {
-    return {
-      ok: true,
-      managed: false,
-      reason: "skip_backend",
-      startupProgress: getManagedStartupProgress(true),
-    };
-  }
-
-  const healthOk = async () => {
-    try {
-      await new Promise((resolve, reject) => {
-        const req = http.get(`http://127.0.0.1:${BACKEND_PORT}/health`, resolve);
-        req.on("error", reject);
-        req.setTimeout(2500, () => {
-          req.destroy();
-          reject(new Error("timeout"));
-        });
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const managedStartupMaxMs = BACKEND_PACKAGED_HEALTH_RETRIES * BACKEND_PACKAGED_HEALTH_DELAY_MS;
-
-  if (state.backendStartupGiveUp) {
-    if ((await healthOk()) && healthBelongsToManagedBackend()) {
-      state.backendStartupGiveUp = false;
-      state.backendCrashCount = 0;
-      return { ok: true, managed: true, startupProgress: getManagedStartupProgress(true) };
-    }
-    if (state.backendCrashCount >= BACKEND_MAX_CRASHES_BEFORE_GIVE_UP) {
-      return {
-        ok: false,
-        managed: false,
-        reason: "exited",
-        startupProgress: getManagedStartupProgress(false),
-      };
-    }
-    return {
-      ok: false,
-      managed: false,
-      reason: "health_timeout",
-      startupProgress: getManagedStartupProgress(false),
-    };
-  }
-
-  if (!healthBelongsToManagedBackend()) {
-    ensureBackendRunning();
-  }
-
-  if ((await healthOk()) && healthBelongsToManagedBackend()) {
-    state.backendCrashCount = 0;
-    return { ok: true, managed: true, startupProgress: getManagedStartupProgress(true) };
-  }
-
-  if (
-    healthBelongsToManagedBackend() &&
-    state.backendSpawnedAt > 0 &&
-    Date.now() - state.backendSpawnedAt > managedStartupMaxMs
-  ) {
-    console.warn(
-      "[backend] /health still pending after cold-start window — PyInstaller first launch can take several minutes; continuing to wait"
-    );
-    return {
-      ok: false,
-      managed: true,
-      reason: "starting",
-      startupProgress: getManagedStartupProgress(false),
-    };
-  }
-
-  // Stale listener on 7799 from a previous run blocks our child — recover once.
-  if (!healthBelongsToManagedBackend()) {
-    freeBackendPort();
-    ensureBackendRunning();
-    await delay(800);
-    if ((await healthOk()) && healthBelongsToManagedBackend()) {
-      state.backendCrashCount = 0;
-      return { ok: true, managed: true, startupProgress: getManagedStartupProgress(true) };
-    }
-    return {
-      ok: false,
-      managed: false,
-      reason: "foreign_process",
-      startupProgress: getManagedStartupProgress(false),
-    };
-  }
-
-  return {
-    ok: false,
-    managed: true,
-    reason: "starting",
-    startupProgress: getManagedStartupProgress(false),
-  };
-}
-
 module.exports = {
   startBackend,
-  killBackend,
-  ensureBackendRunning,
-  waitForBackend,
-  restartBackend,
+  findPortListeners,
+  exositesUserDataEnv,
   readRemoteLlmEnvForBackendSpawn,
   normalizeRemoteLlmHost,
   syncGoogleOauthClientIdForElectronMain,
   syncRemoteLlmEnvForMainProcess,
-  freeBackendPort,
-  getManagedBackendStatus,
 };

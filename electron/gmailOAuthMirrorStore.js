@@ -61,6 +61,21 @@ function deleteMaterializedGmailOAuthMirror(userData) {
   }
 }
 
+/**
+ * After a backend child exits: keep the plaintext mirror if something else still
+ * owns 7799 (failed bind / second app). Only wipe when the port is free.
+ * @param {string | undefined} userData
+ * @param {boolean} portHeld
+ */
+function reconcileGmailOAuthMirrorAfterBackendExit(userData, portHeld) {
+  if (!userData) return;
+  if (portHeld) {
+    materializeGmailOAuthMirrorForBackend(userData);
+    return;
+  }
+  deleteMaterializedGmailOAuthMirror(userData);
+}
+
 /** Move legacy ~/.ai-file-sorter/gmail_oauth.json into safeStorage. */
 function migrateLegacyHomeGmailMirror() {
   const legacy = legacyHomeMirrorPath();
@@ -92,5 +107,6 @@ module.exports = {
   clearGmailOAuthMirror,
   materializeGmailOAuthMirrorForBackend,
   deleteMaterializedGmailOAuthMirror,
+  reconcileGmailOAuthMirrorAfterBackendExit,
   migrateLegacyHomeGmailMirror,
 };
