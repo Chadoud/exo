@@ -58,7 +58,7 @@ describe("TaskRow", () => {
     });
   }
 
-  it("title click selects and does not complete", () => {
+  it("row body click selects and does not complete", () => {
     const onToggle = vi.fn();
     const onSelect = vi.fn();
     mount(onToggle, onSelect);

@@ -23,7 +23,7 @@ type TaskRowProps = {
   openBusy?: boolean;
 };
 
-/** Single task row — checkbox completes; title selects. */
+/** Phone-matched row: tap body to select; circle marks done unless already selecting. */
 export default function TaskRow({
   task,
   sourceBadge,
@@ -47,42 +47,22 @@ export default function TaskRow({
 
   return (
     <li
-      className={`rounded-xl border px-4 py-3 transition-colors ${
+      className={`rounded-xl border transition-colors ${
         selected ? "border-accent bg-accent/10" : "border-border bg-bg-secondary"
       } ${task.completed && !selected ? "opacity-75" : ""}`}
     >
-      <div className="flex items-start gap-3">
-        <button
-          type="button"
-          onClick={() => (selecting ? onSelect(task) : onToggle(task))}
-          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-            selecting
-              ? selected
-                ? "border-accent bg-button-primary text-white"
-                : "border-border hover:border-accent"
-              : task.completed
-                ? "border-accent bg-button-primary text-white"
-                : "border-border hover:border-accent"
-          }`}
-          aria-label={
-            selecting
-              ? task.description
-              : task.completed
-                ? t("tasks.markIncomplete")
-                : t("tasks.markComplete")
-          }
-          aria-pressed={selecting ? selected : undefined}
-        >
-          {(selecting ? selected : task.completed) ? (
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          ) : null}
-        </button>
+      <div className="flex items-stretch">
+        <TaskRowLeading
+          task={task}
+          selecting={selecting}
+          selected={selected}
+          onToggle={onToggle}
+          onSelect={onSelect}
+        />
         <button
           type="button"
           onClick={() => onSelect(task)}
-          className="min-w-0 flex-1 cursor-pointer text-left"
+          className="min-w-0 flex-1 cursor-pointer px-1 py-3 text-left"
         >
           <p
             className={`text-sm leading-snug ${
@@ -115,12 +95,55 @@ export default function TaskRow({
             type="button"
             onClick={() => onOpenSource(task)}
             disabled={openBusy}
-            className="shrink-0 rounded-md border border-border px-2 py-1 text-xs font-medium text-accent hover:bg-bg-primary disabled:opacity-50"
+            className="m-3 shrink-0 self-start rounded-md border border-border px-2 py-1 text-xs font-medium text-accent hover:bg-bg-primary disabled:opacity-50"
           >
             {openBusy ? t("memories.opening") : t("memories.open")}
           </button>
         ) : null}
       </div>
     </li>
+  );
+}
+
+type TaskRowLeadingProps = {
+  task: Task;
+  selecting: boolean;
+  selected: boolean;
+  onToggle: (task: Task) => void;
+  onSelect: (task: Task) => void;
+};
+
+function TaskRowLeading({ task, selecting, selected, onToggle, onSelect }: TaskRowLeadingProps) {
+  const { t } = useI18n();
+  const checked = selecting ? selected : task.completed;
+  const shape = selecting ? "rounded-[4px]" : "rounded-full";
+  return (
+    <button
+      type="button"
+      onClick={() => (selecting ? onSelect(task) : onToggle(task))}
+      className={`m-3 flex h-8 w-8 shrink-0 items-center justify-center border-2 transition-colors ${shape} ${
+        selecting
+          ? selected
+            ? "border-accent bg-button-primary text-white"
+            : "border-border hover:border-accent"
+          : task.completed
+            ? "border-accent bg-button-primary text-white"
+            : "border-border hover:border-accent"
+      }`}
+      aria-label={
+        selecting
+          ? task.description
+          : task.completed
+            ? t("tasks.markIncomplete")
+            : t("tasks.markComplete")
+      }
+      aria-pressed={selecting ? selected : undefined}
+    >
+      {checked ? (
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      ) : null}
+    </button>
   );
 }
