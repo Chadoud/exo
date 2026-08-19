@@ -10,7 +10,8 @@ test.describe("External sources tab", () => {
       timeout: 15_000,
     });
     await expect(page.getByRole("heading", { name: "Google", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Not connected" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Connect" }).first()).toBeVisible();
+    await expect(page.getByText("Not connected").first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "WhatsApp", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Slack", exact: true })).toBeVisible();
   });

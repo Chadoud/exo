@@ -71,8 +71,9 @@ test.describe("Sort instructions strip v2", () => {
     await expect(page.locator('[data-tour="sort-instructions-strip"]')).toBeVisible({
       timeout: 60_000,
     });
-    await expect(page.getByRole("status")).toContainText(/folder structure and custom instructions/i);
+    const migration = page.getByTestId("sort-wizard").getByRole("status");
+    await expect(migration).toContainText(/folder structure and custom instructions/i);
     await page.getByRole("button", { name: "Got it" }).click();
-    await expect(page.getByRole("status")).toHaveCount(0);
+    await expect(migration).toHaveCount(0);
   });
 });
