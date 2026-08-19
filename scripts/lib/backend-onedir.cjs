@@ -122,8 +122,72 @@ function collectMachOFilesDeepestFirst(sliceDir) {
   return machOFiles;
 }
 
+function isInsideFramework(filePath) {
+  return filePath.split(path.sep).some((part) => part.endsWith(".framework"));
+}
+
+/** Recreate Foo.framework/Foo and Versions/Current as relative symlinks. */
+function repairFrameworkShortcuts(rootDir) {
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (fs.lstatSync(full).isSymbolicLink()) continue;
+      if (!entry.isDirectory()) continue;
+      if (!entry.name.endsWith(".framework")) {
+        walk(full);
+        continue;
+      }
+      const fwName = entry.name.slice(0, -".framework".length);
+      const versionsDir = path.join(full, "Versions");
+      if (!fs.existsSync(versionsDir)) continue;
+      const version = fs
+        .readdirSync(versionsDir)
+        .find((name) => name !== "Current" && fs.statSync(path.join(versionsDir, name)).isDirectory());
+      if (!version) continue;
+      const currentLink = path.join(versionsDir, "Current");
+      if (fs.existsSync(currentLink) && !fs.lstatSync(currentLink).isSymbolicLink()) {
+        fs.rmSync(currentLink, { recursive: true, force: true });
+      }
+      if (!fs.existsSync(currentLink)) fs.symlinkSync(version, currentLink);
+      const top = path.join(full, fwName);
+      if (fs.existsSync(top) && !fs.lstatSync(top).isSymbolicLink()) {
+        fs.rmSync(top, { recursive: true, force: true });
+      }
+      if (!fs.existsSync(top)) {
+        fs.symlinkSync(path.join("Versions", "Current", fwName), top);
+      }
+    }
+  };
+  walk(rootDir);
+}
+
+function collectFrameworkBundles(sliceDir) {
+  const bundles = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (fs.lstatSync(full).isSymbolicLink()) continue;
+      if (!entry.isDirectory()) continue;
+      if (entry.name.endsWith(".framework")) bundles.push(full);
+      walk(full);
+    }
+  };
+  walk(sliceDir);
+  bundles.sort((a, b) => b.length - a.length || b.localeCompare(a));
+  return bundles;
+}
+
+function codesignArgs(identity, targetPath, entitlementsPath) {
+  const args = ["--force", "--options", "runtime", "--timestamp", "--sign", identity];
+  if (entitlementsPath) args.push("--entitlements", entitlementsPath);
+  args.push(targetPath);
+  return args;
+}
+
 /**
  * Codesign every Mach-O in an onedir slice (inner libs first, launcher last).
+ * Framework binaries are signed without app entitlements, then the .framework
+ * bundle is signed so notarize accepts Python.framework.
  * @param {string} sliceDir
  * @param {string} identity
  * @param {string} entitlementsPath
@@ -137,26 +201,21 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
     throw new Error(`codesign: no backend executable in ${sliceDir}`);
   }
 
+  repairFrameworkShortcuts(sliceDir);
   const machOFiles = collectMachOFilesDeepestFirst(sliceDir);
 
-  const signArgs = (filePath) => [
-    "--force",
-    "--options",
-    "runtime",
-    "--timestamp",
-    "--entitlements",
-    entitlementsPath,
-    "--sign",
-    identity,
-    filePath,
-  ];
-
   for (const filePath of machOFiles) {
-    execFileSync("codesign", signArgs(filePath), { stdio: "inherit" });
+    const ents = isInsideFramework(filePath) ? null : entitlementsPath;
+    execFileSync("codesign", codesignArgs(identity, filePath, ents), { stdio: "inherit" });
   }
 
-  // Re-sign launcher last and deep-verify.
-  execFileSync("codesign", signArgs(launcher), { stdio: "inherit" });
+  for (const bundle of collectFrameworkBundles(sliceDir)) {
+    execFileSync("codesign", codesignArgs(identity, bundle, null), { stdio: "inherit" });
+  }
+
+  execFileSync("codesign", codesignArgs(identity, launcher, entitlementsPath), {
+    stdio: "inherit",
+  });
   execFileSync("codesign", ["--verify", "--deep", "--strict", "--verbose=2", launcher], {
     stdio: "inherit",
   });
@@ -180,4 +239,8 @@ module.exports = {
   codesignMacOnedirSlice,
   fileOutputMatches,
   isFrameworkShortcutPath,
+  isInsideFramework,
+  repairFrameworkShortcuts,
+  collectFrameworkBundles,
+  codesignArgs,
 };

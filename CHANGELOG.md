@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.61] - 2026-08-19
+
+### Fixed
+
+- **Packaging:** Sign `Python.framework` as a bundle (no app entitlements) and restore its version shortcuts as symlinks so Apple notarize accepts the staging DMG.
+
 ## [1.1.60] - 2026-08-19
 
 ### Fixed

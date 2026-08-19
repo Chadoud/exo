@@ -10,6 +10,9 @@ const {
   stageOnedirDirectory,
   collectMachOFilesDeepestFirst,
   isFrameworkShortcutPath,
+  isInsideFramework,
+  repairFrameworkShortcuts,
+  codesignArgs,
 } = require("./backend-onedir.cjs");
 
 test("nestedBackendExecutable uses platform-specific launcher name", () => {
@@ -112,6 +115,37 @@ test(
     }
   },
 );
+
+test("repairFrameworkShortcuts turns materialized stubs back into relative symlinks", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-fw-repair-"));
+  try {
+    const framework = path.join(dir, "Python.framework");
+    const versionDir = path.join(framework, "Versions", "3.11");
+    fs.mkdirSync(versionDir, { recursive: true });
+    fs.writeFileSync(path.join(versionDir, "Python"), "real");
+    fs.mkdirSync(path.join(framework, "Versions", "Current"), { recursive: true });
+    fs.writeFileSync(path.join(framework, "Versions", "Current", "Python"), "copy");
+    fs.writeFileSync(path.join(framework, "Python"), "stub");
+
+    repairFrameworkShortcuts(dir);
+    const top = path.join(framework, "Python");
+    const current = path.join(framework, "Versions", "Current");
+    assert.ok(fs.lstatSync(top).isSymbolicLink());
+    assert.ok(fs.lstatSync(current).isSymbolicLink());
+    assert.equal(fs.readFileSync(top, "utf8"), "real");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("codesignArgs omits entitlements for framework targets", () => {
+  assert.equal(isInsideFramework("/slice/_internal/Python.framework/Versions/3.11/Python"), true);
+  assert.equal(isInsideFramework("/slice/backend"), false);
+  const withEnts = codesignArgs("ID", "/slice/backend", "/ents.plist");
+  assert.ok(withEnts.includes("--entitlements"));
+  const noEnts = codesignArgs("ID", "/slice/Python.framework", null);
+  assert.ok(!noEnts.includes("--entitlements"));
+});
 
 test("stageOnedirDirectory replaces destination with a fresh copy", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-stage-"));
