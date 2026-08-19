@@ -87,6 +87,12 @@ function macSharedExtraResources() {
 const UNIVERSAL_X64_ARCH_FILES =
   "{Contents/Resources/backend-*/**/{*,.*}/**,Contents/Resources/backend-*/**/{*,.*}}";
 
+/** Regexes for electron-builder: do not re-sign pre-signed onedir slices. */
+const MAC_BACKEND_SIGN_IGNORE = [
+  "/Contents/Resources/backend-x64/",
+  "/Contents/Resources/backend-arm64/",
+];
+
 /**
  * @param {Record<string, string | undefined>} [env]
  * @returns {Array<{ from: string; to: string; filter?: string[] }>}
@@ -121,6 +127,9 @@ function electronBuilderConfig(env = process.env) {
       ...baseBuild.mac,
       extraResources: [...macSharedExtraResources(), ...macBackendExtraResources(env)],
       x64ArchFiles: UNIVERSAL_X64_ARCH_FILES,
+      // Slices are already signed by codesignMacOnedirSlice. electron-builder's
+      // walk hits Python.framework/Python ("bundle format is ambiguous").
+      signIgnore: MAC_BACKEND_SIGN_IGNORE,
     },
   };
 }
@@ -262,6 +271,7 @@ module.exports = {
   otherPyInstallerTargetArch,
   dmgArtifactName,
   UNIVERSAL_X64_ARCH_FILES,
+  MAC_BACKEND_SIGN_IGNORE,
   macSharedExtraResources,
   macBackendExtraResources,
   electronBuilderConfig,

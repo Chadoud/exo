@@ -12,6 +12,7 @@ const {
   verifyBackendSlices,
   dmgArtifactName,
   UNIVERSAL_X64_ARCH_FILES,
+  MAC_BACKEND_SIGN_IGNORE,
   electronBuilderConfig,
 } = require("./mac-packaging.cjs");
 
@@ -53,6 +54,13 @@ test("x64ArchFiles covers both backend slices including PIL .dylibs", () => {
     ),
     false,
   );
+  const shortcut =
+    "/Users/runner/work/exo/exo/dist-installer/mac-universal/Exo.app/Contents/Resources/backend-x64/_internal/Python.framework/Python";
+  assert.ok(
+    MAC_BACKEND_SIGN_IGNORE.some((pattern) => new RegExp(pattern).test(shortcut)),
+    "electron-builder must skip the Python.framework shortcut",
+  );
+  assert.deepEqual(cfg.mac.signIgnore, MAC_BACKEND_SIGN_IGNORE);
 });
 
 test("dmgArtifactName is arch-specific unless universal", () => {

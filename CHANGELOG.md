@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.60] - 2026-08-19
+
+### Fixed
+
+- **Packaging:** Do not let electron-builder re-sign the already-signed backend slices (it hits `Python.framework/Python` and fails with “bundle format is ambiguous”).
+
 ## [1.1.59] - 2026-08-19
 
 ### Fixed
