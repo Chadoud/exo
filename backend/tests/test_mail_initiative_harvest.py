@@ -71,11 +71,11 @@ def mail_dir(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def ungated(monkeypatch):
+def _ungated(monkeypatch):
     monkeypatch.setattr(harvest, "gated_reason", lambda: None)
 
 
-def test_harvest_skips_last_from_me(mail_dir, ungated):
+def test_harvest_skips_last_from_me(mail_dir, _ungated):
     calls = {"list": 0, "get": 0}
 
     def list_ids(query: str, max_results: int) -> list[str]:
@@ -99,7 +99,7 @@ def test_harvest_skips_last_from_me(mail_dir, ungated):
     assert calls["get"] == 1
 
 
-def test_harvest_skips_noreply_and_promo(mail_dir, ungated):
+def test_harvest_skips_noreply_and_promo(mail_dir, _ungated):
     threads = {
         "t-noreply": _thread("t-noreply", from_addr="noreply@brand.com", subject="Hi"),
         "t-promo": _thread(
@@ -130,7 +130,7 @@ def test_harvest_skips_noreply_and_promo(mail_dir, ungated):
     assert b"SECRET_BODY" not in raw
 
 
-def test_harvest_caps_three_and_five_gets(mail_dir, ungated):
+def test_harvest_caps_three_and_five_gets(mail_dir, _ungated):
     gets: list[str] = []
 
     def get_meta(tid: str) -> dict:
@@ -151,7 +151,7 @@ def test_harvest_caps_three_and_five_gets(mail_dir, ungated):
     assert len(store.list_candidates(drafted_only=True)) == 3
 
 
-def test_harvest_honors_14_day_dismiss(mail_dir, ungated):
+def test_harvest_honors_14_day_dismiss(mail_dir, _ungated):
     store.dismiss_thread("t-silent")
     out = harvest.run_harvest(
         list_ids=lambda _q, _n: ["t-silent"],
@@ -163,7 +163,7 @@ def test_harvest_honors_14_day_dismiss(mail_dir, ungated):
     assert store.list_candidates() == []
 
 
-def test_harvest_interval_skips_gmail(mail_dir, ungated):
+def test_harvest_interval_skips_gmail(mail_dir, _ungated):
     store.set_last_harvest_at(datetime.now(UTC) - timedelta(minutes=5))
     called = {"n": 0}
 
@@ -176,7 +176,7 @@ def test_harvest_interval_skips_gmail(mail_dir, ungated):
     assert called["n"] == 0
 
 
-def test_harvest_429_aborts_tick(mail_dir, ungated):
+def test_harvest_429_aborts_tick(mail_dir, _ungated):
     def get_meta(_tid: str) -> dict:
         raise HarvestRateLimited()
 
@@ -268,7 +268,7 @@ def test_get_thread_metadata_repeats_list_headers(mock_get, _token):
     assert all(key != "metadataHeaders" or isinstance(value, str) for key, value in params)
 
 
-def test_harvest_skips_list_unsubscribe_updates(mail_dir, ungated):
+def test_harvest_skips_list_unsubscribe_updates(mail_dir, _ungated):
     thread = _thread(
         "t-list",
         from_addr="Allen <hello@brand.example>",
@@ -296,7 +296,7 @@ def test_harvest_skips_list_unsubscribe_updates(mail_dir, ungated):
     assert store.list_candidates(drafted_only=True) == []
 
 
-def test_harvest_includes_updates_tab_personal(mail_dir, ungated):
+def test_harvest_includes_updates_tab_personal(mail_dir, _ungated):
     thread = _thread(
         "t-upd",
         from_addr="Ada <ada@example.com>",
@@ -316,7 +316,7 @@ def test_harvest_includes_updates_tab_personal(mail_dir, ungated):
     assert store.list_candidates(drafted_only=True)[0]["from_email"] == "ada@example.com"
 
 
-def test_harvest_keeps_unscanned_drafted(mail_dir, ungated):
+def test_harvest_keeps_unscanned_drafted(mail_dir, _ungated):
     store.remember_mailbox("me@exosites.ch")
     store.upsert_candidate(
         thread_id="t-old",
@@ -340,7 +340,7 @@ def test_harvest_keeps_unscanned_drafted(mail_dir, ungated):
     assert left[0]["thread_id"] == "t-old"
 
 
-def test_harvest_drops_cards_when_mailbox_changes(mail_dir, ungated):
+def test_harvest_drops_cards_when_mailbox_changes(mail_dir, _ungated):
     store.remember_mailbox("old@example.com")
     store.upsert_candidate(
         thread_id="t-old-box",
@@ -369,7 +369,7 @@ def test_harvest_drops_cards_when_mailbox_changes(mail_dir, ungated):
     assert out["skipped"] is None
 
 
-def test_harvest_first_seen_mailbox_drops_leftover_cards(mail_dir, ungated):
+def test_harvest_first_seen_mailbox_drops_leftover_cards(mail_dir, _ungated):
     store.upsert_candidate(
         thread_id="t-pre",
         message_ids=["m0"],
@@ -389,7 +389,7 @@ def test_harvest_first_seen_mailbox_drops_leftover_cards(mail_dir, ungated):
     assert store.list_candidates() == []
 
 
-def test_reply_to_locks_recipient(mail_dir, ungated):
+def test_reply_to_locks_recipient(mail_dir, _ungated):
     thread = _thread(
         "t1",
         from_addr="Ada <ada@example.com>",

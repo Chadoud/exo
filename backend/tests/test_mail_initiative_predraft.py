@@ -63,11 +63,11 @@ def mail_dir(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def ungated(monkeypatch):
+def _ungated(monkeypatch):
     monkeypatch.setattr(harvest, "gated_reason", lambda: None)
 
 
-def test_unchanged_thread_skips_compose(mail_dir, ungated):
+def test_unchanged_thread_skips_compose(mail_dir, _ungated):
     store.upsert_candidate(
         thread_id="t-ok",
         message_ids=["m1"],
@@ -97,7 +97,7 @@ def test_unchanged_thread_skips_compose(mail_dir, ungated):
     assert store.list_candidates(drafted_only=True)[0]["draft_body"] == "Already written."
 
 
-def test_reuse_drops_when_meta_snippet_is_list_footer(mail_dir, ungated):
+def test_reuse_drops_when_meta_snippet_is_list_footer(mail_dir, _ungated):
     store.upsert_candidate(
         thread_id="t-ok",
         message_ids=["m1"],
@@ -129,7 +129,7 @@ def test_reuse_drops_when_meta_snippet_is_list_footer(mail_dir, ungated):
     assert store.list_candidates(drafted_only=True) == []
 
 
-def test_reuse_drops_when_labels_turn_promo(mail_dir, ungated):
+def test_reuse_drops_when_labels_turn_promo(mail_dir, _ungated):
     store.upsert_candidate(
         thread_id="t-ok",
         message_ids=["m1"],
@@ -161,7 +161,7 @@ def test_reuse_drops_when_labels_turn_promo(mail_dir, ungated):
     assert store.list_candidates(drafted_only=True) == []
 
 
-def test_empty_compose_hides_card(mail_dir, ungated):
+def test_empty_compose_hides_card(mail_dir, _ungated):
     out = harvest.run_harvest(
         list_ids=lambda _q, _n: ["t-ok"],
         get_meta=lambda tid: _meta(tid),
@@ -174,7 +174,7 @@ def test_empty_compose_hides_card(mail_dir, ungated):
     assert store.list_candidates(drafted_only=True) == []
 
 
-def test_thin_thread_hides_card(mail_dir, ungated):
+def test_thin_thread_hides_card(mail_dir, _ungated):
     out = harvest.run_harvest(
         list_ids=lambda _q, _n: ["t-ok"],
         get_meta=lambda tid: _meta(tid),
@@ -187,7 +187,7 @@ def test_thin_thread_hides_card(mail_dir, ungated):
     assert store.list_candidates(drafted_only=True) == []
 
 
-def test_list_footer_hides_card(mail_dir, ungated):
+def test_list_footer_hides_card(mail_dir, _ungated):
     padding = "Please tell us which artists you want on stage next year. "
     footer = "Vous recevez cet e-mail parce que vous etes abonne. Se desinscrire."
     out = harvest.run_harvest(
@@ -202,7 +202,7 @@ def test_list_footer_hides_card(mail_dir, ungated):
     assert store.list_candidates(drafted_only=True) == []
 
 
-def test_promo_body_snippet_hides_card(mail_dir, ungated):
+def test_promo_body_snippet_hides_card(mail_dir, _ungated):
     promo = "Exclusive offer — 50% off this weekend only. Unsubscribe anytime."
     out = harvest.run_harvest(
         list_ids=lambda _q, _n: ["t-ok"],
