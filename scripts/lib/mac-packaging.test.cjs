@@ -10,6 +10,8 @@ const {
   stageBackendSlices,
   verifyBackendSlices,
   dmgArtifactName,
+  UNIVERSAL_X64_ARCH_FILES,
+  electronBuilderConfig,
 } = require("./mac-packaging.cjs");
 
 function writeOnedirSlice(dir, sliceName) {
@@ -27,6 +29,13 @@ test("backendSliceName maps arch to resource name", () => {
 test("packagingMode reflects EXO_MAC_UNIVERSAL", () => {
   assert.equal(packagingMode({ EXO_MAC_UNIVERSAL: "1" }), "universal");
   assert.match(packagingMode({ EXO_MAC_UNIVERSAL: "0" }), /^native-/);
+});
+
+test("x64ArchFiles covers both backend slices so identical Mach-O extras do not fail the universal merge", () => {
+  assert.equal(UNIVERSAL_X64_ARCH_FILES, "Contents/Resources/backend-*/**/*");
+  assert.match(UNIVERSAL_X64_ARCH_FILES, /backend-\*/);
+  const cfg = electronBuilderConfig({ EXO_MAC_UNIVERSAL: "1" });
+  assert.equal(cfg.mac.x64ArchFiles, UNIVERSAL_X64_ARCH_FILES);
 });
 
 test("dmgArtifactName is arch-specific unless universal", () => {

@@ -79,6 +79,13 @@ function macSharedExtraResources() {
 }
 
 /**
+ * Both PyInstaller slices are extraResources in every arch temp app. Identical
+ * Mach-O files (e.g. AppKit.so) must be listed here or @electron/universal
+ * throws "same in both x64 and arm64 builds".
+ */
+const UNIVERSAL_X64_ARCH_FILES = "Contents/Resources/backend-*/**/*";
+
+/**
  * @param {Record<string, string | undefined>} [env]
  * @returns {Array<{ from: string; to: string; filter?: string[] }>}
  */
@@ -111,6 +118,7 @@ function electronBuilderConfig(env = process.env) {
     mac: {
       ...baseBuild.mac,
       extraResources: [...macSharedExtraResources(), ...macBackendExtraResources(env)],
+      x64ArchFiles: UNIVERSAL_X64_ARCH_FILES,
     },
   };
 }
@@ -251,6 +259,7 @@ module.exports = {
   packagingMode,
   otherPyInstallerTargetArch,
   dmgArtifactName,
+  UNIVERSAL_X64_ARCH_FILES,
   macSharedExtraResources,
   macBackendExtraResources,
   electronBuilderConfig,

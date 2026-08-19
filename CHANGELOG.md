@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.58] - 2026-08-19
+
+### Fixed
+
+- **Packaging:** Cover both `backend-x64` and `backend-arm64` in `x64ArchFiles` so the universal DMG merge no longer fails on identical Mach-O extras (AppKit).
+
 ## [1.1.57] - 2026-08-19
 
 ### Fixed
