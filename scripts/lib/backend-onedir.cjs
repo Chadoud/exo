@@ -161,22 +161,6 @@ function repairFrameworkShortcuts(rootDir) {
   walk(rootDir);
 }
 
-function collectFrameworkBundles(sliceDir) {
-  const bundles = [];
-  const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (fs.lstatSync(full).isSymbolicLink()) continue;
-      if (!entry.isDirectory()) continue;
-      if (entry.name.endsWith(".framework")) bundles.push(full);
-      walk(full);
-    }
-  };
-  walk(sliceDir);
-  bundles.sort((a, b) => b.length - a.length || b.localeCompare(a));
-  return bundles;
-}
-
 function codesignArgs(identity, targetPath, entitlementsPath) {
   const args = ["--force", "--options", "runtime", "--timestamp", "--sign", identity];
   if (entitlementsPath) args.push("--entitlements", entitlementsPath);
@@ -186,8 +170,8 @@ function codesignArgs(identity, targetPath, entitlementsPath) {
 
 /**
  * Codesign every Mach-O in an onedir slice (inner libs first, launcher last).
- * Framework binaries are signed without app entitlements, then the .framework
- * bundle is signed so notarize accepts Python.framework.
+ * Framework binaries are signed without app entitlements. Do not codesign the
+ * .framework directory — codesign reports "bundle format is ambiguous".
  * @param {string} sliceDir
  * @param {string} identity
  * @param {string} entitlementsPath
@@ -207,10 +191,6 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
   for (const filePath of machOFiles) {
     const ents = isInsideFramework(filePath) ? null : entitlementsPath;
     execFileSync("codesign", codesignArgs(identity, filePath, ents), { stdio: "inherit" });
-  }
-
-  for (const bundle of collectFrameworkBundles(sliceDir)) {
-    execFileSync("codesign", codesignArgs(identity, bundle, null), { stdio: "inherit" });
   }
 
   execFileSync("codesign", codesignArgs(identity, launcher, entitlementsPath), {
@@ -241,6 +221,5 @@ module.exports = {
   isFrameworkShortcutPath,
   isInsideFramework,
   repairFrameworkShortcuts,
-  collectFrameworkBundles,
   codesignArgs,
 };

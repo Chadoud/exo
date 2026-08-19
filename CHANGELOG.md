@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.62] - 2026-08-19
+
+### Fixed
+
+- **Packaging:** Restore `Python.framework` version shortcuts as symlinks and sign the inner binary without app entitlements. Do not codesign the `.framework` directory (codesign treats it as an ambiguous bundle).
+
 ## [1.1.61] - 2026-08-19
 
 ### Fixed
