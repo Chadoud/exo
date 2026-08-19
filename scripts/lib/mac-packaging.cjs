@@ -80,10 +80,12 @@ function macSharedExtraResources() {
 
 /**
  * Both PyInstaller slices are extraResources in every arch temp app. Identical
- * Mach-O files (e.g. AppKit.so) must be listed here or @electron/universal
- * throws "same in both x64 and arm64 builds".
+ * Mach-O files must match this glob or @electron/universal throws.
+ * `{*,.*}` is required: minimatch defaults skip dotdirs such as PIL/.dylibs
+ * and we cannot pass `{ dot: true }` through electron-builder.
  */
-const UNIVERSAL_X64_ARCH_FILES = "Contents/Resources/backend-*/**/*";
+const UNIVERSAL_X64_ARCH_FILES =
+  "{Contents/Resources/backend-*/**/{*,.*}/**,Contents/Resources/backend-*/**/{*,.*}}";
 
 /**
  * @param {Record<string, string | undefined>} [env]

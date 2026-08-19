@@ -4,6 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
 
+const { minimatch } = require("minimatch");
 const {
   backendSliceName,
   packagingMode,
@@ -31,11 +32,27 @@ test("packagingMode reflects EXO_MAC_UNIVERSAL", () => {
   assert.match(packagingMode({ EXO_MAC_UNIVERSAL: "0" }), /^native-/);
 });
 
-test("x64ArchFiles covers both backend slices so identical Mach-O extras do not fail the universal merge", () => {
-  assert.equal(UNIVERSAL_X64_ARCH_FILES, "Contents/Resources/backend-*/**/*");
-  assert.match(UNIVERSAL_X64_ARCH_FILES, /backend-\*/);
+test("x64ArchFiles covers both backend slices including PIL .dylibs", () => {
   const cfg = electronBuilderConfig({ EXO_MAC_UNIVERSAL: "1" });
   assert.equal(cfg.mac.x64ArchFiles, UNIVERSAL_X64_ARCH_FILES);
+  const opts = { matchBase: true };
+  const covered = [
+    "Contents/Resources/backend-arm64/backend",
+    "Contents/Resources/backend-arm64/_internal/AppKit/_AppKit.cpython-311-darwin.so",
+    "Contents/Resources/backend-arm64/_internal/PIL/.dylibs/libXau.6.dylib",
+    "Contents/Resources/backend-x64/_internal/PIL/.dylibs/libXau.6.dylib",
+  ];
+  for (const file of covered) {
+    assert.equal(minimatch(file, UNIVERSAL_X64_ARCH_FILES, opts), true, file);
+  }
+  assert.equal(
+    minimatch(
+      "Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework",
+      UNIVERSAL_X64_ARCH_FILES,
+      opts,
+    ),
+    false,
+  );
 });
 
 test("dmgArtifactName is arch-specific unless universal", () => {

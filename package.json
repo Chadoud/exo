@@ -1,6 +1,6 @@
 {
   "name": "exosites-assistant",
-  "version": "1.1.58",
+  "version": "1.1.59",
   "description": "Exo — AI file sorting and second brain (desktop; cloud sort for subscribers)",
   "main": "electron/main.js",
   "author": "Exosites",
@@ -201,7 +201,7 @@
       "gatekeeperAssess": false,
       "entitlements": "electron/entitlements.mac.plist",
       "entitlementsInherit": "electron/entitlements.mac.plist",
-      "x64ArchFiles": "Contents/Resources/backend-*/**/*",
+      "x64ArchFiles": "{Contents/Resources/backend-*/**/{*,.*}/**,Contents/Resources/backend-*/**/{*,.*}}",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Exo uses the microphone for voice commands and the AI assistant.",
         "NSScreenCaptureUsageDescription": "Exo captures the screen only when you ask the assistant to see or act on what's on screen.",

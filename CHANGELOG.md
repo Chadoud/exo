@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.59] - 2026-08-19
+
+### Fixed
+
+- **Packaging:** `x64ArchFiles` now matches hidden folders such as `PIL/.dylibs`, so the universal DMG merge can finish.
+
 ## [1.1.58] - 2026-08-19
 
 ### Fixed
