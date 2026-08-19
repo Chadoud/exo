@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.57] - 2026-08-19
+
+### Fixed
+
+- **Packaging:** Do not codesign the `Python.framework/Python` shortcut (or a materialized `Versions/Current` copy). CI was failing with “bundle format is ambiguous” before the staging DMG could publish.
+
 ## [1.1.56] - 2026-08-19
 
 ### Added

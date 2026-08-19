@@ -61,11 +61,27 @@ function stageOnedirDirectory(srcDir, destDir) {
 }
 
 /**
+ * True for framework shortcut paths codesign treats as an ambiguous bundle.
+ * Never skip Versions/<x.y>/… — only the top-level Foo.framework/Foo stub
+ * and a materialized Versions/Current chain.
+ */
+function isFrameworkShortcutPath(filePath) {
+  const parts = filePath.split(path.sep);
+  const fw = parts.findIndex((part) => part.endsWith(".framework"));
+  if (fw < 0 || fw === parts.length - 1) return false;
+  const fwName = parts[fw].slice(0, -".framework".length);
+  const after = parts.slice(fw + 1);
+  if (after.length === 1) return after[0] === fwName;
+  return after[0] === "Versions" && after[1] === "Current";
+}
+
+/**
  * Find every Mach-O file under a slice, deepest paths first (so nested
  * dylibs get signed before the binaries that depend on them).
  * @param {string} sliceDir
  * @returns {string[]}
  */
+
 function collectMachOFilesDeepestFirst(sliceDir) {
   const machOFiles = [];
   const walk = (dir) => {
@@ -80,6 +96,7 @@ function collectMachOFilesDeepestFirst(sliceDir) {
       // truth: never sign or recurse through a symlink directly, only the
       // real file it points at (which this walk visits on its own).
       if (fs.lstatSync(full).isSymbolicLink()) continue;
+      if (isFrameworkShortcutPath(full)) continue;
       if (entry.isDirectory()) {
         walk(full);
         continue;
@@ -162,4 +179,5 @@ module.exports = {
   collectMachOFilesDeepestFirst,
   codesignMacOnedirSlice,
   fileOutputMatches,
+  isFrameworkShortcutPath,
 };

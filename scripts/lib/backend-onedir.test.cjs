@@ -9,6 +9,7 @@ const {
   resolveBackendInSlice,
   stageOnedirDirectory,
   collectMachOFilesDeepestFirst,
+  isFrameworkShortcutPath,
 } = require("./backend-onedir.cjs");
 
 test("nestedBackendExecutable uses platform-specific launcher name", () => {
@@ -59,6 +60,52 @@ test(
       assert.ok(
         !found.includes(path.join(framework, "Python")),
         "framework symlink must never be codesigned directly (bundle format is ambiguous)",
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+test("isFrameworkShortcutPath skips materialized Python.framework/Python", () => {
+  assert.equal(isFrameworkShortcutPath("/slice/_internal/Python.framework/Python"), true);
+  assert.equal(
+    isFrameworkShortcutPath("/slice/_internal/Python.framework/Versions/Current/Python"),
+    true,
+  );
+  assert.equal(
+    isFrameworkShortcutPath("/slice/_internal/Python.framework/Versions/3.11/Python"),
+    false,
+  );
+  assert.equal(isFrameworkShortcutPath("/slice/_internal/Python.framework/Versions"), false);
+  assert.equal(isFrameworkShortcutPath("/slice/_internal/Python.framework/Resources"), false);
+});
+
+test(
+  "collectMachOFilesDeepestFirst skips a regular-file Python.framework/Python stub",
+  { skip: process.platform !== "darwin" && "Mach-O detection only applies on macOS" },
+  () => {
+    // CI can materialize the shortcut as a real Mach-O; lstat then does not skip it.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-macho-file-"));
+    try {
+      const framework = path.join(dir, "Python.framework");
+      const versionDir = path.join(framework, "Versions", "3.11");
+      fs.mkdirSync(versionDir, { recursive: true });
+      const realBinary = path.join(versionDir, "Python");
+      fs.copyFileSync(process.execPath, realBinary);
+      fs.copyFileSync(process.execPath, path.join(framework, "Python"));
+      fs.mkdirSync(path.join(framework, "Versions", "Current"), { recursive: true });
+      fs.copyFileSync(process.execPath, path.join(framework, "Versions", "Current", "Python"));
+
+      const found = collectMachOFilesDeepestFirst(dir);
+      assert.ok(found.includes(realBinary), "real framework binary must be signed");
+      assert.ok(
+        !found.includes(path.join(framework, "Python")),
+        "materialized framework stub must never be codesigned (bundle format is ambiguous)",
+      );
+      assert.ok(
+        !found.includes(path.join(framework, "Versions", "Current", "Python")),
+        "Versions/Current must not be signed when the real Versions/3.x binary exists",
       );
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
