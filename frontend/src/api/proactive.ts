@@ -61,26 +61,6 @@ export async function dismissAllNudges(): Promise<number[]> {
   return Array.isArray(body.ids) ? body.ids : [];
 }
 
-const SchedulerJobSchema = z.object({
-  name: z.string(),
-  interval_sec: z.number(),
-  last_run_at: z.string().nullable(),
-  last_error: z.string().nullable(),
-});
-
-const SchedulerStatusSchema = z.object({
-  running: z.boolean(),
-  jobs: z.array(SchedulerJobSchema),
-});
-
-export async function fetchSchedulerStatus(): Promise<z.infer<typeof SchedulerStatusSchema> | null> {
-  try {
-    return await requestValidated("/proactive/scheduler/status", SchedulerStatusSchema);
-  } catch {
-    return null;
-  }
-}
-
 const AgentFailureSchema = z.object({
   id: z.number(),
   content: z.string(),

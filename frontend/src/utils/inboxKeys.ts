@@ -9,7 +9,7 @@ export function inboxKey(kind: InboxKind, id: number): InboxKey {
   return `${kind}:${id}`;
 }
 
-export type InboxItemRef = { kind: InboxKind; id: number };
+type InboxItemRef = { kind: InboxKind; id: number };
 
 export function parseInboxKey(key: string): InboxItemRef | null {
   const sep = key.indexOf(":");
@@ -26,7 +26,7 @@ export function selectedInboxItems(keys: string[]): InboxItemRef[] {
   return keys.map(parseInboxKey).filter((item): item is InboxItemRef => item != null);
 }
 
-export type InboxKeyKinds = {
+type InboxKeyKinds = {
   failures?: boolean;
   mail?: boolean;
   nudges?: boolean;

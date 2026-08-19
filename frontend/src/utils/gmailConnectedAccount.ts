@@ -1,4 +1,4 @@
-export type GmailAccountLineState =
+type GmailAccountLineState =
   | { kind: "hidden" }
   | { kind: "address"; email: string }
   | { kind: "unknown" };

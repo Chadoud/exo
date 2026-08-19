@@ -1,7 +1,7 @@
 type ExternalSourceStatusTone = "ready" | "neutral";
 
 /** Uniform Connected / Not connected copy for status pills. */
-export function connectionStatusLabel(
+function connectionStatusLabel(
   connected: boolean,
   loading: boolean,
   t: (key: string) => string,

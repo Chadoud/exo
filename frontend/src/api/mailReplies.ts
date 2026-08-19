@@ -28,7 +28,7 @@ const MailReplySettingsSchema = z.object({
   enabled: z.boolean(),
 });
 
-export type MailReplySettings = z.infer<typeof MailReplySettingsSchema>;
+type MailReplySettings = z.infer<typeof MailReplySettingsSchema>;
 
 const MailReplyDraftSchema = z.object({
   draft_token: z.string(),
@@ -45,7 +45,7 @@ const MailReplyOriginalSchema = z.object({
   truncated: z.boolean(),
 });
 
-export type MailReplyOriginal = z.infer<typeof MailReplyOriginalSchema>;
+type MailReplyOriginal = z.infer<typeof MailReplyOriginalSchema>;
 
 export function fetchMailReplies(): Promise<MailReplyList> {
   return requestValidated("/mail/replies", MailReplyListSchema);
@@ -103,6 +103,3 @@ export async function sendMailReply(body: {
   });
 }
 
-export async function clearMailReplies(): Promise<void> {
-  await request<unknown>("/mail/replies/clear", { method: "POST" });
-}
