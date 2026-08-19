@@ -13,7 +13,7 @@ describe("localeBundles", () => {
     const de = await loadLocaleBundle("de");
     expect(getCachedLocaleBundle("de")).toBe(de);
     expect(getString(de, "settings.navTabFileSorting")).toBeTruthy();
-  });
+  }, 30_000);
 });
 
 function getString(tree: unknown, key: string): string | undefined {

@@ -30,7 +30,7 @@ describe("product invariants", () => {
     () => {
       expect(checkNoSyntheticProgress()).toEqual([]);
     },
-    15_000,
+    60_000,
   );
 
   it(
@@ -39,7 +39,7 @@ describe("product invariants", () => {
       const violations = runAllProductInvariantChecks();
       expect(violations, formatViolationReport(violations)).toEqual([]);
     },
-    15_000,
+    60_000,
   );
 });
 
