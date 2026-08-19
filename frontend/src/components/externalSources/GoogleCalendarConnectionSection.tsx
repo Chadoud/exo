@@ -6,6 +6,11 @@ import ExternalSourceConnectionButton from "./ExternalSourceConnectionButton";
 import { externalSourceConnectionPill } from "./externalSourceConnectionPill";
 import { externalSourceConnectDisabled } from "../../utils/externalSourceConnectUi";
 import { useDesktopOAuthCardState } from "../../hooks/useDesktopOAuthCardState";
+import {
+  forgetIntegrationSourcesBestEffort,
+  refreshIntegrationTasksBestEffort,
+} from "../../utils/forgetIntegrationTasks";
+import SourceAccountLine from "./SourceAccountLine";
 
 const PROVIDER_ID = "google-calendar";
 
@@ -19,16 +24,21 @@ interface GoogleCalendarConnectionSectionProps {
  * Google Calendar OAuth slot (read-only assistant tools). Separate from Gmail and Drive.
  */
 export default function GoogleCalendarConnectionSection({
-  backendOnline: _backendOnline,
+  backendOnline,
   brandIcon,
   compact = false,
 }: GoogleCalendarConnectionSectionProps) {
-  void _backendOnline;
   const { t } = useI18n();
   const { desktop, connected, loadingStatus, oauthBusy, connect, disconnect } =
     useDesktopOAuthCardState({
       providerId: PROVIDER_ID,
       integrationChangedEvent: EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT,
+      onConnected: () => {
+        if (backendOnline) refreshIntegrationTasksBestEffort();
+      },
+      onDisconnected: () => {
+        if (backendOnline) void forgetIntegrationSourcesBestEffort(["google-calendar"]);
+      },
       i18n: {
         connectSuccess: t("sources.googleCalendarConnectSuccess"),
         connectFailed: t("sources.googleCalendarConnectFailed"),
@@ -65,6 +75,14 @@ export default function GoogleCalendarConnectionSection({
           />
         ) : undefined
       }
-    />
+    >
+      <SourceAccountLine
+        providerId={PROVIDER_ID}
+        connected={connected}
+        backendOnline={backendOnline}
+        desktop={desktop}
+        refreshEvent={EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT}
+      />
+    </ExternalSourceCard>
   );
 }

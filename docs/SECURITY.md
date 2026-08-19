@@ -53,7 +53,7 @@ Provider keys and OAuth material live in Electron **safeStorage** (main process)
 | Gemini / OpenAI / other provider keys | Electron `safeStorage` via IPC; backend may receive mirrored env for the child process | Renderer sees masked status only. **Voice:** Gemini Live handles speech; when `ANTHROPIC_API_KEY` is set, voice `plan_and_execute` runs on Anthropic and Gemini only speaks a short summary (avoids burning free Gemini RPM on planner/critic). |
 | `EXOSITES_APP_TOKEN` | Electron main process memory only | Not returned to renderer; HTTP proxied via `backend:http` |
 | Voice WS auth | Short-lived tickets minted in main | First-frame `app_auth`; no query token |
-| Gmail / integration OAuth tokens | Electron secure storage + backend connector store | Fail closed when `safeStorage` unavailable; see [INTEGRATIONS.md](./INTEGRATIONS.md). Gmail scopes include `gmail.modify`, `gmail.send`, and `gmail.settings.basic` (inbox filters). After a scope upgrade, users must disconnect and reconnect Gmail. Approving `plan_and_execute` once grants nested approval-tier tools for **that orchestrate run only** (same as chat autonomous/`allow_sensitive`), not a global always-allow. Ready-to-send Inbox replies use a dedicated HTTP confirm + single-use capability token — not a tool, not `initiative.suggest`, never auto-send. Harvest stores metadata only; disconnect and privacy wipe clear `mail_replies.sqlite`. |
+| Gmail / integration OAuth tokens | Electron secure storage + backend connector store | Fail closed when `safeStorage` unavailable; see [INTEGRATIONS.md](./INTEGRATIONS.md). Gmail scopes include `gmail.modify`, `gmail.send`, and `gmail.settings.basic` (inbox filters). After a scope upgrade, users must disconnect and reconnect Gmail. Approving `plan_and_execute` once grants nested approval-tier tools for **that orchestrate run only** (same as chat autonomous/`allow_sensitive`), not a global always-allow. Ready-to-send Inbox replies use a dedicated HTTP confirm + single-use capability token — not a tool, not `initiative.suggest`, never auto-send. Harvest stores sender/subject plus the outbound draft it wrote (not the inbound body); disconnect and privacy wipe clear `mail_replies.sqlite`. |
 | Sync master key | Derived from password; ciphertext on relay | [ADR-001](./adr/001-sync-crypto.md) |
 
 **Operational guidance:**
@@ -69,7 +69,7 @@ Voice credential sync is documented in [ADR-004](./adr/004-voice-credentials.md)
 
 ## WebSocket authentication
 
-`/ws/voice` validates the app token (or a one-time ticket) via header or first JSON `app_auth` frame. Invalid or missing credentials receive close code `4401`. Query `?token=` is rejected even if the secret is correct.
+`/ws/voice` validates the app token (or a one-time ticket) via header or first JSON `app_auth` frame. Invalid or missing credentials receive close code `4401`. After a valid auth, unpaid / trial-ended sessions receive close code `4402` (`Payment required`) and never start Gemini Live. Query `?token=` is rejected even if the secret is correct.
 
 OAuth credentials for briefing (calendar, mail) arrive **after** auth via `token_relay` JSON frames — they must not be processed on unauthenticated connections.
 

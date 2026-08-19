@@ -6,6 +6,11 @@ import { externalSourceConnectionPill } from "./externalSourceConnectionPill";
 import { externalSourceConnectDisabled } from "../../utils/externalSourceConnectUi";
 import { MICROSOFT_INTEGRATION_CHANGED_EVENT } from "./OneDriveConnectionSection";
 import { useDesktopOAuthCardState } from "../../hooks/useDesktopOAuthCardState";
+import {
+  forgetIntegrationSourcesBestEffort,
+  refreshIntegrationTasksBestEffort,
+} from "../../utils/forgetIntegrationTasks";
+import SourceAccountLine from "./SourceAccountLine";
 
 const PROVIDER_ID = "outlook";
 
@@ -22,16 +27,23 @@ interface OutlookConnectionSectionProps {
  * Connecting either service logs in with the same PKCE flow; the session is valid for both.
  */
 export default function OutlookConnectionSection({
-  backendOnline: _backendOnline,
+  backendOnline,
   brandIcon,
   compact = false,
 }: OutlookConnectionSectionProps) {
-  void _backendOnline;
   const { t } = useI18n();
   const { desktop, connected, loadingStatus, oauthBusy, connect, disconnect } =
     useDesktopOAuthCardState({
       providerId: PROVIDER_ID,
       integrationChangedEvent: MICROSOFT_INTEGRATION_CHANGED_EVENT,
+      onConnected: () => {
+        if (backendOnline) refreshIntegrationTasksBestEffort();
+      },
+      onDisconnected: () => {
+        if (backendOnline) {
+          void forgetIntegrationSourcesBestEffort(["outlook", "outlook-calendar"]);
+        }
+      },
       i18n: {
         connectSuccess: t("sources.outlookConnectSuccess"),
         connectFailed: t("sources.outlookConnectFailed"),
@@ -68,6 +80,14 @@ export default function OutlookConnectionSection({
           />
         ) : undefined
       }
-    />
+    >
+      <SourceAccountLine
+        providerId={PROVIDER_ID}
+        connected={connected}
+        backendOnline={backendOnline}
+        desktop={desktop}
+        refreshEvent={MICROSOFT_INTEGRATION_CHANGED_EVENT}
+      />
+    </ExternalSourceCard>
   );
 }

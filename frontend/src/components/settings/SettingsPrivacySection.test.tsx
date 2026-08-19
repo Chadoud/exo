@@ -43,7 +43,7 @@ describe("SettingsPrivacySection", () => {
     });
     expect(container.textContent).toContain("Usage analytics");
     expect(container.textContent).toContain("Crash reports");
-    expect(container.textContent).toContain("periodically checks recent Gmail threads");
+    expect(container.textContent).toContain("periodically reads recent inbox threads");
     const boxes = container.querySelectorAll('input[type="checkbox"]');
     expect(boxes.length).toBeGreaterThanOrEqual(2);
   });
@@ -88,5 +88,22 @@ describe("SettingsPrivacySection", () => {
       wipeBtn?.click();
     });
     expect(container.textContent).toContain("Confirm erase");
+  });
+
+  it("does not offer erasing other accounts on this Mac", async () => {
+    await act(async () => {
+      root.render(
+        <I18nProvider locale="en">
+          <SettingsPrivacySection
+            settings={baseSettings}
+            onSettingsPatch={vi.fn()}
+            backendOnline
+          />
+        </I18nProvider>,
+      );
+    });
+    expect(container.textContent).toContain("Erase this account");
+    expect(container.textContent).not.toContain("Erase all local accounts");
+    expect(container.textContent).not.toContain("Erase all accounts on this Mac");
   });
 });

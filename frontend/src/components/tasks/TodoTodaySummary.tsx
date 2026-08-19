@@ -5,6 +5,7 @@ type TodoTodaySummaryProps = {
   overdueCount: number;
   dueTodayCount: number;
   inboxCount: number;
+  undatedCount?: number;
   onOpenInbox: () => void;
   onScrollToOverdue?: () => void;
   onScrollToToday?: () => void;
@@ -15,6 +16,7 @@ export default function TodoTodaySummary({
   overdueCount,
   dueTodayCount,
   inboxCount,
+  undatedCount = 0,
   onOpenInbox,
   onScrollToOverdue,
   onScrollToToday,
@@ -58,6 +60,14 @@ export default function TodoTodaySummary({
           {t("todo.todaySummary.dueToday", { n: dueTodayCount })}
         </span>
       ),
+    );
+  }
+
+  if (undatedCount > 0) {
+    segments.push(
+      <span key="undated" className="text-text-primary">
+        {t("todo.todaySummary.undatedMail", { n: undatedCount })}
+      </span>,
     );
   }
 

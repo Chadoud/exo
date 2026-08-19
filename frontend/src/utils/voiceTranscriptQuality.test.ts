@@ -28,6 +28,13 @@ describe("voiceTranscriptQuality", () => {
     expect(live.trim()).toBe("Peux-tu me montrer mon calendrier.");
   });
 
+  it("keeps a richer snapshot when Gemini drops a proper noun", () => {
+    const richer = "start sorting the files within Hilal files.";
+    expect(
+      appendStreamingVoiceInputTranscript(richer, "start sorting the files within files."),
+    ).toBe(richer);
+  });
+
   it("rejects briefing echo from an earlier assistant bubble (legacy path)", () => {
     const recent = [
       "The stock market is up, with the Dow higher and SpaceX seeing a significant jump on its debut.",

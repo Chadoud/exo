@@ -5,6 +5,8 @@ interface MailReplySendConfirmProps {
   body: string;
   confirmLabel: string;
   cancelLabel: string;
+  confirmDisabled?: boolean;
+  statusText?: string;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -14,6 +16,8 @@ export default function MailReplySendConfirm({
   body,
   confirmLabel,
   cancelLabel,
+  confirmDisabled = false,
+  statusText,
   onCancel,
   onConfirm,
 }: MailReplySendConfirmProps) {
@@ -24,6 +28,9 @@ export default function MailReplySendConfirm({
       confirmLabel={confirmLabel}
       cancelLabel={cancelLabel}
       tone="primary"
+      confirmDisabled={confirmDisabled}
+      statusText={statusText}
+      busy={confirmDisabled}
       onCancel={onCancel}
       onConfirm={onConfirm}
     />

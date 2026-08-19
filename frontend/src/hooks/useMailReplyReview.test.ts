@@ -5,13 +5,14 @@ import { createElement, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { draftMailReply, sendMailReply } from "../api/mailReplies";
+import { draftMailReply, saveMailReplyDraft, sendMailReply } from "../api/mailReplies";
 import { useMailReplyReview, type MailReplyReviewState } from "./useMailReplyReview";
 
 vi.mock("sonner", () => ({ toast: { message: vi.fn(), error: vi.fn() } }));
 vi.mock("../telemetry/assistantTelemetry", () => ({ trackProductEvent: vi.fn() }));
 vi.mock("../api/mailReplies", () => ({
   draftMailReply: vi.fn(),
+  saveMailReplyDraft: vi.fn(),
   sendMailReply: vi.fn(),
 }));
 
@@ -24,12 +25,13 @@ let latest: Api | null = null;
 const copy = {
   threadChanged: "thread changed",
   sendFailed: "send failed",
-  draftFailed: "draft failed",
-  draftDiscarded: "discarded",
+  checkFailed: "check failed",
 };
 
+const seed = { subject: "Re: Lunch?", body: "See you at noon.", toName: "Ada" };
+
 function HookProbe({ onResult }: { onResult: (api: Api) => void }) {
-  const api = useMailReplyReview(7, copy);
+  const api = useMailReplyReview(7, copy, seed);
   useEffect(() => {
     onResult(api);
   });
@@ -56,6 +58,7 @@ describe("useMailReplyReview", () => {
     latest = null;
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     vi.mocked(draftMailReply).mockReset();
+    vi.mocked(saveMailReplyDraft).mockReset().mockResolvedValue(undefined);
     vi.mocked(sendMailReply).mockReset();
   });
 
@@ -69,18 +72,22 @@ describe("useMailReplyReview", () => {
     latest = null;
   });
 
-  it("keeps the card in error after the first draft failure", async () => {
+  it("shows the saved reply immediately and keeps it after a mint failure", async () => {
     vi.mocked(draftMailReply).mockRejectedValueOnce(new Error("network"));
     mount();
     await act(async () => {
       await latest!.review();
     });
     const state = latest!.state as MailReplyReviewState;
-    expect(state.status).toBe("error");
-    if (state.status === "error") expect(state.error).toBe("draft failed");
+    expect(state.status).toBe("ready");
+    if (state.status === "ready") {
+      expect(state.body).toBe("See you at noon.");
+      expect(state.check).toBe("fail");
+      expect(state.error).toBe("check failed");
+    }
   });
 
-  it("ignores a late draft after collapse", async () => {
+  it("ignores a late mint after collapse", async () => {
     let resolveDraft!: (value: {
       draft_token: string;
       to_name: string;
@@ -99,7 +106,7 @@ describe("useMailReplyReview", () => {
     await act(async () => {
       reviewDone = latest!.review();
     });
-    expect(latest!.state.status).toBe("working");
+    expect(latest!.state.status).toBe("ready");
     act(() => {
       latest!.collapse();
     });
@@ -117,7 +124,7 @@ describe("useMailReplyReview", () => {
     expect(latest!.state.status).toBe("collapsed");
   });
 
-  it("exposes To fields after a successful draft", async () => {
+  it("exposes To fields after a successful mint", async () => {
     vi.mocked(draftMailReply).mockResolvedValueOnce({
       draft_token: "tok",
       to_name: "Ada",
@@ -130,10 +137,11 @@ describe("useMailReplyReview", () => {
       await latest!.review();
     });
     const state = latest!.state;
-    expect(state.status).toBe("draft");
-    if (state.status === "draft") {
+    expect(state.status).toBe("ready");
+    if (state.status === "ready") {
       expect(state.toName).toBe("Ada");
       expect(state.toEmail).toBe("ada@example.com");
+      expect(state.check).toBe("ok");
     }
   });
 
@@ -159,7 +167,29 @@ describe("useMailReplyReview", () => {
     });
     expect(ok).toBe(false);
     const state = latest!.state;
-    expect(state.status).toBe("draft");
-    if (state.status === "draft") expect(state.error).toBe("send failed");
+    expect(state.status).toBe("ready");
+    if (state.status === "ready") expect(state.error).toBe("send failed");
+  });
+
+  it("persists edits on collapse without a discard toast", async () => {
+    vi.mocked(draftMailReply).mockResolvedValueOnce({
+      draft_token: "tok",
+      to_name: "Ada",
+      to_email: "ada@example.com",
+      subject: "Re: Lunch?",
+      body: "See you at noon.",
+    });
+    mount();
+    await act(async () => {
+      await latest!.review();
+    });
+    act(() => {
+      latest!.setBody("Edited.");
+    });
+    act(() => {
+      latest!.collapse();
+    });
+    expect(saveMailReplyDraft).toHaveBeenCalledWith(7, { subject: "Re: Lunch?", body: "Edited." });
+    expect(latest!.state.status).toBe("collapsed");
   });
 });

@@ -65,8 +65,9 @@ _NO_REPLY_FROM = re.compile(
     re.IGNORECASE,
 )
 
-_BULK_HEADERS = frozenset(
-    {"list-unsubscribe", "precedence", "x-mailer", "feedback-id"}
+# RFC list mail — newsletters always send at least one. Do not treat as 1:1.
+_LIST_MAIL_HEADERS = frozenset(
+    {"list-unsubscribe", "list-unsubscribe-post", "list-id"}
 )
 
 _PERCENT_OFF = re.compile(r"-?\d+\s*%", re.IGNORECASE)
@@ -137,11 +138,19 @@ def evaluate_text(
         score += 0.2
         reasons.append("no_reply_sender")
 
-    if "unsubscribe" in lower or "list-unsubscribe" in lower:
-        score += 0.25
+    if any(
+        cue in lower
+        for cue in ("unsubscribe", "list-unsubscribe", "désinscrire", "desinscrire")
+    ):
+        score += 0.3
         reasons.append("unsubscribe_cue")
 
-    if re.search(r"\b(view in browser|view\s+online|email preferences)\b", lower):
+    if re.search(
+        r"\b(view in browser|view\s+online|email preferences|manage preferences|"
+        r"afficher dans le navigateur|choisir ses pr[ée]f[ée]rences|"
+        r"vous recevez cet e-?mail|you(?:'ve| have) received this email because)\b",
+        lower,
+    ):
         score += 0.2
         reasons.append("bulk_mail_footer")
 
@@ -176,8 +185,10 @@ def evaluate_gmail_message(
     important = "IMPORTANT" in labels
 
     hdrs = {k.lower(): v for k, v in (headers or {}).items()}
-    if hdrs.get("precedence", "").lower() in ("bulk", "list", "junk"):
-        if not starred and not important:
+    if not starred and not important:
+        if any(hdrs.get(name) for name in _LIST_MAIL_HEADERS):
+            return SignalVerdict(SignalTier.REJECT, 0.9, "list_header")
+        if hdrs.get("precedence", "").lower() in ("bulk", "list", "junk"):
             return SignalVerdict(SignalTier.REJECT, 0.8, "bulk_header")
 
     text_verdict = evaluate_text(

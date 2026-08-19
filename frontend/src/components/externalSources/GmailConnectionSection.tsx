@@ -19,9 +19,15 @@ import { describeOAuthConnectError } from "../../utils/userFacingErrors";
 import ExternalSourceCard from "./ExternalSourceCard";
 import ExternalSourceConnectionButton from "./ExternalSourceConnectionButton";
 import GmailReplySuggestToggle from "./GmailReplySuggestToggle";
+import SourceAccountLine from "./SourceAccountLine";
 import { externalSourceConnectionPill } from "./externalSourceConnectionPill";
 import { externalSourceConnectDisabled } from "../../utils/externalSourceConnectUi";
 import { relayConnectorTokens } from "../../assistant/connectorContext";
+import {
+  forgetIntegrationSourcesBestEffort,
+  refreshIntegrationTasksBestEffort,
+  refreshMailRepliesBestEffort,
+} from "../../utils/forgetIntegrationTasks";
 import { useI18n } from "../../i18n/I18nContext";
 
 const PROVIDER_ID = "google-gmail";
@@ -102,6 +108,8 @@ export default function GmailConnectionSection({
           await relayConnectorTokens();
           toast.message(t("sources.gmailConnectSuccess"));
           notifyGoogleIntegrationChanged();
+          refreshIntegrationTasksBestEffort();
+          refreshMailRepliesBestEffort();
         } else {
           const reason = r.reason ?? "";
           toast.error(t("sources.gmailConnectFailed"), {
@@ -157,6 +165,8 @@ export default function GmailConnectionSection({
       }
       if (finalStatus.connected) {
         toast.message(t("sources.gmailConnectSuccess"));
+        refreshIntegrationTasksBestEffort();
+        refreshMailRepliesBestEffort();
       } else if (finalStatus.oauth_flow_error) {
         toast.error(t("sources.gmailConnectFailed"), {
           description: describeOAuthConnectError(t, finalStatus.oauth_flow_error),
@@ -185,7 +195,19 @@ export default function GmailConnectionSection({
     if (desktop && window.electronAPI) {
       setOauthBusy(true);
       try {
-        await window.electronAPI.integrationDisconnect({ providerId: PROVIDER_ID });
+        const r = await window.electronAPI.integrationDisconnect({ providerId: PROVIDER_ID });
+        if (!r?.ok) {
+          toast.error(t("sources.gmailDisconnectFailed"), { description: r?.reason ?? "" });
+          return;
+        }
+        await relayConnectorTokens();
+        if (backendOnline) {
+          try {
+            await gmailOAuthDisconnect();
+          } catch {
+            await forgetIntegrationSourcesBestEffort(["gmail"]);
+          }
+        }
         toast.message(t("sources.gmailDisconnected"));
         notifyGoogleIntegrationChanged();
         await refreshStatus();
@@ -237,9 +259,13 @@ export default function GmailConnectionSection({
         />
       }
     >
-      {connected && !compact ? (
-        <p className="text-2xs leading-snug text-muted">{t("sources.gmailFiltersReconnectHint")}</p>
-      ) : null}
+      <SourceAccountLine
+        providerId={PROVIDER_ID}
+        connected={connected}
+        backendOnline={backendOnline}
+        desktop={desktop}
+        refreshEvent={EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT}
+      />
       {!compact ? (
         <GmailReplySuggestToggle connected={connected} backendOnline={backendOnline} />
       ) : null}

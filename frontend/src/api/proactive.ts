@@ -52,8 +52,13 @@ export async function dismissNudge(id: number): Promise<void> {
   await request<unknown>(`/nudges/${id}/dismiss`, { method: "POST" });
 }
 
-export async function dismissAllNudges(): Promise<void> {
-  await request<unknown>("/nudges/dismiss-all", { method: "POST" });
+export async function restoreNudge(id: number): Promise<void> {
+  await request<unknown>(`/nudges/${id}/restore`, { method: "POST" });
+}
+
+export async function dismissAllNudges(): Promise<number[]> {
+  const body = await request<{ ids?: number[] }>("/nudges/dismiss-all", { method: "POST" });
+  return Array.isArray(body.ids) ? body.ids : [];
 }
 
 const SchedulerJobSchema = z.object({
@@ -90,4 +95,8 @@ export function fetchAgentFailures(): Promise<AgentFailure[]> {
 
 export async function dismissAgentFailure(id: number): Promise<void> {
   await request<unknown>(`/proactive/failures/${id}/dismiss`, { method: "POST" });
+}
+
+export async function restoreAgentFailure(id: number): Promise<void> {
+  await request<unknown>(`/proactive/failures/${id}/restore`, { method: "POST" });
 }

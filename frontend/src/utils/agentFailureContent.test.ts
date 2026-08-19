@@ -3,6 +3,8 @@ import {
   AGENT_FAILURE_RETRY_PREFIX,
   buildAgentFailureRetryPrompt,
   extractAgentRetryGoal,
+  isTrashAgentFailure,
+  oneLineFailureWhy,
   parseAgentFailureContent,
 } from "./agentFailureContent";
 
@@ -55,5 +57,40 @@ describe("extractAgentRetryGoal", () => {
 
   it("returns plain text unchanged", () => {
     expect(extractAgentRetryGoal("deploy on Vercel")).toBe("deploy on Vercel");
+  });
+});
+
+describe("isTrashAgentFailure", () => {
+  it("drops cut-off unparseable asks", () => {
+    expect(
+      isTrashAgentFailure({
+        goal: ". Yeah, that's",
+        outcome: "I can't determine what you're asking—your message is cut off.",
+        raw: "",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps a clear failed ask", () => {
+    expect(
+      isTrashAgentFailure({
+        goal: "find my latest invoices and summarize them",
+        outcome: "Couldn't pull the amount for one invoice.",
+        raw: "",
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("oneLineFailureWhy", () => {
+  it("keeps the first line and drops the rest", () => {
+    expect(oneLineFailureWhy("Couldn't reach the calendar.\nMissing scope.")).toBe(
+      "Couldn't reach the calendar.",
+    );
+  });
+
+  it("returns empty when there is no outcome", () => {
+    expect(oneLineFailureWhy("")).toBe("");
+    expect(oneLineFailureWhy("   \n  ")).toBe("");
   });
 });

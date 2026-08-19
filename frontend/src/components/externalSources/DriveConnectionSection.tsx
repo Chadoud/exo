@@ -6,6 +6,7 @@ import ExternalSourceConnectionButton from "./ExternalSourceConnectionButton";
 import { externalSourceConnectionPill } from "./externalSourceConnectionPill";
 import { externalSourceConnectDisabled } from "../../utils/externalSourceConnectUi";
 import { useDesktopOAuthCardState } from "../../hooks/useDesktopOAuthCardState";
+import SourceAccountLine from "./SourceAccountLine";
 
 const PROVIDER_ID = "google-drive";
 
@@ -19,11 +20,10 @@ interface DriveConnectionSectionProps {
  * Google Drive OAuth card (desktop only for listing/import). Separate Gmail sign-in on its own card.
  */
 export default function DriveConnectionSection({
-  backendOnline: _backendOnline,
+  backendOnline,
   brandIcon,
   compact = false,
 }: DriveConnectionSectionProps) {
-  void _backendOnline;
   const { t } = useI18n();
   const { desktop, connected, loadingStatus, oauthBusy, connect, disconnect } =
     useDesktopOAuthCardState({
@@ -65,6 +65,14 @@ export default function DriveConnectionSection({
           />
         ) : undefined
       }
-    />
+    >
+      <SourceAccountLine
+        providerId={PROVIDER_ID}
+        connected={connected}
+        backendOnline={backendOnline}
+        desktop={desktop}
+        refreshEvent={EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT}
+      />
+    </ExternalSourceCard>
   );
 }

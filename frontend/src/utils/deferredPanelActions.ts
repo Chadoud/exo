@@ -75,6 +75,9 @@ export function consumeQueuedTodoSubTab(): TodoSubTab | null {
     if (value === "upcoming") {
       return "today";
     }
+    if (value === "replies") {
+      return "today";
+    }
     if (value === "today" || value === "inbox" || value === "done") {
       return value;
     }

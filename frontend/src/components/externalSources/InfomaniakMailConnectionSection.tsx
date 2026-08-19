@@ -11,6 +11,7 @@ import {
 } from "./infomaniakIntegrationEvents";
 import InfomaniakTokenSetupModal from "./InfomaniakTokenSetupModal";
 import { describeInfomaniakConnectFailureReason } from "./infomaniakConnectFailureMessage";
+import SourceAccountLine from "./SourceAccountLine";
 
 const PROVIDER_ID = "infomaniak";
 
@@ -24,11 +25,10 @@ interface InfomaniakMailConnectionSectionProps {
  * Infomaniak Mail uses the OAuth / env bearer row for Infomaniak kDrive (same session).
  */
 export default function InfomaniakMailConnectionSection({
-  backendOnline: _backendOnline,
+  backendOnline,
   brandIcon,
   compact = false,
 }: InfomaniakMailConnectionSectionProps) {
-  void _backendOnline;
   const { t } = useI18n();
   const [showTokenGuide, setShowTokenGuide] = useState(false);
   const [hasPersonalToken, setHasPersonalToken] = useState(false);
@@ -127,7 +127,15 @@ export default function InfomaniakMailConnectionSection({
             />
           ) : undefined
         }
-      />
+      >
+        <SourceAccountLine
+          providerId={PROVIDER_ID}
+          connected={effectivelyConnected}
+          backendOnline={backendOnline}
+          desktop={desktop}
+          refreshEvent={INFOMANIAK_DRIVE_INTEGRATION_CHANGED_EVENT}
+        />
+      </ExternalSourceCard>
 
       {showTokenGuide && (
         <InfomaniakTokenSetupModal

@@ -414,14 +414,12 @@ function connectGoogleAllPkce(options = {}) {
 }
 
 /**
- * Verify Calendar API access (minimal calendarList request).
+ * Verify Calendar API access and read the primary calendar id (usually the mailbox).
  * @param {string} accessToken
- * @returns {Promise<{ ok: true } | { ok: false; reason?: string }>}
+ * @returns {Promise<{ ok: true, email?: string } | { ok: false; reason?: string }>}
  */
 async function googleCalendarHealth(accessToken) {
-  const url = new URL("https://www.googleapis.com/calendar/v3/users/me/calendarList");
-  url.searchParams.set("maxResults", "1");
-  const res = await fetch(url.toString(), {
+  const res = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary", {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const text = await res.text();
@@ -434,7 +432,8 @@ async function googleCalendarHealth(accessToken) {
   if (!res.ok) {
     return { ok: false, reason: json.error?.message || `http_${res.status}` };
   }
-  return { ok: true };
+  const email = emailFromCalendarPrimaryPayload(json);
+  return email ? { ok: true, email } : { ok: true };
 }
 
 /**
@@ -483,7 +482,38 @@ async function listPrimaryCalendarEvents(accessToken, timeMin, timeMax, maxResul
 }
 
 /**
- * @returns {Promise<{ ok: true } | { ok: false; reason?: string }>}
+ * @param {unknown} json
+ * @returns {string | undefined}
+ */
+function emailFromCalendarPrimaryPayload(json) {
+  const raw =
+    json && typeof json === "object" && typeof json.id === "string" ? json.id.trim() : "";
+  return raw.includes("@") ? raw : undefined;
+}
+
+/**
+ * @param {unknown} json
+ * @returns {string | undefined}
+ */
+function emailFromDriveAboutPayload(json) {
+  const user = json && typeof json === "object" ? json.user : null;
+  const raw =
+    user && typeof user === "object" && typeof user.emailAddress === "string"
+      ? user.emailAddress.trim()
+      : "";
+  return raw || undefined;
+}
+
+function emailFromGmailProfilePayload(json) {
+  const raw =
+    json && typeof json === "object" && typeof json.emailAddress === "string"
+      ? json.emailAddress.trim()
+      : "";
+  return raw || undefined;
+}
+
+/**
+ * @returns {Promise<{ ok: true, email?: string } | { ok: false; reason?: string }>}
  */
 async function gmailProfileHealth(accessToken) {
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
@@ -499,7 +529,8 @@ async function gmailProfileHealth(accessToken) {
   if (!res.ok) {
     return { ok: false, reason: json.error?.message || `http_${res.status}` };
   }
-  return { ok: true };
+  const email = emailFromGmailProfilePayload(json);
+  return email ? { ok: true, email } : { ok: true };
 }
 
 /**
@@ -861,7 +892,8 @@ async function driveAboutHealth(accessToken) {
   if (!res.ok) {
     return { ok: false, reason: json.error?.message || `http_${res.status}` };
   }
-  return { ok: true };
+  const email = emailFromDriveAboutPayload(json);
+  return email ? { ok: true, email } : { ok: true };
 }
 
 /**
@@ -926,6 +958,9 @@ module.exports = {
   getDriveFileMetadata,
   importDriveFilesToDirectory,
   driveAboutHealth,
+  emailFromCalendarPrimaryPayload,
+  emailFromDriveAboutPayload,
+  emailFromGmailProfilePayload,
   gmailProfileHealth,
   uploadTextFile,
   redactDrivePageTokenForLog,

@@ -2,14 +2,16 @@ import { TODO_SUB_TAB_STORAGE_KEY } from "../constants";
 
 export type TodoSubTab = "today" | "inbox" | "done";
 
+const TODO_SUB_TABS: ReadonlySet<string> = new Set(["today", "inbox", "done"]);
+
 export function loadTodoSubTab(): TodoSubTab {
   try {
     const value = localStorage.getItem(TODO_SUB_TAB_STORAGE_KEY);
-    if (value === "upcoming") {
+    if (value === "upcoming" || value === "replies") {
       return "today";
     }
-    if (value === "today" || value === "inbox" || value === "done") {
-      return value;
+    if (TODO_SUB_TABS.has(value ?? "")) {
+      return value as TodoSubTab;
     }
   } catch {
     /* ignore */

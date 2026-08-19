@@ -6,6 +6,10 @@ import {
 } from "../../utils/platform";
 import { relayConnectorTokens } from "../../assistant/connectorContext";
 import { describeIntegrationConnectFailure } from "../../utils/externalSourceConnectUi";
+import {
+  refreshIntegrationTasksBestEffort,
+  refreshMailRepliesBestEffort,
+} from "../../utils/forgetIntegrationTasks";
 import { useI18n } from "../../i18n/I18nContext";
 
 const PROVIDER_GOOGLE_ALL = "google-all";
@@ -66,6 +70,8 @@ export default function GoogleConnectAllButton() {
         toast.message(t("sources.googleConnectAllSuccess"));
         await relayConnectorTokens();
         window.dispatchEvent(new CustomEvent(EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT));
+        refreshIntegrationTasksBestEffort();
+        refreshMailRepliesBestEffort();
       } else {
         const reason = r.reason ?? "";
         toast.error(t("sources.googleConnectAllFailed"), {

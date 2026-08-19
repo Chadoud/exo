@@ -6,6 +6,25 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.56] - 2026-08-19
+
+### Added
+
+- **To Do:** Ready-to-send Gmail drafts live on the mail’s task card (and a Ready to send lane when there is no task). Opening Tasks harvests inbox threads.
+- **Sources:** Connected account email on Gmail, Drive, Calendar, Outlook, OneDrive, Dropbox, and Infomaniak cards.
+- **Voice:** Home-folder search from speech; screen capture prefers the Electron permission path.
+
+### Changed
+
+- **To Do:** Removed the Replies tab. Sidebar is Tasks / Needs you / Done. Tasks badge includes unmatched drafts; Done badge refreshes when you complete or reopen a task.
+- **Privacy:** “Erase all local accounts” removed; erase this account’s local data remains.
+
+### Fixed
+
+- **Entitlement:** Unpaid voice closes the socket; briefing and send-mail stay off until subscribed. Trial banner only when the trial is actually limited.
+- **Needs you:** Drop trash STT failure cards; leftover imported tasks clear when the mailbox changes.
+- **Sort:** Job-status toasts no longer stack on refresh failure.
+
 ## [1.1.55] - 2026-08-11
 
 ### Added

@@ -48,6 +48,17 @@ class TestSecondBrainRoutes(unittest.TestCase):
         self.assertIn("statuses", data)
         self.assertIn("total_created", data)
 
+    def test_tasks_forget_source_rejects_manual(self) -> None:
+        r = self.client.post("/tasks/forget-source", json={"source": "manual"})
+        self.assertEqual(r.status_code, 422)
+
+    def test_tasks_forget_source_ok(self) -> None:
+        r = self.client.post("/tasks/forget-source", json={"source": "gmail"})
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertTrue(data.get("ok"))
+        self.assertIn("dropped", data)
+
     def test_memory_routes(self) -> None:
         r = self.client.get("/memory")
         self.assertEqual(r.status_code, 200)
@@ -70,6 +81,11 @@ class TestSecondBrainRoutes(unittest.TestCase):
         # 4 allowed per hour; the 5th is rejected.
         self.assertEqual(statuses[-1], 429)
         self.assertTrue(all(s in (200, 429) for s in statuses))
+
+    def test_digest_latest_builds_today_without_generate(self) -> None:
+        latest = self.client.get("/digest/latest")
+        self.assertEqual(latest.status_code, 200)
+        self.assertIn("headline", latest.json())
 
     def test_digest_generate_and_latest(self) -> None:
         # No digest yet for a fresh data dir-scoped date is possible; generate one.
@@ -171,6 +187,10 @@ class TestProactiveEntitlementGate(unittest.TestCase):
 
     def test_tasks_sync_blocked(self) -> None:
         self.assertEqual(self.client.post("/tasks/sync").status_code, 402)
+
+    def test_tasks_forget_source_not_blocked(self) -> None:
+        r = self.client.post("/tasks/forget-source", json={"source": "gmail"})
+        self.assertEqual(r.status_code, 200)
 
     def test_digest_generate_blocked(self) -> None:
         self.assertEqual(self.client.post("/digest/generate").status_code, 402)

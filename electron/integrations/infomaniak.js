@@ -328,6 +328,17 @@ function infomaniakCalendarSessionLooksUsable(secrets) {
 /**
  * @param {string} token
  */
+function emailFromInfomaniakProfile(data) {
+  const payload = data && typeof data === "object" ? data.data : null;
+  if (!payload || typeof payload !== "object") return undefined;
+  const direct = typeof payload.email === "string" ? payload.email.trim() : "";
+  if (direct.includes("@")) return direct;
+  const user = payload.user;
+  const nested =
+    user && typeof user === "object" && typeof user.email === "string" ? user.email.trim() : "";
+  return nested.includes("@") ? nested : undefined;
+}
+
 async function infomaniakDriveHealth(token) {
   try {
     const res = await withTimeout("ik_health", IK_METADATA_TIMEOUT_MS, (signal) =>
@@ -339,7 +350,8 @@ async function infomaniakDriveHealth(token) {
     if (!res.ok) return { ok: false, reason: `http_${res.status}` };
     const data = await res.json();
     if (data.result !== "success") return { ok: false, reason: data.error?.code || "api_error" };
-    return { ok: true };
+    const email = emailFromInfomaniakProfile(data);
+    return email ? { ok: true, email } : { ok: true };
   } catch (e) {
     return { ok: false, reason: e.message || "fetch_failed" };
   }

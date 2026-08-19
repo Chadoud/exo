@@ -17,13 +17,15 @@ export default function TrialEndedBanner({ onSeePlans }: TrialEndedBannerProps) 
   return (
     <div
       role="status"
-      className="flex w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-border bg-bg-secondary px-4 py-1.5"
+      aria-live="polite"
+      aria-atomic="true"
+      className="flex w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-button-primary px-4 py-1.5"
     >
-      <p className="text-xs text-muted">{t("trial.limitedBanner")}</p>
+      <p className="text-xs text-white/90">{t("trial.limitedBanner")}</p>
       <button
         type="button"
         onClick={onSeePlans}
-        className="text-xs font-semibold text-accent underline-offset-2 hover:underline"
+        className="rounded-sm text-xs font-semibold text-white underline decoration-white/55 underline-offset-2 hover:decoration-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-button-primary"
       >
         {t("trial.limitedSeePlans")}
       </button>

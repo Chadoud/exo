@@ -10,7 +10,7 @@ from enum import Enum
 
 # Tools that only read or are trivially reversible.
 SAFE_TOOLS = frozenset({
-    "list_directory", "terminal_safe", "get_running_apps", "read_file",
+    "list_directory", "find_home_folder", "terminal_safe", "get_running_apps", "read_file",
     "web_search", "weather_report", "analyze_local_file", "screen_capture",
     "youtube_video", "flight_finder", "review_and_suggest",
     "read_project_file", "list_project_tree",

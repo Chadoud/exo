@@ -67,9 +67,6 @@ export default function GmailReplySuggestToggle({
           ? t("settings.mailReply.reconnectHint")
           : t("settings.mailReply.toggleHint")}
       </p>
-      {connected && !missingScope ? (
-        <p className="text-2xs leading-snug text-muted">{t("settings.mailReply.firstCheck")}</p>
-      ) : null}
     </div>
   );
 }

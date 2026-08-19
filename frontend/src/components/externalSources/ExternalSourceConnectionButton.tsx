@@ -5,7 +5,7 @@ import {
   EXTERNAL_SOURCE_CARD_SECONDARY_ACTION_CLASS,
 } from "./ExternalSourceCard";
 import ExternalSourceDisconnectConfirm from "./ExternalSourceDisconnectConfirm";
-import { connectionStatusLabel } from "./externalSourceConnectionPill";
+import { connectionActionLabel } from "./externalSourceConnectionPill";
 
 interface ExternalSourceConnectionButtonProps {
   /** Display name of the source (Gmail, Drive, …) for the confirm copy. */
@@ -21,7 +21,7 @@ interface ExternalSourceConnectionButtonProps {
 }
 
 /**
- * Single card action — label is always Connected or Not connected; click toggles the link.
+ * Single card action — Connect or Disconnect. The pill already shows connection status.
  * Disconnect asks for confirmation first so a mis-click does not drop the session.
  */
 export default function ExternalSourceConnectionButton({
@@ -37,7 +37,7 @@ export default function ExternalSourceConnectionButton({
   const { t } = useI18n();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const isConnected = !loading && connected;
-  const label = connectionStatusLabel(connected, loading, t);
+  const label = connectionActionLabel(connected, loading, t);
 
   const handleClick = () => {
     if (isConnected) {

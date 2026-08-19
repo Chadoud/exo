@@ -17,6 +17,9 @@ interface ConfirmDialogProps {
   tone: "danger" | "primary";
   /** Overrides confirmLabel for aria-label when the visible label is ambiguous (e.g. multiple "Disconnect" buttons on one page). */
   confirmAriaLabel?: string;
+  confirmDisabled?: boolean;
+  statusText?: string;
+  busy?: boolean;
 }
 
 /** Two-button confirm gate (Cancel + Confirm) shared by destructive/affirmative dialogs. */
@@ -29,6 +32,9 @@ export default function ConfirmDialog({
   onConfirm,
   tone,
   confirmAriaLabel,
+  confirmDisabled = false,
+  statusText,
+  busy = false,
 }: ConfirmDialogProps) {
   const toneClass = tone === "danger" ? CONFIRM_DIALOG_DANGER_TONE_CLASS : CONFIRM_DIALOG_PRIMARY_TONE_CLASS;
   return (
@@ -36,6 +42,7 @@ export default function ConfirmDialog({
       title={title}
       onClose={onCancel}
       maxWidthClass="max-w-md"
+      busy={busy}
       footer={
         <div className={`${MODAL_FOOTER_ROW_CLASS} flex-col-reverse sm:flex-row sm:flex-nowrap justify-end`}>
           <button
@@ -47,9 +54,10 @@ export default function ConfirmDialog({
           </button>
           <button
             type="button"
-            autoFocus
+            autoFocus={!confirmDisabled}
             onClick={onConfirm}
-            className={`${CONFIRM_DIALOG_FOOTER_BTN_CLASS} ${toneClass}`}
+            disabled={confirmDisabled}
+            className={`${CONFIRM_DIALOG_FOOTER_BTN_CLASS} ${toneClass} disabled:opacity-50`}
             aria-label={confirmAriaLabel ?? confirmLabel}
           >
             {confirmLabel}
@@ -58,6 +66,11 @@ export default function ConfirmDialog({
       }
     >
       <p className="text-sm text-text-primary leading-relaxed">{body}</p>
+      {statusText ? (
+        <p className="mt-2 text-xs text-muted" role="status">
+          {statusText}
+        </p>
+      ) : null}
     </ModalShell>
   );
 }

@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1/users/me"
 _TOKEN_IDS = ("google-gmail", "google")
 _SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
+# List-* is how newsletters prove they are list mail. Without these, metadata
+# harvest only sees the subject and drafts a "reply" to Super/Paléo blasts.
 _META_HEADERS = (
     "From",
     "To",
@@ -23,6 +25,10 @@ _META_HEADERS = (
     "Message-ID",
     "References",
     "In-Reply-To",
+    "List-Unsubscribe",
+    "List-Unsubscribe-Post",
+    "List-Id",
+    "Precedence",
 )
 
 
@@ -76,10 +82,13 @@ def list_thread_ids(query: str, max_results: int = 8) -> list[str]:
 
 
 def get_thread_metadata(thread_id: str) -> dict[str, Any]:
+    # Repeated keys: a single joined metadataHeaders value returns no headers.
+    params: list[tuple[str, str]] = [("format", "metadata")]
+    params.extend(("metadataHeaders", name) for name in _META_HEADERS)
     res = httpx.get(
         f"{GMAIL_BASE}/threads/{thread_id}",
         headers=_headers(),
-        params={"format": "metadata", "metadataHeaders": list(_META_HEADERS)},
+        params=params,
         timeout=15,
     )
     if res.status_code == 429:

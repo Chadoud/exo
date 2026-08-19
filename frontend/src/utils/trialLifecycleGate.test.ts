@@ -13,6 +13,7 @@ import {
   markTrialNudgeSeen,
   readTrialGateDismissed,
   readTrialNudgeSeen,
+  shouldShowTrialLimitedBanner,
 } from "./trialLifecycleGate";
 
 function ent(overrides: Partial<EntitlementStatus>): EntitlementStatus {
@@ -112,6 +113,36 @@ describe("computeTrialLifecycleModal", () => {
     expect(
       computeTrialLifecycleModal(ent({ trialExpired: true, trialActive: false }), true, true),
     ).toBe("none");
+  });
+});
+
+describe("shouldShowTrialLimitedBanner", () => {
+  it("hides until entitlement is loaded and the gate was dismissed", () => {
+    const limited = ent({ trialExpired: true, trialActive: false, canAnalyze: false });
+    expect(
+      shouldShowTrialLimitedBanner(limited, { entitlementLoaded: false, gateDismissed: true }),
+    ).toBe(false);
+    expect(
+      shouldShowTrialLimitedBanner(limited, { entitlementLoaded: true, gateDismissed: false }),
+    ).toBe(false);
+  });
+
+  it("hides when paid features still work", () => {
+    expect(
+      shouldShowTrialLimitedBanner(ent({ trialExpired: true, trialActive: false, canAnalyze: true }), {
+        entitlementLoaded: true,
+        gateDismissed: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("shows only when limited and analyze is off", () => {
+    expect(
+      shouldShowTrialLimitedBanner(ent({ trialExpired: true, trialActive: false, canAnalyze: false }), {
+        entitlementLoaded: true,
+        gateDismissed: true,
+      }),
+    ).toBe(true);
   });
 });
 

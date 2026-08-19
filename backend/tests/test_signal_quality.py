@@ -61,6 +61,31 @@ def test_starred_promo_allowed() -> None:
     assert verdict.tier == SignalTier.ALLOW
 
 
+def test_list_unsubscribe_header_rejected() -> None:
+    verdict = evaluate_gmail_message(
+        label_ids=["INBOX", "CATEGORY_UPDATES"],
+        from_addr="hello@brand.example",
+        subject="Meet the Super Sync Chrome Extension",
+        snippet="A faster way to keep your site updated while you work.",
+        headers={"List-Unsubscribe": "<https://example.com/unsub>"},
+    )
+    assert verdict.tier == SignalTier.REJECT
+    assert verdict.reason == "list_header"
+
+
+def test_french_unsubscribe_alone_quarantines() -> None:
+    verdict = evaluate_text("Se desinscrire en bas de ce message.")
+    assert verdict.tier == SignalTier.QUARANTINE
+
+
+def test_french_list_footer_rejected() -> None:
+    verdict = evaluate_text(
+        "Qui voulez-vous voir a Paleo 2027? Se desinscrire. "
+        "Vous recevez cet e-mail parce que vous etes abonne a notre newsletter."
+    )
+    assert verdict.tier == SignalTier.REJECT
+
+
 def test_gmail_promotions_label_rejected() -> None:
     verdict = evaluate_gmail_message(
         label_ids=["INBOX", "CATEGORY_PROMOTIONS"],

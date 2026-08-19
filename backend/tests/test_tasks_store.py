@@ -172,6 +172,30 @@ def test_cleanup_noise_tasks_removes_promotional_gmail(store):
     assert store.list_tasks() == []
 
 
+def test_clear_tasks_by_sources_keeps_manual(store):
+    harvested = store.create_task(
+        "Follow up with Alice",
+        source="gmail",
+        external_id="gmail:mail:old-1",
+    )
+    calendar = store.create_task(
+        "Prepare for: Dentist",
+        source="google-calendar",
+        external_id="google-calendar:cal:evt-1",
+    )
+    typed = store.create_task("Buy milk", source="manual")
+    dropped = store.clear_tasks_by_sources({"gmail", "google-calendar"})
+    assert dropped == 2
+    assert store.get_task(harvested["id"]) is None
+    assert store.get_task(calendar["id"]) is None
+    assert store.get_task(typed["id"]) is not None
+
+
+def test_clear_tasks_by_sources_refuses_manual(store):
+    with pytest.raises(ValueError, match="protected"):
+        store.clear_tasks_by_sources({"manual"})
+
+
 def test_update_task_rejects_promotional_gmail_description(store):
     task = store.create_task(
         "Follow up with Alice",

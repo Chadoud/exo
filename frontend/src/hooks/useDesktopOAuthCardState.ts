@@ -152,11 +152,11 @@ export function useDesktopOAuthCardState({
           toast.message(i18n.disconnected);
         }
         await relayConnectorTokens();
+        onDisconnected?.();
       } else {
         toast.error(i18n.disconnectFailed, { description: r?.reason ?? "" });
       }
       window.dispatchEvent(new CustomEvent(integrationChangedEvent));
-      onDisconnected?.();
       await refreshStatus();
     } catch (e) {
       toast.error(i18n.disconnectFailed, {

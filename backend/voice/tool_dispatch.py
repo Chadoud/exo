@@ -650,6 +650,7 @@ async def handle_voice_tool_calls(
     deferred_tool_reason: str | None = None,
     provider_holder: ProviderContextHolder | None = None,
     allow_sensitive: bool = False,
+    context_texts: list[str] | None = None,
 ) -> AsyncGenerator[str, None]:
     """Run tools, notify the UI, then send one Live ``tool_response`` per server batch."""
     function_responses: list[Any] = []
@@ -689,7 +690,13 @@ async def handle_voice_tool_calls(
                 name,
                 routed.reason,
             )
-        args = enrich_voice_tool_args(name, args, enrich_source, dispatch_state.last_open_tasks)
+        args = enrich_voice_tool_args(
+            name,
+            args,
+            enrich_source,
+            dispatch_state.last_open_tasks,
+            context_texts,
+        )
         args = inject_provider_tool_args(
             name, args, holder=provider_holder, voice_handoff=True
         )

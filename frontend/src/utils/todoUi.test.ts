@@ -30,6 +30,11 @@ describe("loadTodoSubTab", () => {
     expect(loadTodoSubTab()).toBe("done");
   });
 
+  it("migrates the removed Replies tab to Tasks", () => {
+    storage.set(TODO_SUB_TAB_STORAGE_KEY, "replies");
+    expect(loadTodoSubTab()).toBe("today");
+  });
+
   it("migrates legacy upcoming tab to today", () => {
     storage.set(TODO_SUB_TAB_STORAGE_KEY, "upcoming");
     expect(loadTodoSubTab()).toBe("today");

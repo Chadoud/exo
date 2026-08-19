@@ -43,6 +43,16 @@ describe("ExternalSourceConnectionButton", () => {
 
   const dialog = () => document.querySelector('[role="dialog"]');
 
+  it("labels the action Disconnect when the source is linked", async () => {
+    await render({ connected: true });
+    expect(actionButton().textContent).toBe("Disconnect");
+  });
+
+  it("labels the action Connect when the source is not linked", async () => {
+    await render({ connected: false });
+    expect(actionButton().textContent).toBe("Connect");
+  });
+
   it("asks for confirmation before disconnecting a linked source", async () => {
     const onDisconnect = vi.fn();
     await render({ connected: true, onDisconnect });
@@ -55,7 +65,10 @@ describe("ExternalSourceConnectionButton", () => {
     expect(dialog()).not.toBeNull();
     expect(document.body.textContent).toContain("Disconnect Gmail?");
     expect(document.body.textContent).toContain(
-      "Exo will stop using Gmail on this device until you connect again.",
+      "Exo will stop using Gmail on this device.",
+    );
+    expect(document.body.textContent).toContain(
+      "Imported tasks, leftover reply drafts, and calendar notes Exo saved from that account are removed.",
     );
   });
 

@@ -33,8 +33,40 @@ _GMAIL_ACTION_QUERY = (
     "newer_than:14d"
 )
 _OUTLOOK_ACTION_QUERY = "action OR todo OR follow OR deadline"
+_PLACEHOLDER_EVENT_TITLES = frozenset({"(no title)", "no title", "untitled", "(untitled)"})
+_CALENDAR_SOURCES = frozenset({"google-calendar", "outlook-calendar"})
 
 SyncStatus = str  # ok | not_connected | failed | skipped
+
+
+def calendar_event_has_real_title(title: str | None) -> bool:
+    """Untitled / placeholder events are calendar holds, not action items."""
+    text = (title or "").strip()
+    if not text:
+        return False
+    return text.casefold() not in _PLACEHOLDER_EVENT_TITLES
+
+
+def is_placeholder_prepare_task(description: str) -> bool:
+    """True when the task is only 'Prepare for:' plus an empty or placeholder title."""
+    text = (description or "").strip()
+    if not text.casefold().startswith("prepare for:"):
+        return False
+    rest = text.split(":", 1)[1].strip()
+    return not calendar_event_has_real_title(rest)
+
+
+def dismiss_placeholder_calendar_tasks() -> int:
+    """Take existing untitled Prepare-for rows off the list (Calendar events stay)."""
+    removed = 0
+    for task in tasks_store.list_tasks(include_completed=True):
+        if str(task.get("source") or "") not in _CALENDAR_SOURCES:
+            continue
+        if not is_placeholder_prepare_task(str(task.get("description") or "")):
+            continue
+        if tasks_store.purge_task(int(task["id"])):
+            removed += 1
+    return removed
 
 
 def _safe_call(
@@ -181,7 +213,7 @@ def _sync_calendar_events(
         if not isinstance(ev, dict):
             continue
         title = str(ev.get("summary") or ev.get("subject") or ev.get("title") or "").strip()
-        if not title:
+        if not calendar_event_has_real_title(title):
             continue
         start = ev.get("start") or ev.get("startDateTime")
         due_at = str(start) if start else None
@@ -224,8 +256,32 @@ def _sync_outlook_calendar() -> tuple[int, SyncStatus]:
     )
 
 
+def _drop_stale_account_tasks() -> int:
+    """Wipe harvested rows when the connected mailbox/calendar is a different account."""
+    from tasks_source_forget import (
+        peek_gmail_identity,
+        peek_google_calendar_identity,
+        peek_outlook_identity,
+        remember_or_drop_if_identity_changed,
+    )
+
+    dropped = 0
+    gmail_id = peek_gmail_identity()
+    if gmail_id:
+        dropped += remember_or_drop_if_identity_changed("gmail", gmail_id)
+    outlook_id = peek_outlook_identity()
+    if outlook_id:
+        dropped += remember_or_drop_if_identity_changed("outlook", outlook_id)
+    calendar_id = peek_google_calendar_identity()
+    if calendar_id:
+        dropped += remember_or_drop_if_identity_changed("google-calendar", calendar_id)
+    return dropped
+
+
 def sync_integration_tasks() -> dict[str, Any]:
     """Best-effort harvest from all connected integrations. Never raises."""
+    dismissed_placeholders = dismiss_placeholder_calendar_tasks()
+    _drop_stale_account_tasks()
     gmail_count, gmail_status = _sync_gmail()
     outlook_count, outlook_status = _sync_outlook()
     gcal_count, gcal_status = _sync_google_calendar()
@@ -248,4 +304,5 @@ def sync_integration_tasks() -> dict[str, Any]:
         "created": counts,
         "statuses": statuses,
         "total_created": sum(counts.values()),
+        "dismissed_placeholders": dismissed_placeholders,
     }

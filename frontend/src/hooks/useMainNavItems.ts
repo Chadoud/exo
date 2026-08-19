@@ -9,6 +9,9 @@ import {
   SETTINGS_SUBTAB_ICONS,
   type SettingsNavTab,
 } from "../utils/settingsNav";
+import { TODO_DONE_ICON, TODO_TAB_ICONS } from "../utils/todoNavIcons";
+
+export { TODO_DONE_ICON };
 
 export type MainNavTab =
   | "queue"
@@ -115,21 +118,21 @@ export function useMainNavItems(uiLocale: UiLocale): MainNavItem[] {
             navKey: "tasks-today",
             todoSubTab: "today",
             label: translate(uiLocale, "nav.todoToday"),
-            icon: "M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5",
+            icon: TODO_TAB_ICONS.today,
           },
           {
             id: "tasks",
             navKey: "tasks-inbox",
             todoSubTab: "inbox",
             label: translate(uiLocale, "nav.todoInbox"),
-            icon: "M2.25 13.5h3.86a2.25 2.25 0 0 0 2.012-1.423l.256-.512a2.25 2.25 0 0 1 2.013-1.423h3.218a2.25 2.25 0 0 1 2.013 1.423l.256.512a2.25 2.25 0 0 0 2.013 1.423h3.859M12 3v8.25m0 0-3-3m3 3 3-3",
+            icon: TODO_TAB_ICONS.inbox,
           },
           {
             id: "tasks",
             navKey: "tasks-done",
             todoSubTab: "done",
             label: translate(uiLocale, "nav.todoDone"),
-            icon: "M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z",
+            icon: TODO_TAB_ICONS.done,
           },
         ],
       },

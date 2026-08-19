@@ -11,33 +11,35 @@
 }
 
 /*
- * Sonner: stack action (and optional cancel) under title + description. * Default flex keeps buttons on the same row and squeezes [data-content] to ~0 width.
+ * Action toasts (Undo, Reload, Connect): one row — icon + copy + button.
+ * Wrapping the button under the icon left a wide empty box and a cramped control.
  */
 [data-sonner-toast][data-styled="true"]:has([data-button][data-action]),
 [data-sonner-toast][data-styled="true"]:has([data-button][data-cancel]) {
-  flex-wrap: wrap;
-  align-items: flex-start;
-  width: min(24rem, calc(100vw - 2rem));
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.75rem;
+  width: max-content;
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: 0.75rem 0.875rem;
 }
 
 [data-sonner-toast][data-styled="true"]:has([data-button][data-action]) [data-content],
 [data-sonner-toast][data-styled="true"]:has([data-button][data-cancel]) [data-content] {
-  flex: 1 1 calc(100% - 2.75rem);
-  min-width: 0;
+  flex: 1 1 auto;
+  min-width: 8rem;
+}
+
+.app-sonner-toast-action [data-title] {
+  white-space: nowrap;
 }
 
 [data-sonner-toast][data-styled="true"]:has([data-button][data-action]) [data-button],
 [data-sonner-toast][data-styled="true"]:has([data-button][data-cancel]) [data-button] {
   flex: 0 0 auto;
-  margin-top: 0.5rem;
-  margin-inline-end: 0.5rem;
-  align-self: flex-start;
-}
-
-/* Align the button row with copy (past the toast icon). */
-[data-sonner-toast][data-styled="true"]:has([data-button][data-action]) [data-button]:first-of-type,
-[data-sonner-toast][data-styled="true"]:has([data-button][data-cancel]) [data-button]:first-of-type {
-  margin-inline-start: 2.75rem;
+  margin: 0;
+  align-self: center;
 }
 
 /*

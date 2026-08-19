@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
 /** First id enters select; same id removes; last removal exits. */
-export function nextSelectedIds(prev: number[], id: number): number[] {
+export function nextSelectedIds<T>(prev: T[], id: T): T[] {
   if (prev.length === 0) return [id];
   if (prev.includes(id)) return prev.filter((item) => item !== id);
   return [...prev, id];

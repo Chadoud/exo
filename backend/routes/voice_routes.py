@@ -23,15 +23,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 from datetime import datetime
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
 
 from assistant_memory import format_memory_for_prompt
 from provider_context import ProviderContextHolder, provider_context_from_payload
+from routes.voice_http import register_voice_http_routes
 from voice.briefing import (
     CLIENT_OFFER_TYPES,
     BriefingOfferController,
@@ -40,9 +38,9 @@ from voice.briefing import (
     get_startup_message,
     stream_briefing_sections,
 )
-from voice.model import GEMINI_VOICE_MODEL_DEFAULT, resolve_gemini_voice_model
 from voice.observability import log_voice_event
 from voice.pending_delete_sync import PendingDeleteSyncHolder, pending_delete_blocks_briefing
+from voice.ws_entitlement import reject_unpaid_voice_ws
 from voice_briefing_consent import (
     looks_like_briefing_decline,
     looks_like_briefing_enable,
@@ -56,7 +54,7 @@ from voice_briefing_gate import (
 )
 from voice_instructions import CORE_PROTOCOL
 from voice_session import run_voice_session
-from voice_session_bootstrap import consume_voice_session_provider, prime_voice_session_provider
+from voice_session_bootstrap import consume_voice_session_provider
 from voice_tool_approval import VoiceToolApprovalWaiter
 from voice_ws_auth import authenticate_voice_websocket
 from voice_ws_rate_limit import record_voice_ws_auth_failure, voice_ws_auth_allowed
@@ -64,6 +62,7 @@ from voice_ws_rate_limit import record_voice_ws_auth_failure, voice_ws_auth_allo
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["voice"])
+register_voice_http_routes(router)
 
 
 def _build_system_instruction(include_memory: bool = True) -> str:
@@ -81,54 +80,6 @@ def _build_system_instruction(include_memory: bool = True) -> str:
             parts.append(memory)
     parts.append(CORE_PROTOCOL)
     return "\n\n".join(parts)
-
-
-@router.get("/voice/status")
-async def voice_status() -> JSONResponse:
-    """Returns whether voice is ready to use (API key present)."""
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    model = resolve_gemini_voice_model()
-    return JSONResponse({
-        "ready": bool(api_key),
-        "model": model,
-        "default_model": GEMINI_VOICE_MODEL_DEFAULT,
-        "missing": [] if api_key else ["GEMINI_API_KEY"],
-    })
-
-
-class VoiceSessionPrimeBody(BaseModel):
-    session_id: str = Field(..., min_length=1)
-    provider: str = "gemini"
-    model: str = ""
-    api_key: str = ""
-    base_url: str = ""
-
-
-@router.post("/voice/session-prime")
-async def voice_session_prime(body: VoiceSessionPrimeBody) -> JSONResponse:
-    """
-    Prime provider context for an upcoming voice WebSocket (main process only).
-
-    OAuth tokens are relayed separately via POST /integration/token-relay.
-    """
-    prime_voice_session_provider(
-        body.session_id,
-        {
-            "provider": body.provider,
-            "model": body.model,
-            "api_key": body.api_key,
-            "base_url": body.base_url,
-        },
-    )
-    return JSONResponse({"ok": True})
-
-
-@router.post("/voice/ws-ticket")
-async def voice_ws_ticket() -> JSONResponse:
-    """Mint a one-shot short-lived ticket for voice WebSocket app_auth (M2.3)."""
-    from voice_ws_tickets import mint_voice_ws_ticket
-
-    return JSONResponse({"ok": True, "ticket": mint_voice_ws_ticket()})
 
 
 _MEETING_TRANSCRIBE_INSTRUCTION = (
@@ -158,6 +109,8 @@ async def voice_ws(
     if not await authenticate_voice_websocket(ws):
         record_voice_ws_auth_failure(client_host)
         await ws.close(code=4401, reason="Unauthorized")
+        return
+    if await reject_unpaid_voice_ws(ws):
         return
 
     log_voice_event(session_id, "connect", mode=mode)

@@ -211,8 +211,6 @@ export interface ElectronAPI {
   cloudAuthDeleteAccount: () => Promise<{ ok: boolean; error?: string }>;
   privacyWipeElectronFiles: () => Promise<{ ok: boolean; removed?: string[]; reason?: string }>;
   privacyWipeAllLocalData: () => Promise<{ ok: boolean; cleared?: string[]; detail?: string; reason?: string }>;
-  /** Factory-reset: erase every local account vault + device session on this Mac. */
-  privacyWipeAllProfilesOnDevice: () => Promise<{ ok: boolean; cleared?: string[]; detail?: string; reason?: string }>;
   accountProfileGetState: () => Promise<{
     ok: boolean;
     activeId?: string;
@@ -503,7 +501,7 @@ export interface ElectronAPI {
   >;
   integrationHealthCheck: (payload: {
     providerId: string;
-  }) => Promise<{ ok: boolean; reason?: string }>;
+  }) => Promise<{ ok: boolean; reason?: string; email?: string }>;
 
   // ─── S3 ────────────────────────────────────────────────────────────────────
   integrationSaveS3Credentials: (payload: {

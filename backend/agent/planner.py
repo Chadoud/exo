@@ -60,6 +60,7 @@ IMPORTANT:
 
   LOCAL SYSTEM:
     list_directory      – List files/folders under the user's home directory
+    find_home_folder    – Find a folder under home by name when the path is unknown
     terminal_safe       – Run a read-only shell command (ls, git status, etc.)
     get_running_apps    – List running applications
     system_volume       – Set system volume 0–100

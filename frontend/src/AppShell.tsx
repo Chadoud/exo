@@ -13,7 +13,7 @@ import TrialLifecycleModalHost from "./components/TrialLifecycleModalHost";
 import TrialEndedBanner from "./components/TrialEndedBanner";
 import BillingPastDueBanner from "./components/BillingPastDueBanner";
 import { useTrialGateDismissal } from "./hooks/useTrialGateDismissal";
-import { isTrialLimitedMode } from "./utils/trialLifecycleGate";
+import { shouldShowTrialLimitedBanner } from "./utils/trialLifecycleGate";
 import AppAccountGate from "./components/AppAccountGate";
 import ModelDownloadModal from "./components/settings/ModelDownloadModal";
 import GeminiApiKeySetupModal from "./components/settings/GeminiApiKeySetupModal";
@@ -82,10 +82,12 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
   useBillingEvents({ uiLocale, refreshEntitlement: chrome.refreshEntitlement });
 
   const trialGate = useTrialGateDismissal();
-  const limitedModeBanner =
-    trialGate.gateDismissed && isTrialLimitedMode(chrome.entitlement) ? (
-      <TrialEndedBanner onSeePlans={trialGate.reopenGate} />
-    ) : null;
+  const limitedModeBanner = shouldShowTrialLimitedBanner(chrome.entitlement, {
+    entitlementLoaded: chrome.entitlementLoaded,
+    gateDismissed: trialGate.gateDismissed,
+  }) ? (
+    <TrialEndedBanner onSeePlans={trialGate.reopenGate} />
+  ) : null;
 
   const assistantVoice = useAssistantVoiceActions({
     uiLocale,
@@ -197,6 +199,8 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
                 modelHook={chrome.modelHook}
                 settings={settings}
                 entitlement={chrome.entitlement}
+                entitlementLoaded={chrome.entitlementLoaded}
+                toastEntitlementBlocked={chrome.toastEntitlementBlocked}
                 currentJob={workspace.currentJob}
                 sessionId={workspace.sessionId}
                 isRunning={workspace.isRunning}

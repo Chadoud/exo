@@ -2,7 +2,7 @@
 REST endpoints for the proactive layer: daily digest + notification center.
 
 POST /digest/generate      — build today's digest (LLM or deterministic fallback)
-GET  /digest/latest        — most recent digest
+GET  /digest/latest        — today's digest (created on first read)
 GET  /digest               — recent digest headlines
 POST /nudges/generate      — generate rate-limited nudges; returns newly created
 GET  /nudges               — list nudges (notification center)
@@ -35,10 +35,11 @@ def generate_digest() -> dict[str, Any]:
 
 @router.get("/digest/latest")
 def latest_digest() -> dict[str, Any]:
-    digest = daily_digest.latest_digest()
-    if not digest:
-        raise HTTPException(status_code=404, detail="no_digest")
-    return digest
+    """Today's digest — built on first read so Tasks never waits for Generate."""
+    from entitlement_gate import may_use_proactive
+
+    allowed, _reason = may_use_proactive()
+    return daily_digest.ensure_today_digest(use_llm=allowed)
 
 
 @router.get("/digest")
@@ -68,9 +69,18 @@ def dismiss_nudge(nudge_id: int) -> dict[str, Any]:
     return {"ok": "true"}
 
 
+@router.post("/nudges/{nudge_id}/restore")
+def restore_nudge(nudge_id: int) -> dict[str, Any]:
+    restored = nudges.restore_nudge(nudge_id)
+    if not restored:
+        raise HTTPException(status_code=404, detail="nudge_not_found")
+    return {"ok": True}
+
+
 @router.post("/nudges/dismiss-all")
 def dismiss_all() -> dict[str, Any]:
-    return {"ok": "true", "dismissed": nudges.dismiss_all()}
+    ids = nudges.dismiss_all()
+    return {"ok": "true", "dismissed": len(ids), "ids": ids}
 
 
 @router.get("/proactive/scheduler/status")
@@ -99,10 +109,20 @@ def recent_agent_failures(limit: int = Query(default=10, ge=1, le=50)) -> list[d
 
 @router.post("/proactive/failures/{failure_id}/dismiss")
 def dismiss_agent_failure(failure_id: int) -> dict[str, Any]:
-    """Remove one agent failure from the inbox (does not affect task history elsewhere)."""
+    """Hide one agent failure from the inbox (undoable)."""
     from orchestrator import memory as orch_memory
 
-    removed = orch_memory.forget(failure_id)
+    removed = orch_memory.dismiss_failure(failure_id)
     if not removed:
+        raise HTTPException(status_code=404, detail="failure_not_found")
+    return {"ok": True}
+
+
+@router.post("/proactive/failures/{failure_id}/restore")
+def restore_agent_failure(failure_id: int) -> dict[str, Any]:
+    from orchestrator import memory as orch_memory
+
+    restored = orch_memory.restore_failure(failure_id)
+    if not restored:
         raise HTTPException(status_code=404, detail="failure_not_found")
     return {"ok": True}

@@ -5,6 +5,7 @@ import ExternalSourceConnectionButton from "./ExternalSourceConnectionButton";
 import { externalSourceConnectionPill } from "./externalSourceConnectionPill";
 import { externalSourceConnectDisabled } from "../../utils/externalSourceConnectUi";
 import { useDesktopOAuthCardState } from "../../hooks/useDesktopOAuthCardState";
+import SourceAccountLine from "./SourceAccountLine";
 
 const PROVIDER_ID = "dropbox";
 
@@ -21,11 +22,10 @@ interface DropboxConnectionSectionProps {
  * Dropbox OAuth card (desktop only). Separate from Google and Microsoft connections.
  */
 export default function DropboxConnectionSection({
-  backendOnline: _backendOnline,
+  backendOnline,
   brandIcon,
   compact = false,
 }: DropboxConnectionSectionProps) {
-  void _backendOnline;
   const { t } = useI18n();
   const { desktop, connected, loadingStatus, oauthBusy, connect, disconnect } =
     useDesktopOAuthCardState({
@@ -67,6 +67,14 @@ export default function DropboxConnectionSection({
           />
         ) : undefined
       }
-    />
+    >
+      <SourceAccountLine
+        providerId={PROVIDER_ID}
+        connected={connected}
+        backendOnline={backendOnline}
+        desktop={desktop}
+        refreshEvent={DROPBOX_INTEGRATION_CHANGED_EVENT}
+      />
+    </ExternalSourceCard>
   );
 }

@@ -45,7 +45,7 @@ describe("GmailReplySuggestToggle", () => {
     expect(container.textContent).toContain("Connect Gmail");
   });
 
-  it("explains Inbox plus first-check wait when Gmail is connected", async () => {
+  it("explains drafts on Tasks when Gmail is connected", async () => {
     await act(async () => {
       root.render(
         <I18nProvider locale="en">
@@ -53,7 +53,7 @@ describe("GmailReplySuggestToggle", () => {
         </I18nProvider>,
       );
     });
-    expect(container.textContent).toContain("Inbox shows who is waiting");
-    expect(container.textContent).toContain("First check can take a few minutes.");
+    expect(container.textContent).toContain("the mail task card can include a draft");
+    expect(container.textContent).not.toContain("First check can take a few minutes.");
   });
 });

@@ -70,7 +70,12 @@ async function _verifyGoogleTokens(providerId, tokens) {
   const needsDrive = providerId === "google-drive" || providerId === "google-all";
 
   if (needsCalendar) verification.calendar = await google.googleCalendarHealth(accessToken);
-  if (needsGmail) verification.gmail = await google.gmailProfileHealth(accessToken);
+  if (needsGmail) {
+    const gmailHealth = await google.gmailProfileHealth(accessToken);
+    verification.gmail = gmailHealth.ok
+      ? { ok: true }
+      : { ok: false, reason: gmailHealth.reason };
+  }
   if (needsDrive) verification.drive = await google.driveAboutHealth(accessToken);
 
   const failed = [];

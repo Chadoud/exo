@@ -39,12 +39,15 @@ def test_activity_prune(env):
 def test_digest_fallback_without_llm(env, monkeypatch):
     activity_store, conversation_store, tasks_store, daily_digest, _, _ = env
     conversation_store.upsert_conversation("c1", title="Sync", summary="Talked about the launch")
-    tasks_store.create_task("Ship the build")
+    from datetime import UTC, datetime
+
+    tasks_store.create_task("Ship the build", due_at=datetime.now(UTC).isoformat())
     monkeypatch.setattr(daily_digest, "complete", lambda *a, **k: None)
 
     digest = daily_digest.generate_digest()
     assert digest["llm"] is False
-    assert "open" in digest["headline"]
+    assert "due today" in digest["headline"]
+    assert "conversation" not in digest["headline"].lower()
     assert daily_digest.latest_digest()["id"] == digest["id"]
 
 
@@ -86,6 +89,41 @@ def test_meeting_lifecycle(env, monkeypatch):
     assert result["ok"] is True
     # Ended meeting is removed from active sessions.
     assert meeting_store.get_live_notes("m1")["ok"] is False
+
+
+def test_ensure_today_digest_rebuilds_chat_era_row(env, monkeypatch):
+    _, _, tasks_store, daily_digest, _, _ = env
+    from datetime import UTC, datetime
+
+    monkeypatch.setattr(daily_digest, "complete", lambda *a, **k: None)
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    stale = daily_digest._persist(
+        today,
+        {
+            "headline": "Day Marked by Task Retries",
+            "highlights": [],
+            "decisions": [],
+            "unresolved": [],
+            "focus_tomorrow": [],
+            "counts": {"conversations": 4, "activity": 1, "open_tasks": 0},
+            "llm": True,
+        },
+    )
+    tasks_store.create_task("Board pack", due_at=datetime.now(UTC).isoformat())
+    rebuilt = daily_digest.ensure_today_digest(use_llm=False)
+    assert rebuilt["id"] == stale["id"]
+    assert "Retries" not in rebuilt["headline"]
+    assert "due today" in rebuilt["headline"]
+
+
+def test_ensure_today_digest_creates_once(env, monkeypatch):
+    _, _, _, daily_digest, _, _ = env
+    monkeypatch.setattr(daily_digest, "complete", lambda *a, **k: None)
+    first = daily_digest.ensure_today_digest(use_llm=False)
+    second = daily_digest.ensure_today_digest(use_llm=True)
+    assert first["id"] == second["id"]
+    assert first["llm"] is False
+    assert daily_digest.digest_for_date(first["date"])["id"] == first["id"]
 
 
 def test_digest_idempotent_per_day(env, monkeypatch):

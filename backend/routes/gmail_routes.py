@@ -35,6 +35,22 @@ from routes.job_enqueue_helpers import enqueue_gmail_streaming_import_sort
 
 logger = logging.getLogger(__name__)
 
+_GMAIL_PROFILE_URL = "https://gmail.googleapis.com/gmail/v1/users/me/profile"
+
+
+def _gmail_profile_probe(token: str) -> tuple[bool, str | None]:
+    """Return (ok, email). Never log the address."""
+    with httpx.Client(timeout=8.0) as client:
+        response = client.get(
+            _GMAIL_PROFILE_URL,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    if response.status_code != 200:
+        return False, None
+    raw = response.json().get("emailAddress")
+    email = raw.strip() if isinstance(raw, str) else None
+    return True, email or None
+
 
 def _main_py_path_for_dotenv() -> str:
     """``main`` module path when running under uvicorn; else ``backend/main.py`` next to this package."""
@@ -69,15 +85,11 @@ def create_gmail_router() -> APIRouter:
         oauth_ok = cred is not None
 
         gmail_profile_probe_ok: bool | None = None
+        gmail_email: str | None = None
         if is_gmail_connected():
             try:
                 tok = get_valid_access_token()
-                with httpx.Client(timeout=8.0) as client:
-                    r = client.get(
-                        "https://gmail.googleapis.com/gmail/v1/users/me/profile",
-                        headers={"Authorization": f"Bearer {tok}"},
-                    )
-                gmail_profile_probe_ok = r.status_code == 200
+                gmail_profile_probe_ok, gmail_email = _gmail_profile_probe(tok)
             except Exception:
                 gmail_profile_probe_ok = False
 
@@ -110,6 +122,7 @@ def create_gmail_router() -> APIRouter:
             "user_dotenv_file_exists": home_dotenv.is_file(),
             "resource_dotenv_file_exists": resource_dotenv_exists,
             "developer_setup_steps": developer_setup_steps,
+            "email": gmail_email,
         }
 
     @router.post("/oauth/begin")
@@ -138,9 +151,13 @@ def create_gmail_router() -> APIRouter:
     @router.delete("/oauth")
     def gmail_oauth_disconnect():
         delete_gmail_token_file()
+        from connector_credentials import clear_token
         from mail_initiative.store import clear_all as clear_mail_replies
+        from tasks_source_forget import forget_tasks_for_sources
 
+        clear_token("google-gmail")
         clear_mail_replies()
+        forget_tasks_for_sources({"gmail"}, evict_tokens=False)
         return {"ok": True, "connected": False}
 
     @router.post("/import-sort")

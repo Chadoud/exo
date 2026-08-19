@@ -19,6 +19,18 @@ def build_declarations() -> list["genai_types.FunctionDeclaration"]:
             ["path"],
         ),
                 decl(
+            "find_home_folder",
+            "Find folders under the user's home directory by name (Downloads, Documents, Desktop, …). "
+            "Use this when the user names a folder but does not give a full path.",
+            {
+                "query": {
+                    "type": "string",
+                    "description": "Folder name or part of it, e.g. Hilal files",
+                }
+            },
+            ["query"],
+        ),
+                decl(
             "terminal_safe",
             "Run a read-only shell command from a strict allowlist (ls, git status, etc.).",
             {"cmd": {"type": "string"}},

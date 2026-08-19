@@ -292,9 +292,10 @@ export default {
     title: "Sources externes",
     connectorStatusConnected: "Connecté",
     connectorStatusNotConnected: "Non connecté",
+    connectorActionConnect: "Connecter",
     disconnectConfirmTitle: "Déconnecter {source} ?",
     disconnectConfirmBody:
-      "Exo n'utilisera plus {source} sur cet appareil tant que vous ne le reconnecterez pas.",
+      "Exo n'utilisera plus {source} sur cet appareil. Les tâches importées, les brouillons de réponse restants et les notes de calendrier qu'Exo a enregistrées pour ce compte sont retirés. Les tâches que vous avez saisies restent.",
     disconnectConfirmAction: "Déconnecter",
     disconnectConfirmCancel: "Rester connecté",
     connectorOauthNotConfigured: "Ce connecteur n'est pas encore configuré dans votre version. Mettez l'app à jour ou contactez le support.",
@@ -347,8 +348,8 @@ export default {
     gmailTitle: "Gmail",
     gmailAccountDesc:
       "Connectez le compte Google utilisé pour Gmail. Vous pouvez utiliser un autre compte pour Google Drive sur la carte Drive. Votre messagerie n’est lue que lorsque vous lancez un tri depuis Trier les fichiers. Les jetons restent sur cet ordinateur. Approuver un plan en arrière-plan autorise les déplacements et filtres mail pour ce seul passage.",
-    gmailFiltersReconnectHint:
-      "Gmail a besoin d’une connexion mise à jour pour les filtres de boîte de réception. Déconnectez puis reconnectez Gmail sous Sources externes.",
+    gmailAccountUnknown:
+      "Impossible de lire le compte. Déconnectez puis reconnectez.",
     gmailWebDesktopDriveSeparateNote:
       "Google Drive a son propre bouton ci-dessus. Cette connexion Gmail ne modifie pas Drive.",
     gmailNotConfigured:
@@ -1357,11 +1358,10 @@ export default {
       "L’analytique d’usage et les rapports de plantage reposent sur notre intérêt légitime (Politique de confidentialité). Opposition possible ci-dessous — jamais noms de fichiers, chemins ou contenu organisé.",
     mailReply: {
       privacySentence:
-        "Les réponses Gmail prêtes à l'envoi (Tâches → Boîte de réception) vérifient périodiquement les threads Gmail récents, uniquement les métadonnées (expéditeur, objet) ; le message complet ne va à l'IA cloud que lorsque vous ouvrez Revoir, et rien n'est envoyé sans votre confirmation.",
-      toggleLabel: "Suggérer des réponses dans la boîte de réception",
-      toggleHint: "La boîte de réception indique qui attend une réponse, avec un brouillon prêt à revoir.",
+        "Les réponses Gmail prêtes à l'envoi (To Do → Tâches) lisent périodiquement les fils récents et rédigent une réponse sur la carte de la tâche ; rien n'est envoyé sans votre confirmation.",
+      toggleLabel: "Suggérer des réponses sur Tâches",
+      toggleHint: "Quand quelqu'un attend, la carte mail peut inclure un brouillon à relire et envoyer.",
       reconnectHint: "Connectez Gmail avec l'accès à l'envoi pour activer ceci.",
-      firstCheck: "La première vérification peut prendre quelques minutes.",
     },
     privacyTelemetryLabel: "Analytique d’usage",
     privacyTelemetryDisclosure:
@@ -1392,13 +1392,6 @@ export default {
     privacyLocalWipeConfirm: "Confirmer l’effacement",
     privacyLocalWipeDone: "Les données locales de ce compte ont été effacées.",
     privacyLocalWipeError: "Impossible d’effacer les données locales. Le service local est-il actif ?",
-    privacyWipeAllProfilesTitle: "Effacer tous les comptes sur ce Mac",
-    privacyWipeAllProfilesHint:
-      "Supprime chaque coffre de compte local sur ce Mac et vous déconnecte. Réinitialisation complète des données Exo sur cet appareil.",
-    privacyWipeAllProfilesAction: "Effacer tous les comptes locaux",
-    privacyWipeAllProfilesConfirm: "Confirmer l’effacement de tous les comptes",
-    privacyWipeAllProfilesDone: "Toutes les données de compte locales sur ce Mac ont été effacées.",
-    privacyWipeAllProfilesError: "Impossible d’effacer tous les comptes locaux. Le service local est-il actif ?",
     accountLocalVaultHint:
       "Les clés API et les chats restent dans un coffre local pour ce compte sur ce Mac. La déconnexion verrouille ce coffre — le compte suivant ne le verra pas.",
     voiceGroupTitle: "Voix",

@@ -1,6 +1,6 @@
 type ExternalSourceStatusTone = "ready" | "neutral";
 
-/** Uniform Connected / Not connected copy for pills and card buttons. */
+/** Uniform Connected / Not connected copy for status pills. */
 export function connectionStatusLabel(
   connected: boolean,
   loading: boolean,
@@ -9,6 +9,17 @@ export function connectionStatusLabel(
   return !loading && connected
     ? t("sources.connectorStatusConnected")
     : t("sources.connectorStatusNotConnected");
+}
+
+/** Card button: Connect / Disconnect — the pill already shows status. */
+export function connectionActionLabel(
+  connected: boolean,
+  loading: boolean,
+  t: (key: string) => string,
+): string {
+  return !loading && connected
+    ? t("sources.disconnectConfirmAction")
+    : t("sources.connectorActionConnect");
 }
 
 /**

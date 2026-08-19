@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -12,6 +13,7 @@ from typing import Any, Generator
 
 _DB_NAME = "mail_replies.sqlite"
 _ACCOUNT = "google-gmail"
+_MAILBOX_FINGERPRINT_KEY = "mailbox_fingerprint"
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS settings (
@@ -27,6 +29,8 @@ CREATE TABLE IF NOT EXISTS candidates (
     from_name TEXT NOT NULL DEFAULT '',
     from_email TEXT NOT NULL DEFAULT '',
     subject TEXT NOT NULL DEFAULT '',
+    draft_subject TEXT NOT NULL DEFAULT '',
+    draft_body TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
     UNIQUE(account_id, thread_id)
 );
@@ -68,11 +72,25 @@ def _conn() -> Generator[sqlite3.Connection, None, None]:
     conn = sqlite3.connect(str(path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(_DDL)
+    _migrate_candidate_drafts(conn)
     conn.commit()
     try:
         yield conn
     finally:
         conn.close()
+
+
+_DRAFT_COLS = (
+    ("draft_subject", "TEXT NOT NULL DEFAULT ''"),
+    ("draft_body", "TEXT NOT NULL DEFAULT ''"),
+)
+
+
+def _migrate_candidate_drafts(conn: sqlite3.Connection) -> None:
+    cols = {str(row[1]) for row in conn.execute("PRAGMA table_info(candidates)")}
+    for name, decl in _DRAFT_COLS:
+        if name not in cols:
+            conn.execute(f"ALTER TABLE candidates ADD COLUMN {name} {decl}")
 
 
 def _now() -> datetime:
@@ -83,6 +101,41 @@ def get_setting(key: str) -> str | None:
     with _conn() as conn:
         row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
     return str(row["value"]) if row else None
+
+
+def mailbox_fingerprint(email: str) -> str:
+    norm = (email or "").strip().casefold()
+    if not norm:
+        return ""
+    return hashlib.sha256(norm.encode("utf-8")).hexdigest()
+
+
+def candidate_count() -> int:
+    with _conn() as conn:
+        row = conn.execute("SELECT COUNT(*) AS n FROM candidates").fetchone()
+    return int(row["n"]) if row else 0
+
+
+def drop_stale_mailbox(email: str) -> bool:
+    """Wipe ready-reply cards when the connected Gmail address changed."""
+    fingerprint = mailbox_fingerprint(email)
+    if not fingerprint:
+        return False
+    previous = get_setting(_MAILBOX_FINGERPRINT_KEY)
+    leftovers = not previous and candidate_count() > 0
+    replaced = bool(previous and previous != fingerprint)
+    if replaced or leftovers:
+        clear_all()
+        set_setting(_MAILBOX_FINGERPRINT_KEY, fingerprint)
+        return True
+    set_setting(_MAILBOX_FINGERPRINT_KEY, fingerprint)
+    return False
+
+
+def remember_mailbox(email: str) -> None:
+    fingerprint = mailbox_fingerprint(email)
+    if fingerprint:
+        set_setting(_MAILBOX_FINGERPRINT_KEY, fingerprint)
 
 
 def set_setting(key: str, value: str) -> None:
@@ -149,6 +202,23 @@ def dismiss_thread(thread_id: str, *, days: int = 14) -> None:
         conn.commit()
 
 
+def clear_thread_dismissal(thread_id: str) -> bool:
+    with _conn() as conn:
+        cur = conn.execute("DELETE FROM dismissals WHERE thread_id=?", (thread_id,))
+        conn.commit()
+        return cur.rowcount > 0
+
+
+def restore_candidate(candidate_id: int) -> dict[str, Any] | None:
+    """Undo Hide — keep the card, clear the 14-day thread suppression."""
+    with _conn() as conn:
+        row = conn.execute("SELECT * FROM candidates WHERE id=?", (candidate_id,)).fetchone()
+    if not row:
+        return None
+    clear_thread_dismissal(str(row["thread_id"]))
+    return _candidate_from_row(row)
+
+
 def _candidate_from_row(row: sqlite3.Row) -> dict[str, Any]:
     ids = json.loads(row["message_ids_json"] or "[]")
     return {
@@ -160,11 +230,17 @@ def _candidate_from_row(row: sqlite3.Row) -> dict[str, Any]:
         "from_name": str(row["from_name"] or ""),
         "from_email": str(row["from_email"] or ""),
         "subject": str(row["subject"] or ""),
+        "draft_subject": str(row["draft_subject"] or "") if "draft_subject" in row.keys() else "",
+        "draft_body": str(row["draft_body"] or "") if "draft_body" in row.keys() else "",
         "created_at": str(row["created_at"]),
     }
 
 
-def list_candidates(*, limit: int = 3) -> list[dict[str, Any]]:
+def has_saved_reply(row: dict[str, Any]) -> bool:
+    return bool(str(row.get("draft_body") or "").strip())
+
+
+def list_candidates(*, limit: int = 3, drafted_only: bool = False) -> list[dict[str, Any]]:
     now = _now()
     with _conn() as conn:
         rows = conn.execute(
@@ -175,7 +251,10 @@ def list_candidates(*, limit: int = 3) -> list[dict[str, Any]]:
     for row in rows:
         if is_dismissed(str(row["thread_id"]), now=now):
             continue
-        out.append(_candidate_from_row(row))
+        item = _candidate_from_row(row)
+        if drafted_only and not has_saved_reply(item):
+            continue
+        out.append(item)
         if len(out) >= limit:
             break
     return out
@@ -199,6 +278,8 @@ def upsert_candidate(
     from_name: str,
     from_email: str,
     subject: str,
+    draft_subject: str = "",
+    draft_body: str = "",
 ) -> dict[str, Any]:
     now = _now().isoformat()
     payload = json.dumps(message_ids, ensure_ascii=False)
@@ -206,14 +287,22 @@ def upsert_candidate(
         conn.execute(
             "INSERT INTO candidates "
             "(account_id, thread_id, message_ids_json, last_message_id, "
-            "from_name, from_email, subject, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            "from_name, from_email, subject, draft_subject, draft_body, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(account_id, thread_id) DO UPDATE SET "
             "message_ids_json=excluded.message_ids_json, "
             "last_message_id=excluded.last_message_id, "
             "from_name=excluded.from_name, "
             "from_email=excluded.from_email, "
-            "subject=excluded.subject",
+            "subject=excluded.subject, "
+            "draft_subject=CASE "
+            "WHEN excluded.last_message_id = candidates.last_message_id "
+            "AND excluded.draft_body = '' THEN candidates.draft_subject "
+            "ELSE excluded.draft_subject END, "
+            "draft_body=CASE "
+            "WHEN excluded.last_message_id = candidates.last_message_id "
+            "AND excluded.draft_body = '' THEN candidates.draft_body "
+            "ELSE excluded.draft_body END",
             (
                 _ACCOUNT,
                 thread_id,
@@ -222,6 +311,8 @@ def upsert_candidate(
                 from_name[:200],
                 from_email[:320],
                 subject[:200],
+                draft_subject[:200],
+                draft_body[:8000],
                 now,
             ),
         )
@@ -267,7 +358,25 @@ def replace_candidates(keep: list[dict[str, Any]]) -> None:
             from_name=str(item.get("from_name") or ""),
             from_email=str(item.get("from_email") or ""),
             subject=str(item.get("subject") or ""),
+            draft_subject=str(item.get("draft_subject") or ""),
+            draft_body=str(item.get("draft_body") or ""),
         )
+
+
+def save_candidate_draft(candidate_id: int, *, subject: str, body: str) -> dict[str, Any] | None:
+    """Persist user edits to the saved reply. Does not mint a send token."""
+    clean_subject = (subject or "").replace("\r", "").replace("\n", "").strip()[:200]
+    clean_body = (body or "").replace("\0", "").strip()[:8000]
+    with _conn() as conn:
+        cur = conn.execute(
+            "UPDATE candidates SET draft_subject=?, draft_body=? WHERE id=?",
+            (clean_subject, clean_body, candidate_id),
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return None
+        row = conn.execute("SELECT * FROM candidates WHERE id=?", (candidate_id,)).fetchone()
+    return _candidate_from_row(row) if row else None
 
 
 def delete_candidate(candidate_id: int) -> None:

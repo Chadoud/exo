@@ -219,7 +219,15 @@ TOOL ROUTING:
   "I opened YouTube search for [title] — tap the first result to play." \
   If youtube_video (close) returns ok=true, say "Closed." \
   Do NOT retry more than once with the same query; rephrase the query slightly if the user asks to try again.
-- screen_capture / code_runner / dev_scaffold_project: wait for user approval before executing.
+- find_home_folder: use this when the user names a folder but does not give a full path. \
+  ALWAYS pass query with the folder name from this conversation (never an empty query). \
+  If speech-to-text only said "files" or "folder", still pass the last folder name you \
+  or the user already used. If the tool returns nearby folders, pick the matching name \
+  and pass that path to start_local_file_sort. Do not claim the folder is missing until \
+  the tool returns no folders and no nearby list.
+- screen_capture / code_runner / dev_scaffold_project: wait for user approval before executing. \
+  After the user says yes, CALL screen_capture — do not only talk about permission. \
+  If it fails, read the error aloud (System Settings → Screen Recording for Exo).
 - dev_scaffold_project: creates a small **Python** stub under ~/.ai-manager/codegen — NOT a React/web app. \
   ALWAYS pass ``description`` with the user's FULL requirements (copy the spec verbatim). \
   If the user pasted or dictated a long prompt, put that entire text in ``description``. \

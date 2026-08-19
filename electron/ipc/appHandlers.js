@@ -25,7 +25,7 @@ const cloudAuth = require("../cloudAuth");
 const { syncSortCredentialsFromCloud } = require("../entitlement/sortCredentials");
 const { getManualRemoteLlmApiKey, setManualRemoteLlmApiKey } = require("../backendAiSecrets");
 const syncWorker = require("../syncWorker");
-const { wipeElectronUserDataFiles, wipeAllElectronProfiles } = require("../localDataWipe");
+const { wipeElectronUserDataFiles } = require("../localDataWipe");
 const { backendFetch } = require("../backendHttp");
 const { deleteMaterializedGmailOAuthMirror } = require("../gmailOAuthMirrorStore");
 const cloudSessionPrefs = require("../cloudSessionPrefs");
@@ -603,37 +603,6 @@ function registerAppHandlers() {
     cleared.push(...electron.removed.map((name) => `electron:${name}`));
     await remountProfileRuntime(userData, { restartBackend: true });
 
-    return { ok: true, cleared };
-  });
-
-  ipcMain.handle("privacy:wipeAllProfilesOnDevice", async (event) => {
-    const denied = rejectUntrustedSender(event);
-    if (denied) return denied;
-
-    const userData = app.getPath("userData");
-    const cleared = [];
-
-    const backend = await backendFetch("/v1/privacy/wipe-local", {
-      method: "POST",
-      body: { confirmed: true },
-    });
-    if (backend.ok && backend.data && typeof backend.data === "object" && Array.isArray(backend.data.cleared)) {
-      cleared.push(...backend.data.cleared);
-    }
-
-    try {
-      deleteMaterializedGmailOAuthMirror(resolveProfileRoot(userData));
-    } catch {
-      /* ignore */
-    }
-    cloudAuth.logout(userData);
-    const electron = wipeAllElectronProfiles(userData);
-    if (!electron.ok) {
-      return { ok: false, detail: electron.reason || "electron_wipe_all_failed", cleared };
-    }
-    cleared.push(...electron.removed.map((name) => `electron:${name}`));
-    activateGuestProfile(userData);
-    await remountProfileRuntime(userData, { restartBackend: true });
     return { ok: true, cleared };
   });
 

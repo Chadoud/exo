@@ -8,11 +8,25 @@ import MailReplyCard from "./MailReplyCard";
 
 interface MailReplyInboxSectionProps {
   items: MailReplyItem[];
+  licensed?: boolean;
   onDismiss: (id: number) => Promise<void>;
   onSent: () => void;
+  selecting?: boolean;
+  isSelected?: (id: number) => boolean;
+  onSelect?: (id: number) => void;
+  showHeading?: boolean;
 }
 
-export default function MailReplyInboxSection({ items, onDismiss, onSent }: MailReplyInboxSectionProps) {
+export default function MailReplyInboxSection({
+  items,
+  licensed = false,
+  onDismiss,
+  onSent,
+  selecting = false,
+  isSelected,
+  onSelect,
+  showHeading = true,
+}: MailReplyInboxSectionProps) {
   const { t } = useI18n();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -26,7 +40,17 @@ export default function MailReplyInboxSection({ items, onDismiss, onSent }: Mail
     }
   }, [items]);
 
-  if (items.length === 0) return null;
+  if (items.length === 0 && !licensed) return null;
+  if (items.length === 0) {
+    return (
+      <section className="space-y-3" aria-labelledby="todo-inbox-mail-reply-heading">
+        <h3 id="todo-inbox-mail-reply-heading" className="text-sm font-semibold text-text-primary">
+          {t("todo.inbox.mailReply.emptyHeading")}
+        </h3>
+        <p className="mt-1 text-xs text-muted leading-relaxed">{t("todo.inbox.mailReply.emptyLane")}</p>
+      </section>
+    );
+  }
 
   const focusNext = (removedId: number) => {
     const remaining = items.filter((i) => i.id !== removedId);
@@ -41,15 +65,21 @@ export default function MailReplyInboxSection({ items, onDismiss, onSent }: Mail
   };
 
   return (
-    <section className="space-y-3" aria-labelledby="todo-inbox-mail-reply-heading">
-      <h3
-        id="todo-inbox-mail-reply-heading"
-        ref={headingRef}
-        tabIndex={-1}
-        className="text-sm font-semibold text-text-primary"
-      >
-        {t("todo.inbox.mailReply.heading", { n: items.length })}
-      </h3>
+    <section className="space-y-3" aria-labelledby={showHeading ? "todo-inbox-mail-reply-heading" : undefined}>
+      {showHeading ? (
+        <h3
+          id="todo-inbox-mail-reply-heading"
+          ref={headingRef}
+          tabIndex={-1}
+          className="text-sm font-semibold text-text-primary"
+        >
+          {t("todo.inbox.mailReply.heading", { n: items.length })}
+        </h3>
+      ) : (
+        <span ref={headingRef} tabIndex={-1} className="sr-only">
+          {t("todo.inbox.mailReply.heading", { n: items.length })}
+        </span>
+      )}
       <ul className="space-y-2">
         {items.map((item) => (
           <MailReplyCard
@@ -62,6 +92,9 @@ export default function MailReplyInboxSection({ items, onDismiss, onSent }: Mail
               trackProductEvent(TelemetryEventNames.mailReplyDismissed, {});
               void onDismiss(item.id).then(() => focusNext(item.id));
             }}
+            selecting={selecting}
+            selected={isSelected?.(item.id) ?? false}
+            onSelect={onSelect ? () => onSelect(item.id) : undefined}
             onSent={(name) => {
               setExpandedId(null);
               toast.message(

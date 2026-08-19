@@ -428,6 +428,25 @@ def test_success_clears_open_failures_for_goal(_temp_memory):
     assert episodes and "Found 3 invoices" in episodes[0].content
 
 
+def test_trash_cut_off_goal_is_not_an_open_failure(_temp_memory):
+    adapter = _temp_memory.EpisodicAdapter()
+    adapter.remember_outcome(
+        ". Yeah, that's",
+        "I can't determine what you're asking—your message is cut off.",
+        False,
+    )
+    assert _temp_memory.recent_open_failures(10) == []
+
+
+def test_recent_open_failures_hides_existing_trash(_temp_memory):
+    _temp_memory.remember(
+        "Goal: . Yeah, that's\nOutcome: I can't determine what you're asking.",
+        kind=_temp_memory.KIND_FAILURE,
+    )
+    assert _temp_memory.recent_open_failures(10) == []
+    assert _temp_memory.recent(5, kinds=[_temp_memory.KIND_FAILURE]) == []
+
+
 def test_recent_open_failures_dedupes_legacy_duplicates(_temp_memory):
     _temp_memory.remember(
         "Goal: find my latest invoices\nOutcome: old",

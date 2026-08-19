@@ -186,6 +186,10 @@ export function countOpenTasks(tasks: Task[]): number {
   return tasks.filter((task) => !task.completed).length;
 }
 
+export function countCompletedTasks(tasks: Task[]): number {
+  return tasks.filter((task) => task.completed).length;
+}
+
 export function countTodayOpenTasks(tasks: Task[]): number {
   const { overdue, dueToday } = splitTodayTasks(tasks);
   return overdue.length + dueToday.length;

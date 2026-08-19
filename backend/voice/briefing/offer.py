@@ -13,7 +13,6 @@ from enum import Enum
 from typing import Awaitable, Callable
 
 from voice.briefing.startup import (
-    build_ask_startup_message,
     build_auto_startup_message,
     get_startup_briefing_consent,
     get_startup_message,
@@ -49,6 +48,13 @@ CLIENT_OFFER_TYPES = frozenset(
 _PENDING_DELETE_MSG = "Finish the calendar delete first, then I can run your briefing."
 _NO_ROUTINE_MSG = "No startup briefing is set up yet."
 _GENERIC_ERROR_MSG = "Couldn't start your briefing. Try again in a moment."
+
+
+def _paid_features_allowed() -> bool:
+    from entitlement_gate import may_use_proactive
+
+    ok, _ = may_use_proactive()
+    return ok
 
 
 class OfferPhase(str, Enum):
@@ -91,6 +97,9 @@ class BriefingOfferController:
 
     async def begin_land(self) -> str | None:
         """Resolve land mode. Returns Gemini startup inject message, or None."""
+        if not _paid_features_allowed():
+            self.phase = OfferPhase.IDLE
+            return None
         routine = get_startup_message()
         mode = resolve_startup_briefing_mode(routine, get_startup_briefing_consent())
         if mode == "skip" or not routine:
@@ -101,7 +110,9 @@ class BriefingOfferController:
             return build_auto_startup_message(routine)
         self.phase = OfferPhase.OFFERING
         await self._send(_frame("briefing_offer", reason="startup_ask"))
-        return build_ask_startup_message(routine)
+        # HUD is the ask. A spoken [STARTUP] prompt echo-gates the mic so
+        # "yes" / the next utterance never reaches STT.
+        return None
 
     async def handle_client_type(self, msg_type: str) -> bool:
         """Handle a client JSON ``type``. Returns True when consumed."""
@@ -235,6 +246,10 @@ class BriefingOfferController:
         self.phase = OfferPhase.IDLE
 
     async def _start_pipeline(self, *, announce_loading: bool) -> None:
+        if not _paid_features_allowed():
+            self.phase = OfferPhase.IDLE
+            await self._send(_frame("briefing_offer_clear"))
+            return
         routine = get_startup_message()
         if not routine:
             await self._send(_frame("briefing_offer_error", message=_NO_ROUTINE_MSG))

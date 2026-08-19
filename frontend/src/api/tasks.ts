@@ -19,6 +19,7 @@ const TaskSchema = z.object({
   source_conversation_id: z.string().nullable(),
   external_id: z.string().nullable().optional(),
   source_url: z.string().nullable().optional(),
+  mail_reply_id: z.number().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -48,6 +49,29 @@ export async function syncTasksFromIntegrations(): Promise<z.infer<typeof SyncRe
   return requestValidated("/tasks/sync", SyncResultSchema, { method: "POST" });
 }
 
+export const FORGETTABLE_TASK_SOURCES = [
+  "gmail",
+  "google-calendar",
+  "outlook",
+  "outlook-calendar",
+] as const;
+
+export type ForgettableTaskSource = (typeof FORGETTABLE_TASK_SOURCES)[number];
+
+const ForgetSourceResultSchema = z.object({
+  ok: z.boolean(),
+  dropped: z.number(),
+});
+
+export async function forgetIntegrationTasks(
+  source: ForgettableTaskSource,
+): Promise<z.infer<typeof ForgetSourceResultSchema>> {
+  return requestValidated("/tasks/forget-source", ForgetSourceResultSchema, {
+    method: "POST",
+    body: JSON.stringify({ source }),
+  });
+}
+
 export async function setTaskCompleted(id: number, completed: boolean): Promise<Task> {
   return requestValidated(`/tasks/${id}/done`, TaskSchema, {
     method: "PATCH",
@@ -58,6 +82,10 @@ export async function setTaskCompleted(id: number, completed: boolean): Promise<
 /** Remove from EXO. Calendar/mail stay; the same source will not come back on sync. */
 export async function deleteTask(id: number): Promise<void> {
   await request<unknown>(`/tasks/${id}`, { method: "DELETE" });
+}
+
+export async function restoreTask(id: number): Promise<Task> {
+  return requestValidated(`/tasks/${id}/restore`, TaskSchema, { method: "POST" });
 }
 
 const TaskOpenTargetSchema = z.object({

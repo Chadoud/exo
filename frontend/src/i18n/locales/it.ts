@@ -291,9 +291,10 @@ export default {
     title: "Fonti esterne",
     connectorStatusConnected: "Connesso",
     connectorStatusNotConnected: "Non connesso",
+    connectorActionConnect: "Collega",
     disconnectConfirmTitle: "Disconnettere {source}?",
     disconnectConfirmBody:
-      "Exo non userà più {source} su questo dispositivo finché non lo colleghi di nuovo.",
+      "Exo non userà più {source} su questo dispositivo. I task importati, le bozze di risposta rimaste e le note di calendario salvate da Exo per quell'account vengono rimossi. I task che hai scritto restano.",
     disconnectConfirmAction: "Disconnetti",
     disconnectConfirmCancel: "Resta connesso",
     connectorOauthNotConfigured: "Questo connettore non è ancora configurato nella tua build. Aggiorna l'app o contatta il supporto.",
@@ -346,8 +347,8 @@ export default {
     gmailTitle: "Gmail",
     gmailAccountDesc:
       "Collega lâ€™account Google che usi per Gmail. Puoi usare un altro account per Google Drive nella scheda Drive. La posta viene letta solo quando avvii un ordinamento dalla scheda Ordina file. I token restano su questo computer. Approvare un piano in background consente spostamenti e filtri della posta solo per quella esecuzione.",
-    gmailFiltersReconnectHint:
-      "Gmail richiede una connessione aggiornata per i filtri della posta in arrivo. Disconnetti e riconnetti Gmail in Fonti esterne.",
+    gmailAccountUnknown:
+      "Impossibile leggere l’account. Disconnetti e riconnetti.",
     gmailWebDesktopDriveSeparateNote:
       "Google Drive ha sopra un pulsante dedicato. Questa connessione Gmail non modifica Drive.",
     gmailNotConfigured:
@@ -1357,11 +1358,10 @@ export default {
       "Analisi d’uso e segnalazioni di arresto anomalo si basano sul nostro interesse legittimo (Informativa privacy). Opposizione in qualsiasi momento — mai nomi file, percorsi o contenuti organizzati.",
     mailReply: {
       privacySentence:
-        "Le risposte Gmail pronte per l'invio (Attività → Posta in arrivo) controllano periodicamente i thread Gmail recenti solo per i metadati (mittente, oggetto); il messaggio completo va all'IA cloud solo quando apri Rivedi, e nulla viene inviato senza la tua conferma.",
-      toggleLabel: "Suggerisci risposte in Posta in arrivo",
-      toggleHint: "La posta in arrivo mostra chi è in attesa di una risposta, con una bozza pronta da rivedere.",
+        "Le risposte Gmail pronte per l'invio (To Do → Attività) leggono periodicamente i thread recenti e scrivono una risposta sulla scheda attività; nulla viene inviato senza la tua conferma.",
+      toggleLabel: "Suggerisci risposte in Attività",
+      toggleHint: "Quando qualcuno aspetta, la scheda mail può includere una bozza da rivedere e inviare.",
       reconnectHint: "Collega Gmail con l'accesso all'invio per attivare questa funzione.",
-      firstCheck: "Il primo controllo può richiedere alcuni minuti.",
     },
     privacyTelemetryLabel: "Analisi d’uso",
     privacyTelemetryDisclosure:
@@ -1392,13 +1392,6 @@ export default {
     privacyLocalWipeConfirm: "Conferma cancellazione",
     privacyLocalWipeDone: "I dati locali di questo account sono stati cancellati.",
     privacyLocalWipeError: "Impossibile cancellare i dati locali. Il servizio locale è attivo?",
-    privacyWipeAllProfilesTitle: "Cancella tutti gli account su questo Mac",
-    privacyWipeAllProfilesHint:
-      "Elimina ogni vault di account locale su questo Mac e ti disconnette. Reset completo dei dati Exo su questo dispositivo.",
-    privacyWipeAllProfilesAction: "Cancella tutti gli account locali",
-    privacyWipeAllProfilesConfirm: "Conferma cancellazione di tutti gli account",
-    privacyWipeAllProfilesDone: "Tutti i dati account locali su questo Mac sono stati cancellati.",
-    privacyWipeAllProfilesError: "Impossibile cancellare tutti gli account locali. Il servizio locale è attivo?",
     accountLocalVaultHint:
       "Chiavi API e chat restano in un vault locale per questo account su questo Mac. La disconnessione blocca il vault — l’account successivo non lo vedrà.",
     voiceGroupTitle: "Voce",

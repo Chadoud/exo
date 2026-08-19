@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from assistant_memory import memory_db_path
+from orchestrator.failure_admit import is_trash_inbox_failure, outcome_from_failure_content
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +66,22 @@ def _path() -> Path:
     return memory_db_path()
 
 
+def _ensure_dismissed_column(conn: sqlite3.Connection) -> None:
+    cols = {str(r[1]) for r in conn.execute("PRAGMA table_info(episodic_memory)").fetchall()}
+    if "dismissed" not in cols:
+        conn.execute(
+            "ALTER TABLE episodic_memory ADD COLUMN dismissed INTEGER NOT NULL DEFAULT 0"
+        )
+        conn.commit()
+
+
 def _connect() -> sqlite3.Connection:
     path = _path()
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(_DDL)
+    _ensure_dismissed_column(conn)
     conn.commit()
     return conn
 
@@ -173,12 +184,14 @@ def recent(k: int = 5, *, kinds: list[str] | None = None) -> list[Memory]:
                 placeholders = ",".join("?" * len(kinds))
                 rows = conn.execute(
                     f"SELECT * FROM episodic_memory WHERE kind IN ({placeholders}) "
-                    "ORDER BY created_at DESC LIMIT ?",
+                    "AND dismissed = 0 ORDER BY created_at DESC LIMIT ?",
                     (*kinds, k),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT * FROM episodic_memory ORDER BY created_at DESC LIMIT ?", (k,)
+                    "SELECT * FROM episodic_memory WHERE dismissed = 0 "
+                    "ORDER BY created_at DESC LIMIT ?",
+                    (k,),
                 ).fetchall()
             return [_row_to_memory(r) for r in rows]
         finally:
@@ -214,6 +227,8 @@ class EpisodicAdapter:
                 importance=1.0,
             )
             return
+        if is_trash_inbox_failure(goal, summary):
+            return
         remember(
             f"Goal: {goal}\nOutcome: {summary}",
             kind=KIND_FAILURE,
@@ -237,6 +252,42 @@ def clear_all() -> None:
             conn.close()
     except Exception:
         logger.exception("episodic clear failed")
+
+
+def dismiss_failure(memory_id: int) -> bool:
+    """Hide one failure from Inbox without deleting the episode."""
+    try:
+        conn = _connect()
+        try:
+            cur = conn.execute(
+                "UPDATE episodic_memory SET dismissed=1 WHERE id=? AND kind=?",
+                (int(memory_id), KIND_FAILURE),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        logger.exception("episodic dismiss_failure failed")
+        return False
+
+
+def restore_failure(memory_id: int) -> bool:
+    """Return a soft-dismissed failure to Inbox."""
+    try:
+        conn = _connect()
+        try:
+            cur = conn.execute(
+                "UPDATE episodic_memory SET dismissed=0 WHERE id=? AND kind=?",
+                (int(memory_id), KIND_FAILURE),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        logger.exception("episodic restore_failure failed")
+        return False
 
 
 def forget(memory_id: int) -> bool:
@@ -300,18 +351,43 @@ def forget_failures_for_goal(goal: str) -> int:
     return removed
 
 
+def _dismiss_failures(ids: list[int]) -> None:
+    if not ids:
+        return
+    try:
+        conn = _connect()
+        try:
+            placeholders = ",".join("?" * len(ids))
+            conn.execute(
+                f"UPDATE episodic_memory SET dismissed=1 WHERE kind=? AND id IN ({placeholders})",
+                (KIND_FAILURE, *ids),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        logger.exception("episodic dismiss trash failures failed")
+
+
 def recent_open_failures(k: int = 10) -> list[Memory]:
     """Newest open failures, deduped by normalized goal (one Inbox card per ask)."""
     # Over-fetch so older duplicates of the same goal can be collapsed.
     rows = recent(max(k * 5, k), kinds=[KIND_FAILURE])
     seen: set[str] = set()
     out: list[Memory] = []
+    trash_ids: list[int] = []
     for row in rows:
-        key = normalize_goal_key(goal_from_failure_content(row.content)) or f"id:{row.id}"
+        goal = goal_from_failure_content(row.content)
+        outcome = outcome_from_failure_content(row.content)
+        if is_trash_inbox_failure(goal, outcome):
+            trash_ids.append(row.id)
+            continue
+        key = normalize_goal_key(goal) or f"id:{row.id}"
         if key in seen:
             continue
         seen.add(key)
         out.append(row)
         if len(out) >= k:
             break
+    _dismiss_failures(trash_ids)
     return out

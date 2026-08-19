@@ -33,15 +33,15 @@ const SETTINGS_NAV_TAB_SUBTITLE_KEYS: Record<SettingsNavTab, string> = {
 
 const TODO_SUB_TAB_HEADINGS: Record<TodoSubTab, PanelHeadingKeys> = {
   today: {
-    titleKey: "todo.tabs.today",
+    titleKey: "nav.todoToday",
     subtitleKey: "todo.tabs.todaySubtitle",
   },
   inbox: {
-    titleKey: "todo.tabs.inbox",
+    titleKey: "nav.todoInbox",
     subtitleKey: "todo.tabs.inboxSubtitle",
   },
   done: {
-    titleKey: "todo.tabs.done",
+    titleKey: "nav.todoDone",
     subtitleKey: "todo.tabs.doneSubtitle",
   },
 };

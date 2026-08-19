@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Task } from "../../api/tasks";
 import {
   formatTaskDue,
@@ -21,6 +22,7 @@ type TaskRowProps = {
   selecting?: boolean;
   onOpenSource?: (task: Task) => void;
   openBusy?: boolean;
+  replySlot?: ReactNode;
 };
 
 /** Phone-matched row: tap body to select; circle marks done unless already selecting. */
@@ -34,6 +36,7 @@ export default function TaskRow({
   selecting = false,
   onOpenSource,
   openBusy = false,
+  replySlot,
 }: TaskRowProps) {
   const { t } = useI18n();
   const overdue = isTaskOverdue(task.due_at, task.completed);
@@ -45,20 +48,23 @@ export default function TaskRow({
         ? formatTaskDueTime(task.due_at, task.source, t("tasks.allDay"))
         : `${overdue ? t("tasks.overdue") : t("tasks.due")}${formatTaskDue(task.due_at)}`;
 
+  const cardTone = selected ? "border-accent bg-accent/10" : "border-border bg-bg-secondary";
+
   return (
-    <li
-      className={`rounded-xl border transition-colors ${
-        selected ? "border-accent bg-accent/10" : "border-border bg-bg-secondary"
-      } ${task.completed && !selected ? "opacity-75" : ""}`}
-    >
+    <li className="flex items-start gap-2">
+      <TaskRowLeading
+        task={task}
+        selecting={selecting}
+        selected={selected}
+        onToggle={onToggle}
+        onSelect={onSelect}
+      />
+      <div
+        className={`min-w-0 flex-1 rounded-xl border px-2 transition-colors ${cardTone} ${
+          task.completed && !selected ? "opacity-75" : ""
+        }`}
+      >
       <div className="flex items-stretch">
-        <TaskRowLeading
-          task={task}
-          selecting={selecting}
-          selected={selected}
-          onToggle={onToggle}
-          onSelect={onSelect}
-        />
         <button
           type="button"
           onClick={() => onSelect(task)}
@@ -101,6 +107,8 @@ export default function TaskRow({
           </button>
         ) : null}
       </div>
+      {replySlot}
+      </div>
     </li>
   );
 }
@@ -121,7 +129,7 @@ function TaskRowLeading({ task, selecting, selected, onToggle, onSelect }: TaskR
     <button
       type="button"
       onClick={() => (selecting ? onSelect(task) : onToggle(task))}
-      className={`m-3 flex h-8 w-8 shrink-0 items-center justify-center border-2 transition-colors ${shape} ${
+      className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center border-2 transition-colors ${shape} ${
         selecting
           ? selected
             ? "border-accent bg-button-primary text-white"

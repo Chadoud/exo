@@ -199,6 +199,8 @@ export function errorActionId(e: unknown): ErrorActionId | undefined {
 interface ToastErrorOptions {
   /** Contextual "Fix it" button to render inside the toast. */
   action?: { label: string; onClick: () => void };
+  /** Stable Sonner id — same failure replaces the toast instead of stacking. */
+  id?: string | number;
 }
 
 export interface ToastAppErrorOptions {
@@ -236,6 +238,7 @@ export function toastUserError(title: string, e: unknown, options?: ToastErrorOp
   toastAppError(title, {
     description: hint ? `${detail}\n\n${hint}` : detail,
     duration: hint ? 11_000 : 7000,
+    id: options?.id,
     ...(action || actionId
       ? {
           action: action

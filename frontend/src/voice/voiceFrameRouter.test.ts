@@ -283,6 +283,17 @@ describe("routeVoiceFrame", () => {
     expect(actions.clearEphemeralVoiceIssue).toHaveBeenCalled();
   });
 
+  it("clears WORKING when the briefing is only an offer", () => {
+    const actions = createMockActions();
+    const deps = createDeps({ actions, onBriefingOfferEvent: vi.fn() });
+
+    routeVoiceFrame({ type: "briefing_offer" }, deps);
+    expect(actions.setToolPhaseLabel).toHaveBeenCalledWith(null);
+
+    routeVoiceFrame({ type: "briefing_offer_clear" }, deps);
+    expect(actions.setToolPhaseLabel).toHaveBeenCalledWith(null);
+  });
+
   it("routes briefing offer frames to onBriefingOfferEvent", () => {
     const onBriefingOfferEvent = vi.fn();
     const deps = createDeps({ onBriefingOfferEvent });

@@ -82,7 +82,7 @@ export function SortedFoldersTreeSection({
         </button>
       </div>
 
-      <div className="max-h-[min(55vh,28rem)] min-h-[10rem] overflow-y-auto border-t border-border px-2 py-2">
+      <div className="min-h-[10rem] overflow-y-auto border-t border-border px-2 py-2">
         {folderTree.length > 0 ? (
           <FolderTree
             tree={folderTree}

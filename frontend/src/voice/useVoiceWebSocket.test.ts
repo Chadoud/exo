@@ -31,7 +31,7 @@ class MockWebSocket {
   onopen: (() => void) | null = null;
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: (() => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event?: { code: number }) => void) | null = null;
   sent: Array<string | ArrayBuffer> = [];
 
   constructor(url: string) {
@@ -47,9 +47,9 @@ class MockWebSocket {
     this.sent.push(data);
   }
 
-  close(): void {
+  close(code = 1000): void {
     this.readyState = 3;
-    this.onclose?.();
+    this.onclose?.({ code });
   }
 }
 
@@ -185,6 +185,30 @@ describe("useVoiceWebSocket", () => {
 
     expect(MockWebSocket.instances).toHaveLength(2);
 
+    unmount();
+  });
+
+  it("does not reconnect when the server closes unpaid (4402)", async () => {
+    const opts = createBaseOptions();
+    const { result, unmount } = mountHook(opts);
+
+    await act(async () => {
+      await result.openWebSocket();
+    });
+
+    await act(async () => {
+      MockWebSocket.instances[0].close(4402);
+    });
+
+    expect(opts.stoppedRef.current).toBe(true);
+    expect(opts.setIsReconnecting).toHaveBeenCalledWith(false);
+
+    await act(async () => {
+      vi.advanceTimersByTime(2_000);
+      await Promise.resolve();
+    });
+
+    expect(MockWebSocket.instances).toHaveLength(1);
     unmount();
   });
 

@@ -125,7 +125,9 @@ export function useWorkspaceController(opts: {
       void refreshEntitlement();
     },
     onError: (err) => {
-      toastUserError(translate(uiLocale, "toast.jobRefreshFailed"), err);
+      toastUserError(translate(uiLocale, "toast.jobRefreshFailed"), err, {
+        id: "toast.jobRefreshFailed",
+      });
     },
   });
 

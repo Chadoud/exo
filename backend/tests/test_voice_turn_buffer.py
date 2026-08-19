@@ -15,6 +15,12 @@ def test_append_streaming_matches_incremental_chunks():
     assert text.strip() == "pour que j'aille faire du paddle"
 
 
+def test_append_streaming_keeps_richer_snapshot():
+    richer = "start sorting the files within Hilal files."
+    degraded = "start sorting the files within files."
+    assert append_streaming_voice_input(richer, degraded) == richer
+
+
 def test_turn_buffer_tracks_canonical_line():
     buffer = TurnBuffer()
     buffer.append_chunk(" Crée")

@@ -279,7 +279,7 @@ If `/fr/` routes exist: mirror structure and meaning in clear French. Same URL p
 
 - Desktop Google OAuth scopes: `gmail.modify`, `gmail.send`, `gmail.settings.basic`, `drive`, `calendar.readonly`, `calendar.events`
 - Cloud sign-in: `openid`, `email`, `profile`
-- Gmail/Drive access triggered by user flows, not background scanning — except optional ready-to-send Gmail replies (default on when Pro + Gmail send scope): periodic **metadata-only** inbox checks; full body to cloud AI only on Review; send only on confirm
+- Gmail/Drive access triggered by user flows, not background scanning — except optional ready-to-send Gmail replies (default on when Pro + Gmail send scope): periodic inbox checks write a reply for review in Inbox; send only on confirm
 - Telemetry/crash: **on by default** after Terms acceptance (desktop); opt out in Settings → Privacy & diagnostics
 - Activity timeline: opt-in; screenshots → one-line summaries; images deleted
 - Sync: end-to-end encrypted memories/tasks; server cannot read plaintext

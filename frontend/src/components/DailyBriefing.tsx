@@ -2,8 +2,8 @@
  * DailyBriefing — the proactive layer surfaced in-app: today's digest card plus
  * the notification center (nudges).
  *
- * Honest progress: the digest is generated from real stored data on demand, and
- * nudges come from the rate-limited backend generator. A single OS notification
+ * Honest progress: today's digest is created on first load (no Generate click).
+ * Nudges come from the rate-limited backend generator. A single OS notification
  * fires when new nudges appear, never a stream.
  */
 
@@ -32,8 +32,8 @@ interface Props {
   hideProCard?: boolean;
   /** When false, nudges render elsewhere (e.g. Home attention inbox). */
   showNudges?: boolean;
-  /** Start with digest detail sections collapsed. */
-  defaultDigestExpanded?: boolean;
+  /** Nested in a titled card — skip the inner “Daily digest” chrome. */
+  embedded?: boolean;
 }
 
 export default function DailyBriefing({
@@ -43,19 +43,20 @@ export default function DailyBriefing({
   onUpgrade,
   hideProCard = false,
   showNudges = true,
-  defaultDigestExpanded = false,
+  embedded = false,
 }: Props) {
   const { t } = useI18n();
   const [digest, setDigest] = useState<Digest | null>(null);
   const [nudges, setNudges] = useState<Nudge[]>([]);
   const [generating, setGenerating] = useState(false);
-  const [expanded, setExpanded] = useState(defaultDigestExpanded);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [proBlocked, setProBlocked] = useState(false);
   const proLocked = !proAllowed || proBlocked;
 
   const refresh = useCallback(async () => {
     if (!backendOnline) return;
+    setLoading(true);
     try {
       const [d, n] = await Promise.all([fetchLatestDigest(), fetchNudges()]);
       setDigest(d);
@@ -63,6 +64,8 @@ export default function DailyBriefing({
       setLoadError(null);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : t("briefing.loadFailed"));
+    } finally {
+      setLoading(false);
     }
   }, [backendOnline, t]);
 
@@ -110,7 +113,6 @@ export default function DailyBriefing({
     try {
       const d = await generateDigest();
       setDigest(d);
-      setExpanded(true);
     } catch (e) {
       if (e instanceof EntitlementBlockedError) {
         setProBlocked(true);
@@ -208,48 +210,40 @@ export default function DailyBriefing({
         </section>
       )}
 
-      {/* Daily digest card */}
-      <section className="rounded-xl border border-border bg-bg-secondary p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted">{t("briefing.dailyDigest")}</p>
-            <p className="truncate text-sm text-text-primary">
-              {digest ? digest.headline : t("briefing.noDigest")}
+      <section className={embedded ? "space-y-3" : "rounded-xl border border-border bg-bg-secondary p-3 space-y-3"}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {embedded ? null : (
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted">{t("briefing.dailyDigest")}</p>
+            )}
+            <p className={`text-sm text-text-primary ${embedded ? "" : "mt-0.5"}`}>
+              {generating || (loading && !digest)
+                ? t("briefing.generating")
+                : digest
+                  ? digest.headline
+                  : t("briefing.noDigest")}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {sections.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary"
-              >
-                {expanded ? t("briefing.hide") : t("briefing.details")}
-              </button>
-            )}
-            {!proLocked && (
-              <button
-                type="button"
-                onClick={() => void handleGenerate()}
-                disabled={generating}
-                className="rounded-lg bg-button-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-button-hover disabled:opacity-60"
-              >
-                {generating ? t("briefing.generating") : t("briefing.generate")}
-              </button>
-            )}
-          </div>
+          {!proLocked && !loading ? (
+            <button
+              type="button"
+              onClick={() => void handleGenerate()}
+              disabled={generating}
+              className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-muted hover:text-text-primary disabled:opacity-60"
+            >
+              {generating ? t("briefing.generating") : t("briefing.refresh")}
+            </button>
+          ) : null}
         </div>
         {proLocked && !hideProCard ? (
-          <div className="mt-3">
-            <ProUpgradeCard
-              compact
-              description={t("pro.digestFeature")}
-              onUpgrade={() => onUpgrade?.()}
-            />
-          </div>
+          <ProUpgradeCard
+            compact
+            description={t("pro.digestFeature")}
+            onUpgrade={() => onUpgrade?.()}
+          />
         ) : null}
-        {expanded && sections.length > 0 && (
-          <div className="mt-3 space-y-2 border-t border-border pt-3">
+        {sections.length > 0 ? (
+          <div className="space-y-2 border-t border-border pt-3">
             {sections.map((s) => (
               <div key={s.label}>
                 <p className="text-xs font-semibold text-text-secondary">{s.label}</p>
@@ -261,7 +255,7 @@ export default function DailyBriefing({
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </section>
     </div>
   );

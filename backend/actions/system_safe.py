@@ -147,11 +147,21 @@ def list_directory(args: dict) -> dict:
         return {"ok": False, "error": "Path must be under home directory"}
     try:
         entries = list(resolved.iterdir())
+        visible = [entry for entry in entries if not entry.name.startswith(".")]
+        visible.sort(key=lambda entry: (not entry.is_dir(), entry.name.casefold()))
+        cap = 200
         items = [
             {"name": entry.name, "type": "directory" if entry.is_dir() else "file"}
-            for entry in entries[:100]
+            for entry in visible[:cap]
         ]
-        return {"ok": True, "data": {"path": str(resolved), "items": items}}
+        return {
+            "ok": True,
+            "data": {
+                "path": str(resolved),
+                "items": items,
+                "truncated": len(visible) > cap,
+            },
+        }
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 

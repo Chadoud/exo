@@ -8,6 +8,7 @@ import type { AppSettings } from "../types/settings";
 import { sendVoiceWsAppAuth } from "./voiceWsAuth";
 import { primeVoiceSessionFromRenderer } from "./voiceSessionPrime";
 import { parseVoiceFramePayload, routeVoiceFrame, type VoiceFrameRouterDeps } from "./voiceFrameRouter";
+import { VOICE_WS_PAYMENT_REQUIRED } from "./voiceWsClose";
 
 const WS_URL = `ws://${BACKEND_HOST}:${BACKEND_PORT}/ws/voice`;
 
@@ -150,12 +151,17 @@ export function useVoiceWebSocket(options: UseVoiceWebSocketOptions): UseVoiceWe
       // Errors are followed by onclose — handle teardown / reconnect there
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event: CloseEvent) => {
       wsRef.current = null;
       setIsListening(false);
       onWsClose?.();
 
       if (stoppedRef.current) return;
+      if (event?.code === VOICE_WS_PAYMENT_REQUIRED) {
+        stoppedRef.current = true;
+        setIsReconnecting(false);
+        return;
+      }
 
       setIsReconnecting(true);
       reconnectTimerRef.current = setTimeout(() => {

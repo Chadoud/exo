@@ -9,7 +9,7 @@ def test_build_live_tools_count() -> None:
     tools = build_live_tools()
     specs = build_tool_specs()
     names = [d.name for t in tools for d in t.function_declarations]
-    assert len(names) == 49
+    assert len(names) == 50
     assert [s["name"] for s in specs] == names
 
 
@@ -25,4 +25,4 @@ def test_domain_modules_cover_all_tools() -> None:
         + len(calendar_decls())
         + len(integration_decls())
     )
-    assert total == 49
+    assert total == 50

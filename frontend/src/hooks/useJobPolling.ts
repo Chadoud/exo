@@ -12,6 +12,8 @@ interface UseJobPollingArgs {
 export function useJobPolling({ onJob, onTerminal, onError }: UseJobPollingArgs) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const visibilityCleanupRef = useRef<(() => void) | null>(null);
+  const inFlightRef = useRef(false);
+  const errorNotifiedRef = useRef(false);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -24,6 +26,8 @@ export function useJobPolling({ onJob, onTerminal, onError }: UseJobPollingArgs)
 
   const pollOnce = useCallback(
     async (jobId: string) => {
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
       try {
         const job = await api.job(jobId);
         onJob(job);
@@ -37,7 +41,12 @@ export function useJobPolling({ onJob, onTerminal, onError }: UseJobPollingArgs)
         }
       } catch (e) {
         stopPolling();
-        onError?.(e instanceof Error ? e : new Error(String(e)));
+        if (!errorNotifiedRef.current) {
+          errorNotifiedRef.current = true;
+          onError?.(e instanceof Error ? e : new Error(String(e)));
+        }
+      } finally {
+        inFlightRef.current = false;
       }
     },
     [onJob, onTerminal, onError, stopPolling]
@@ -45,6 +54,7 @@ export function useJobPolling({ onJob, onTerminal, onError }: UseJobPollingArgs)
 
   const startPolling = useCallback(
     (jobId: string) => {
+      errorNotifiedRef.current = false;
       stopPolling();
       pollRef.current = setInterval(() => pollOnce(jobId), POLL_INTERVAL_MS);
 

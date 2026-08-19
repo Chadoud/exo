@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
+import type { EntitlementStatus } from "../api";
 import type { AppSettings } from "../types/settings";
 import type { MainNavTab } from "../hooks/useMainNavItems";
+import { voicePaidAllowed } from "../utils/voicePaidAccess";
 import { CLAP_WAKE_VOICE_EVENT } from "../constants";
 import { openPrimarySettingsSection } from "../utils/settingsNav";
 import { assertVoiceBackendReady } from "../voice/ensureVoiceBackendReady";
+import {
+  CONVERSATION_LAND_UNMUTE_GRACE_MS,
+  conversationLandMicAction,
+} from "../voice/conversationLandMic";
 import { useVoiceSession, type UseVoiceSessionReturn } from "./useVoiceSession";
 import { useBriefingOfferUi, type UseBriefingOfferUiReturn } from "./useBriefingOfferUi";
 import { usePushToTalk } from "./usePushToTalk";
@@ -34,6 +40,9 @@ type UseWorkspaceVoiceBridgeOptions = {
   setSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
   settingsHydrated: boolean;
   backendOnline: boolean;
+  entitlement: EntitlementStatus | null;
+  entitlementLoaded: boolean;
+  toastEntitlementBlocked: () => void;
   activeTab: MainNavTab;
   jumpToSettingsSection: (sectionId: string) => void;
   onRetryBackend?: () => void | Promise<void>;
@@ -65,6 +74,9 @@ export function useWorkspaceVoiceBridge({
   setSettings,
   settingsHydrated,
   backendOnline,
+  entitlement,
+  entitlementLoaded,
+  toastEntitlementBlocked,
   activeTab,
   jumpToSettingsSection,
   onRetryBackend,
@@ -118,6 +130,39 @@ export function useWorkspaceVoiceBridge({
     onToolResult,
   });
 
+  const startIfPaid = useCallback(async () => {
+    if (!entitlementLoaded) return;
+    if (!voicePaidAllowed(entitlement, entitlementLoaded)) {
+      toastEntitlementBlocked();
+      return;
+    }
+    await voice.start();
+  }, [entitlement, entitlementLoaded, toastEntitlementBlocked, voice.start]);
+
+  const startLandIfPaid = useCallback(async () => {
+    if (!voicePaidAllowed(entitlement, entitlementLoaded)) return;
+    await voice.startForLandOffer();
+  }, [entitlement, entitlementLoaded, voice.startForLandOffer]);
+
+  const startPttIfPaid = useCallback(async () => {
+    if (!entitlementLoaded) return;
+    if (!voicePaidAllowed(entitlement, entitlementLoaded)) {
+      toastEntitlementBlocked();
+      return;
+    }
+    await voice.startForPushToTalk();
+  }, [entitlement, entitlementLoaded, toastEntitlementBlocked, voice.startForPushToTalk]);
+
+  const gatedVoice = useMemo(
+    () => ({
+      ...voice,
+      start: startIfPaid,
+      startForLandOffer: startLandIfPaid,
+      startForPushToTalk: startPttIfPaid,
+    }),
+    [voice, startIfPaid, startLandIfPaid, startPttIfPaid],
+  );
+
   const sendJsonFrame = voice.sendJsonFrame;
   const setOnBriefingOfferEvent = voice.setOnBriefingOfferEvent;
 
@@ -143,25 +188,78 @@ export function useWorkspaceVoiceBridge({
   // Conversation + voiceAutoStart already opens unmuted with startup=1 via ExoPanel — skip duplicate.
   const landOfferStartedRef = useRef(false);
   useEffect(() => {
-    if (!settingsHydrated || !backendOnline) return;
+    if (!settingsHydrated || !backendOnline || !entitlementLoaded) return;
+    if (!voicePaidAllowed(entitlement, entitlementLoaded)) {
+      landOfferStartedRef.current = false;
+      return;
+    }
     if (landOfferStartedRef.current) return;
     if (voice.isListening || voice.isReconnecting) return;
     if (settings.voiceInteractionMode === "conversation" && settings.voiceAutoStart) return;
     landOfferStartedRef.current = true;
-    void voice.startForLandOffer();
+    void startLandIfPaid();
   }, [
     settingsHydrated,
     backendOnline,
+    entitlement,
+    entitlementLoaded,
     settings.voiceInteractionMode,
     settings.voiceAutoStart,
     voice.isListening,
     voice.isReconnecting,
-    voice.startForLandOffer,
+    startLandIfPaid,
+  ]);
+
+  useEffect(() => {
+    if (!entitlementLoaded) return;
+    if (voicePaidAllowed(entitlement, entitlementLoaded)) return;
+    if (voice.isListening || voice.isReconnecting) {
+      voice.stop();
+    }
+  }, [
+    entitlement,
+    entitlementLoaded,
+    voice.isListening,
+    voice.isReconnecting,
+    voice.stop,
+  ]);
+
+  // Land starts muted; conversation must open the mic once the card is up
+  // (or shortly after, if no offer arrives). PTT stays muted until the key.
+  // Once-per-listen: setMicCaptureEnabled(true) also clears barge-in.
+  const conversationMicOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!voice.isListening) {
+      conversationMicOpenedRef.current = false;
+      return;
+    }
+    const action = conversationLandMicAction({
+      mode: settings.voiceInteractionMode,
+      isListening: voice.isListening,
+      offerPhase: briefingOffer.phase,
+    });
+    if (action === "hold") return;
+    const openMic = () => {
+      if (conversationMicOpenedRef.current) return;
+      conversationMicOpenedRef.current = true;
+      voice.setMicCaptureEnabled(true);
+    };
+    if (action === "unmute") {
+      openMic();
+      return;
+    }
+    const handle = window.setTimeout(openMic, CONVERSATION_LAND_UNMUTE_GRACE_MS);
+    return () => window.clearTimeout(handle);
+  }, [
+    settings.voiceInteractionMode,
+    voice.isListening,
+    briefingOffer.phase,
+    voice.setMicCaptureEnabled,
   ]);
 
   const pushToTalk = usePushToTalk({
     settings,
-    voice,
+    voice: gatedVoice,
     backendOnline,
   });
 
@@ -256,11 +354,11 @@ export function useWorkspaceVoiceBridge({
     if (!isConversationVoiceMode) return;
     const onClapWakeVoice = () => {
       if (voice.isListening || voice.isReconnecting) return;
-      void voice.start();
+      void startIfPaid();
     };
     window.addEventListener(CLAP_WAKE_VOICE_EVENT, onClapWakeVoice);
     return () => window.removeEventListener(CLAP_WAKE_VOICE_EVENT, onClapWakeVoice);
-  }, [isConversationVoiceMode, voice.isListening, voice.isReconnecting, voice.start]);
+  }, [isConversationVoiceMode, voice.isListening, voice.isReconnecting, startIfPaid]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -270,7 +368,7 @@ export function useWorkspaceVoiceBridge({
         voice.stop();
         voice.dismissError();
       } else {
-        void voice.start();
+        void startIfPaid();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -279,7 +377,7 @@ export function useWorkspaceVoiceBridge({
     isConversationVoiceMode,
     voice.isListening,
     voice.isReconnecting,
-    voice.start,
+    startIfPaid,
     voice.stop,
     voice.dismissError,
   ]);
@@ -295,7 +393,7 @@ export function useWorkspaceVoiceBridge({
   );
 
   return {
-    voice,
+    voice: gatedVoice,
     briefingOffer,
     pushToTalk,
     isConversationVoiceMode,

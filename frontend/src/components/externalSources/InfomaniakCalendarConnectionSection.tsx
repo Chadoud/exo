@@ -11,6 +11,7 @@ import {
 } from "./infomaniakIntegrationEvents";
 import InfomaniakTokenSetupModal from "./InfomaniakTokenSetupModal";
 import { describeInfomaniakConnectFailureReason } from "./infomaniakConnectFailureMessage";
+import SourceAccountLine from "./SourceAccountLine";
 
 const PROVIDER_ID = "infomaniak-calendar";
 
@@ -25,11 +26,10 @@ interface InfomaniakCalendarConnectionSectionProps {
  * The API-token guide mirrors other Infomaniak cards; the checklist only lists Workspace Calendar scopes.
  */
 export default function InfomaniakCalendarConnectionSection({
-  backendOnline: _backendOnline,
+  backendOnline,
   brandIcon,
   compact = false,
 }: InfomaniakCalendarConnectionSectionProps) {
-  void _backendOnline;
   const { t } = useI18n();
   const [showTokenGuide, setShowTokenGuide] = useState(false);
   const [hasPersonalToken, setHasPersonalToken] = useState(false);
@@ -127,7 +127,15 @@ export default function InfomaniakCalendarConnectionSection({
             />
           ) : undefined
         }
-      />
+      >
+        <SourceAccountLine
+          providerId={PROVIDER_ID}
+          connected={effectivelyConnected}
+          backendOnline={backendOnline}
+          desktop={desktop}
+          refreshEvent={INFOMANIAK_CALENDAR_INTEGRATION_CHANGED_EVENT}
+        />
+      </ExternalSourceCard>
 
       {showTokenGuide && (
         <InfomaniakTokenSetupModal

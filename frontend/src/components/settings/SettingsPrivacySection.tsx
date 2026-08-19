@@ -164,12 +164,6 @@ export default function SettingsPrivacySection({
         <p className="text-2xs text-muted leading-relaxed">{t("settings.privacyLocalWipeHint")}</p>
         <LocalWipeControls backendOnline={backendOnline} />
       </div>
-
-      <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-3">
-        <p className="text-xs font-medium text-text-primary">{t("settings.privacyWipeAllProfilesTitle")}</p>
-        <p className="text-2xs text-muted leading-relaxed">{t("settings.privacyWipeAllProfilesHint")}</p>
-        <WipeAllProfilesControls backendOnline={backendOnline} />
-      </div>
     </section>
   );
 }
@@ -217,64 +211,6 @@ function LocalWipeControls({ backendOnline }: { backendOnline: boolean }) {
         }`}
       >
         {confirm ? t("settings.privacyLocalWipeConfirm") : t("settings.privacyLocalWipeAction")}
-      </button>
-      {confirm ? (
-        <button
-          type="button"
-          onClick={() => setConfirm(false)}
-          className="rounded-lg px-3 py-1.5 text-xs text-muted hover:text-text-primary"
-        >
-          {t("memories.cancel")}
-        </button>
-      ) : null}
-      {message ? <span className="text-xs text-muted">{message}</span> : null}
-    </div>
-  );
-}
-
-function WipeAllProfilesControls({ backendOnline }: { backendOnline: boolean }) {
-  const { t } = useI18n();
-  const [confirm, setConfirm] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  const runWipe = async () => {
-    if (!confirm) {
-      setConfirm(true);
-      return;
-    }
-    if (!backendOnline) return;
-    setBusy(true);
-    setMessage(null);
-    try {
-      const { wipeAllProfilesOnDevice } = await import("../../api/privacy");
-      const result = await wipeAllProfilesOnDevice();
-      if (result.ok) {
-        setMessage(t("settings.privacyWipeAllProfilesDone"));
-        setConfirm(false);
-      } else {
-        setMessage(result.detail || t("settings.privacyWipeAllProfilesError"));
-      }
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : t("settings.privacyWipeAllProfilesError"));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        disabled={busy || !backendOnline}
-        onClick={() => void runWipe()}
-        className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-          confirm
-            ? "bg-red-600 text-white hover:bg-red-500"
-            : "border border-red-500/40 text-red-400 hover:bg-red-500/10"
-        }`}
-      >
-        {confirm ? t("settings.privacyWipeAllProfilesConfirm") : t("settings.privacyWipeAllProfilesAction")}
       </button>
       {confirm ? (
         <button

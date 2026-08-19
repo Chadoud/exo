@@ -31,6 +31,16 @@ export function isTrialLimitedMode(entitlement: EntitlementStatus | null): boole
   return entitlement.trialExpired;
 }
 
+/** Banner only when limited mode is real — not while entitlement is loading or paid features still work. */
+export function shouldShowTrialLimitedBanner(
+  entitlement: EntitlementStatus | null,
+  options: { entitlementLoaded: boolean; gateDismissed: boolean },
+): boolean {
+  if (!options.entitlementLoaded || !options.gateDismissed) return false;
+  if (!isTrialLimitedMode(entitlement)) return false;
+  return entitlement?.canAnalyze === false;
+}
+
 /** True if the user already chose "Continue with limited access" this session (gate returns next launch). */
 export function readTrialGateDismissed(): boolean {
   try {

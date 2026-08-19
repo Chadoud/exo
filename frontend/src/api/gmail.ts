@@ -43,6 +43,8 @@ export type GmailStatusResponse = {
   user_dotenv_file_exists?: boolean;
   resource_dotenv_file_exists?: boolean;
   developer_setup_steps?: GmailDeveloperSetupStep[];
+  /** Connected mailbox address from Gmail profile — omit/null when unknown. */
+  email?: string | null;
 };
 
 export async function gmailStatus(): Promise<GmailStatusResponse> {

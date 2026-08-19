@@ -29,6 +29,13 @@ function rejectUntrustedSender(event) {
   return null;
 }
 
+/** Pass through a health probe; include email only when the provider returned one. */
+function healthWithEmail(h) {
+  if (!h || !h.ok) return { ok: false, reason: (h && h.reason) || "health_failed" };
+  const email = typeof h.email === "string" ? h.email.trim() : "";
+  return email ? { ok: true, email } : { ok: true };
+}
+
 module.exports = function registerIntegrationAccountsHandlers(ipcMain, core) {
   const { syncGoogleOauthClientIdForElectronMain } = require("../../backendProcess");
 
@@ -111,8 +118,7 @@ module.exports = function registerIntegrationAccountsHandlers(ipcMain, core) {
       core.tryHydrateGoogleGmailFromMirror(ud);
       const sess = await core.ensureGoogleSession(ud, core.PROVIDER_GOOGLE_GMAIL);
       if (!sess.ok) return sess;
-      const h = await google.gmailProfileHealth(sess.token);
-      return h.ok ? { ok: true } : { ok: false, reason: h.reason || "health_failed" };
+      return healthWithEmail(await google.gmailProfileHealth(sess.token));
     }
 
     if (id === core.PROVIDER_GOOGLE_DRIVE) {
@@ -120,8 +126,7 @@ module.exports = function registerIntegrationAccountsHandlers(ipcMain, core) {
       core.migrateLegacyGoogleProvider(ud);
       const sess = await core.ensureGoogleSession(ud, core.PROVIDER_GOOGLE_DRIVE);
       if (!sess.ok) return sess;
-      const h = await google.driveAboutHealth(sess.token);
-      return h.ok ? { ok: true } : { ok: false, reason: h.reason || "health_failed" };
+      return healthWithEmail(await google.driveAboutHealth(sess.token));
     }
 
     if (id === core.PROVIDER_GOOGLE_CALENDAR) {
@@ -129,24 +134,21 @@ module.exports = function registerIntegrationAccountsHandlers(ipcMain, core) {
       core.migrateLegacyGoogleProvider(ud);
       const sess = await core.ensureGoogleSession(ud, core.PROVIDER_GOOGLE_CALENDAR);
       if (!sess.ok) return sess;
-      const h = await google.googleCalendarHealth(sess.token);
-      return h.ok ? { ok: true } : { ok: false, reason: h.reason || "health_failed" };
+      return healthWithEmail(await google.googleCalendarHealth(sess.token));
     }
 
     if (id === core.PROVIDER_MICROSOFT || id === core.PROVIDER_ONEDRIVE || id === core.PROVIDER_OUTLOOK) {
       if (!microsoft.getClientId()) return { ok: false, reason: "oauth_not_configured" };
       const sess = await core.ensureMicrosoftSession(ud);
       if (!sess.ok) return sess;
-      const h = await microsoft.graphMeHealth(sess.token);
-      return h.ok ? { ok: true } : { ok: false, reason: h.reason || "health_failed" };
+      return healthWithEmail(await microsoft.graphMeHealth(sess.token));
     }
 
     if (id === core.PROVIDER_DROPBOX) {
       if (!dropbox.getAppKey()) return { ok: false, reason: "oauth_not_configured" };
       const sess = await core.ensureDropboxSession(ud);
       if (!sess.ok) return sess;
-      const h = await dropbox.dropboxAccountHealth(sess.token);
-      return h.ok ? { ok: true } : { ok: false, reason: h.reason || "health_failed" };
+      return healthWithEmail(await dropbox.dropboxAccountHealth(sess.token));
     }
 
     if (id === core.PROVIDER_NOTION) {
@@ -190,7 +192,7 @@ module.exports = function registerIntegrationAccountsHandlers(ipcMain, core) {
       const sess = await core.ensureInfomaniakSession(ud);
       if (!sess.ok) return sess;
       const h = await infomaniak.infomaniakDriveHealth(sess.token);
-      return h.ok ? { ok: true } : { ok: false, reason: h.reason || "health_failed" };
+      return healthWithEmail(h);
     }
 
     if (id === core.PROVIDER_INFOMANIAK_CALENDAR) {
@@ -198,7 +200,7 @@ module.exports = function registerIntegrationAccountsHandlers(ipcMain, core) {
       const sess = await core.ensureInfomaniakCalendarSession(ud);
       if (!sess.ok) return sess;
       const h = await infomaniak.infomaniakCalendarHealth(sess.token);
-      return h.ok ? { ok: true } : { ok: false, reason: h.reason || "health_failed" };
+      return healthWithEmail(h);
     }
 
     return { ok: false, reason: "unknown_provider" };

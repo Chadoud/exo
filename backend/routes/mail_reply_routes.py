@@ -20,6 +20,8 @@ class MailReplyItem(BaseModel):
     from_local_part: str
     subject: str
     created_at: str
+    draft_subject: str = ""
+    draft_body: str = ""
 
 
 class MailReplyListResponse(BaseModel):
@@ -43,6 +45,16 @@ class MailReplyDraftResponse(BaseModel):
     to_email: str
     subject: str
     body: str
+
+
+class MailReplyOriginalResponse(BaseModel):
+    text: str = Field(default="", max_length=6000)
+    truncated: bool = False
+
+
+class MailReplyDraftSave(BaseModel):
+    subject: str = Field(default="", max_length=200)
+    body: str = Field(default="", max_length=8000)
 
 
 class MailReplySendBody(BaseModel):
@@ -69,6 +81,8 @@ def _public_item(row: dict[str, Any]) -> MailReplyItem:
         from_local_part=_local_part(str(row.get("from_email") or "")),
         subject=str(row.get("subject") or ""),
         created_at=str(row.get("created_at") or ""),
+        draft_subject=str(row.get("draft_subject") or ""),
+        draft_body=str(row.get("draft_body") or ""),
     )
 
 
@@ -78,13 +92,24 @@ def list_mail_replies() -> MailReplyListResponse:
     from mail_initiative.settings import gated_reason, has_send_scope, is_enabled
 
     reason = gated_reason()
-    items = [] if reason else [_public_item(r) for r in store.list_candidates(limit=3)]
+    items = [] if reason else [_public_item(r) for r in store.list_candidates(limit=3, drafted_only=True)]
     return MailReplyListResponse(
         items=items,
         enabled=is_enabled(),
         can_send=reason is None and has_send_scope(),
         gated_reason=reason,
     )
+
+
+@router.post("/mail/replies/refresh", response_model=MailReplyListResponse)
+def refresh_mail_replies() -> MailReplyListResponse:
+    """Force a harvest tick, then return the current ready-reply list."""
+    from mail_initiative.harvest import run_harvest
+    from mail_initiative.settings import gated_reason
+
+    if gated_reason() is None and allow("mail_reply_harvest", 10, 3600):
+        run_harvest(force=True)
+    return list_mail_replies()
 
 
 @router.get("/mail/replies/settings", response_model=MailReplySettings)
@@ -122,8 +147,63 @@ def dismiss_mail_reply(candidate_id: int) -> dict[str, bool]:
         raise HTTPException(status_code=404, detail="not_found")
     store.dismiss_thread(str(cand["thread_id"]))
     store.revoke_tokens_for_candidate(candidate_id)
-    store.delete_candidate(candidate_id)
     return {"ok": True}
+
+
+@router.post("/mail/replies/{candidate_id}/restore")
+def restore_mail_reply(candidate_id: int) -> dict[str, bool]:
+    from mail_initiative import store
+
+    restored = store.restore_candidate(candidate_id)
+    if not restored:
+        raise HTTPException(status_code=404, detail="not_found")
+    return {"ok": True}
+
+
+@router.patch("/mail/replies/{candidate_id}/draft")
+def save_mail_reply_draft(candidate_id: int, body: MailReplyDraftSave) -> dict[str, bool]:
+    from entitlement_gate import assert_may_use_proactive
+    from mail_initiative import store
+    from mail_initiative.settings import gated_reason
+
+    assert_may_use_proactive()
+    reason = gated_reason()
+    if reason == "pro":
+        raise HTTPException(status_code=402, detail="proactive_required")
+    if reason:
+        raise HTTPException(status_code=403, detail=reason)
+    saved = store.save_candidate_draft(candidate_id, subject=body.subject, body=body.body)
+    if not saved:
+        raise HTTPException(status_code=404, detail="not_found")
+    return {"ok": True}
+
+
+@router.get("/mail/replies/{candidate_id}/original", response_model=MailReplyOriginalResponse)
+def get_mail_reply_original(candidate_id: int) -> MailReplyOriginalResponse:
+    from entitlement_gate import assert_may_use_proactive
+    from mail_initiative.gmail_api import HarvestRateLimited
+    from mail_initiative.original import read_original
+    from mail_initiative.settings import gated_reason
+
+    assert_may_use_proactive()
+    reason = gated_reason()
+    if reason == "pro":
+        raise HTTPException(status_code=402, detail="proactive_required")
+    if reason:
+        raise HTTPException(status_code=403, detail=reason)
+    if not allow("mail_reply_original", 40, 86400):
+        raise HTTPException(status_code=429, detail="rate_limited")
+    try:
+        data = read_original(candidate_id)
+    except HarvestRateLimited:
+        raise HTTPException(status_code=429, detail="rate_limited") from None
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc) or "no_scope") from exc
+    except LookupError as exc:
+        code = str(exc) or "not_found"
+        status = 409 if code in {"thread_gone", "thread_changed"} else 404
+        raise HTTPException(status_code=status, detail=code) from exc
+    return MailReplyOriginalResponse(**data)
 
 
 @router.post("/mail/replies/{candidate_id}/draft", response_model=MailReplyDraftResponse)

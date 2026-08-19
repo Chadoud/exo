@@ -5,6 +5,11 @@ import ExternalSourceConnectionButton from "./ExternalSourceConnectionButton";
 import { externalSourceConnectionPill } from "./externalSourceConnectionPill";
 import { externalSourceConnectDisabled } from "../../utils/externalSourceConnectUi";
 import { useDesktopOAuthCardState } from "../../hooks/useDesktopOAuthCardState";
+import {
+  forgetIntegrationSourcesBestEffort,
+  refreshIntegrationTasksBestEffort,
+} from "../../utils/forgetIntegrationTasks";
+import SourceAccountLine from "./SourceAccountLine";
 
 const PROVIDER_ID = "onedrive";
 
@@ -25,16 +30,23 @@ interface OneDriveConnectionSectionProps {
  * OneDrive OAuth card (desktop only). Uses the Microsoft OAuth slot registered in Azure.
  */
 export default function OneDriveConnectionSection({
-  backendOnline: _backendOnline,
+  backendOnline,
   brandIcon,
   compact = false,
 }: OneDriveConnectionSectionProps) {
-  void _backendOnline;
   const { t } = useI18n();
   const { desktop, connected, loadingStatus, oauthBusy, connect, disconnect } =
     useDesktopOAuthCardState({
       providerId: PROVIDER_ID,
       integrationChangedEvent: MICROSOFT_INTEGRATION_CHANGED_EVENT,
+      onConnected: () => {
+        if (backendOnline) refreshIntegrationTasksBestEffort();
+      },
+      onDisconnected: () => {
+        if (backendOnline) {
+          void forgetIntegrationSourcesBestEffort(["outlook", "outlook-calendar"]);
+        }
+      },
       i18n: {
         connectSuccess: t("sources.oneDriveConnectSuccess"),
         connectFailed: t("sources.oneDriveConnectFailed"),
@@ -71,6 +83,14 @@ export default function OneDriveConnectionSection({
           />
         ) : undefined
       }
-    />
+    >
+      <SourceAccountLine
+        providerId={PROVIDER_ID}
+        connected={connected}
+        backendOnline={backendOnline}
+        desktop={desktop}
+        refreshEvent={MICROSOFT_INTEGRATION_CHANGED_EVENT}
+      />
+    </ExternalSourceCard>
   );
 }

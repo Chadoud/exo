@@ -81,6 +81,15 @@ describe("TaskRow", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
+  it("keeps the checkbox outside the colored card", () => {
+    mount(vi.fn(), vi.fn(), { selecting: true, selected: false });
+    const checkbox = container.querySelector("button");
+    const card = container.querySelector(".rounded-xl");
+    expect(checkbox).toBeTruthy();
+    expect(card).toBeTruthy();
+    expect(card?.contains(checkbox)).toBe(false);
+  });
+
   it("checkbox selects while selecting", () => {
     const onToggle = vi.fn();
     const onSelect = vi.fn();

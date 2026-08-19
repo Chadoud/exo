@@ -1,12 +1,20 @@
 interface ListSkeletonProps {
   rows?: number;
   className?: string;
+  /** Accessible status while rows are decorative. */
+  busyLabel?: string;
 }
 
 /** Placeholder rows while list data loads — replaces centered "Loading…" text. */
-export default function ListSkeleton({ rows = 5, className = "" }: ListSkeletonProps) {
+export default function ListSkeleton({ rows = 5, className = "", busyLabel }: ListSkeletonProps) {
   return (
-    <div className={`space-y-2 ${className}`.trim()} aria-hidden>
+    <div
+      className={`space-y-2 ${className}`.trim()}
+      role={busyLabel ? "status" : undefined}
+      aria-busy={busyLabel ? true : undefined}
+      aria-hidden={busyLabel ? undefined : true}
+    >
+      {busyLabel ? <span className="sr-only">{busyLabel}</span> : null}
       {Array.from({ length: rows }, (_, i) => (
         <div
           key={i}

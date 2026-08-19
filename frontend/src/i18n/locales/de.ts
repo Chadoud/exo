@@ -292,9 +292,10 @@ export default {
     title: "Externe Quellen",
     connectorStatusConnected: "Verbunden",
     connectorStatusNotConnected: "Nicht verbunden",
+    connectorActionConnect: "Verbinden",
     disconnectConfirmTitle: "{source} trennen?",
     disconnectConfirmBody:
-      "Exo verwendet {source} auf diesem Gerät erst wieder, wenn Sie die Verbindung erneut herstellen.",
+      "Exo verwendet {source} auf diesem Gerät nicht mehr. Importierte Aufgaben, übrig gebliebene Antwortentwürfe und Kalendernotizen, die Exo von diesem Konto gespeichert hat, werden entfernt. Selbst erfasste Aufgaben bleiben.",
     disconnectConfirmAction: "Trennen",
     disconnectConfirmCancel: "Verbunden lassen",
     connectorOauthNotConfigured: "Dieser Connector ist in Ihrer App-Version noch nicht eingerichtet. App aktualisieren oder Support kontaktieren.",
@@ -347,8 +348,8 @@ export default {
     gmailTitle: "Gmail",
     gmailAccountDesc:
       "Verbinden Sie das Google-Konto für Gmail. Für Google Drive können Sie auf der Drive-Karte ein anderes Konto nutzen. Mails werden nur gelesen, wenn Sie im Tab \"Dateien sortieren\" einen Sortierlauf starten. Tokens bleiben auf diesem Rechner. Die Freigabe eines Hintergrundplans erlaubt Mail-Verschiebungen und Filter nur für diesen Lauf.",
-    gmailFiltersReconnectHint:
-      "Gmail braucht eine aktualisierte Verbindung für Posteingangsfilter. Trennen Sie Gmail unter Externe Quellen und verbinden Sie es erneut.",
+    gmailAccountUnknown:
+      "Konto konnte nicht gelesen werden. Trennen und erneut verbinden.",
     gmailWebDesktopDriveSeparateNote:
       "Google Drive hat oben eine eigene Schaltfläche. Diese Gmail-Verbindung ändert Drive nicht.",
     gmailNotConfigured:
@@ -1352,11 +1353,10 @@ export default {
       "Grobe Nutzungsanalyse und Absturzberichte basieren auf unserem berechtigten Interesse (Datenschutzerklärung). Widerspruch jederzeit unten — nie Dateinamen, Pfade oder organisierte Inhalte.",
     mailReply: {
       privacySentence:
-        "Gmail-Antwortvorschläge (Aufgaben → Posteingang) prüfen periodisch aktuelle Gmail-Threads nur auf Metadaten (Absender, Betreff); die vollständige Nachricht geht erst an die Cloud-KI, wenn Sie Überprüfen öffnen, und ohne Ihre Bestätigung wird nichts gesendet.",
-      toggleLabel: "Antworten im Posteingang vorschlagen",
-      toggleHint: "Der Posteingang zeigt, wer auf eine Antwort wartet, mit einem Entwurf zur Überprüfung.",
+        "Gmail-Antwortvorschläge (To Do → Aufgaben) lesen periodisch aktuelle Posteingangs-Threads und schreiben eine Antwort auf der Aufgabenkarte; ohne Ihre Bestätigung wird nichts gesendet.",
+      toggleLabel: "Antworten auf Aufgaben vorschlagen",
+      toggleHint: "Wenn jemand wartet, kann die E-Mail-Aufgabenkarte einen Entwurf zum Prüfen und Senden zeigen.",
       reconnectHint: "Verbinden Sie Gmail mit Sendezugriff, um dies zu aktivieren.",
-      firstCheck: "Die erste Prüfung kann einige Minuten dauern.",
     },
     privacyTelemetryLabel: "Nutzungsanalyse",
     privacyTelemetryDisclosure:
@@ -1387,13 +1387,6 @@ export default {
     privacyLocalWipeConfirm: "Löschen bestätigen",
     privacyLocalWipeDone: "Lokale Daten dieses Kontos wurden gelöscht.",
     privacyLocalWipeError: "Lokale Daten konnten nicht gelöscht werden. Läuft der App-Dienst?",
-    privacyWipeAllProfilesTitle: "Alle Konten auf diesem Mac löschen",
-    privacyWipeAllProfilesHint:
-      "Löscht jeden lokalen Kontotresor auf diesem Mac und meldet Sie ab. Vollständiger Reset der Exo-Daten auf diesem Gerät.",
-    privacyWipeAllProfilesAction: "Alle lokalen Konten löschen",
-    privacyWipeAllProfilesConfirm: "Löschen aller Konten bestätigen",
-    privacyWipeAllProfilesDone: "Alle lokalen Kontodaten auf diesem Mac wurden gelöscht.",
-    privacyWipeAllProfilesError: "Lokale Konten konnten nicht gelöscht werden. Läuft der App-Dienst?",
     accountLocalVaultHint:
       "API-Schlüssel und Chats bleiben in einem lokalen Tresor für dieses Konto auf diesem Mac. Abmelden sperrt den Tresor — das nächste Konto sieht ihn nicht.",
     voiceGroupTitle: "Sprache",

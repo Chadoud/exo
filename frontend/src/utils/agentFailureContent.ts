@@ -52,3 +52,23 @@ export function extractAgentRetryGoal(text: string): string {
   if (!trimmed) return "";
   return trimmed.replace(AGENT_RETRY_PREFIX_RE, "").trim() || trimmed;
 }
+
+const UNPARSEABLE_ASK =
+  /can'?t determine what you'?re asking|doesn'?t state a complete request|is cut off|resend the full (question|task)/i;
+
+/** True when a stored failure is not recoverable work (cut-off STT, empty ask). */
+export function isTrashAgentFailure(parsed: ParsedAgentFailure): boolean {
+  const goal = parsed.goal.trim();
+  if (!goal) return true;
+  if (UNPARSEABLE_ASK.test(parsed.outcome)) return true;
+  const words = goal.match(/[^\W_]+/g) ?? [];
+  if (goal.trimStart().startsWith(".") && words.length <= 4) return true;
+  return false;
+}
+
+/** First line of an outcome for the collapsed Inbox card. Empty when there is no why. */
+export function oneLineFailureWhy(outcome: string): string {
+  const trimmed = outcome.trim();
+  if (!trimmed) return "";
+  return trimmed.split(/\n/, 1)[0]?.trim() ?? "";
+}

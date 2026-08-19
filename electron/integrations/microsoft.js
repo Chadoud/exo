@@ -341,21 +341,30 @@ async function getValidAccessToken(stored) {
  * Lightweight Graph check (no secrets returned).
  * @param {string} accessToken
  */
+function emailFromGraphMePayload(json) {
+  if (!json || typeof json !== "object") return undefined;
+  const mail = typeof json.mail === "string" ? json.mail.trim() : "";
+  if (mail) return mail;
+  const upn = typeof json.userPrincipalName === "string" ? json.userPrincipalName.trim() : "";
+  return upn || undefined;
+}
+
 async function graphMeHealth(accessToken) {
   const res = await fetch(`${GRAPH}/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+  const t = await res.text();
+  let j;
+  try {
+    j = JSON.parse(t);
+  } catch {
+    j = {};
+  }
   if (!res.ok) {
-    const t = await res.text();
-    let j;
-    try {
-      j = JSON.parse(t);
-    } catch {
-      j = {};
-    }
     return { ok: false, reason: j.error?.message || `http_${res.status}` };
   }
-  return { ok: true };
+  const email = emailFromGraphMePayload(j);
+  return email ? { ok: true, email } : { ok: true };
 }
 
 /**
@@ -1114,6 +1123,7 @@ module.exports = {
   connectMicrosoftPkce,
   refreshStoredTokens,
   getValidAccessToken,
+  emailFromGraphMePayload,
   graphMeHealth,
   graphCalendarHealth,
   uploadTextToOneDriveRoot,

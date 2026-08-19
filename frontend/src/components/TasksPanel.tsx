@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import { toast } from "sonner";
+import { announceTaskSync } from "../utils/taskSyncToast";
 import TaskMeetingFab from "./tasks/TaskMeetingFab";
 import TaskPromoCleanupBanner from "./tasks/TaskPromoCleanupBanner";
 import TasksPanelModals from "./tasks/TasksPanelModals";
-import TaskRow from "./tasks/TaskRow";
 import TaskSelectBar from "./tasks/TaskSelectBar";
 import TaskPanelHeaderActions from "./tasks/TaskPanelHeaderActions";
-import { taskSourceBadge } from "./tasks/taskSourceBadge";
-import TodayBriefingCard from "./tasks/TodayBriefingCard";
-import TodoInboxSection from "./tasks/TodoInboxSection";
+import TodoAttentionPanes from "./tasks/TodoAttentionPanes";
+import TodoOpenTasksBody from "./tasks/TodoOpenTasksBody";
 import TodoSubNav from "./tasks/TodoSubNav";
 import TodoTaskTimeline, { firstOverdueSectionId, todaySectionId } from "./tasks/TodoTaskTimeline";
-import TodoUpcomingLater from "./tasks/TodoUpcomingLater";
 import TodoTodaySummary from "./tasks/TodoTodaySummary";
 import PanelShell from "./ui/PanelShell";
 import OfflineStrip from "./ui/OfflineStrip";
@@ -20,12 +18,17 @@ import EmptyState from "./ui/EmptyState";
 import ListSkeleton from "./ui/ListSkeleton";
 import { EntitlementBlockedError } from "../api/client";
 import { fetchTasks, fetchTaskOpenTarget, setTaskCompleted, syncTasksFromIntegrations, type Task } from "../api/tasks";
+import MailReplyInboxSection from "./tasks/MailReplyInboxSection";
+import { useTasksPanelMail } from "../hooks/useTasksPanelMail";
 import { useSecondBrainNoiseCleanup } from "../hooks/useSecondBrainNoiseCleanup";
-import { fetchSchedulerStatus } from "../api/proactive";
 import { consumeOpenMeetingModal } from "../utils/deferredPanelActions";
 import { useOpenTarget } from "../hooks/useOpenTarget";
+import { useInboxDismiss } from "../hooks/useInboxDismiss";
+import { useInboxSelection } from "../hooks/useInboxSelection";
 import { useTaskSelectActions } from "../hooks/useTaskSelectActions";
 import { useTaskSelection } from "../hooks/useTaskSelection";
+import { useTodoSelectHeader } from "../hooks/useTodoSelectHeader";
+import { useTodoUndo } from "../hooks/useTodoUndo";
 import { useI18n } from "../i18n/I18nContext";
 import { getTodoPanelHeadingKeys } from "../utils/workspacePanelHeadings";
 import type { TodoSubTab } from "../utils/todoUi";
@@ -114,17 +117,23 @@ export default function TasksPanel({
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proBlocked, setProBlocked] = useState(false);
-  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
-  const [syncReport, setSyncReport] = useState<{
-    created: Record<string, number>;
-    statuses?: Record<string, string>;
-  } | null>(null);
-  const [syncDrawerOpen, setSyncDrawerOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [pendingMeetingOpen, setPendingMeetingOpen] = useState(() => consumeOpenMeetingModal());
-  const [laterOpen, setLaterOpen] = useState(false);
+  const [laterOpen, setLaterOpen] = useState(true);
   const selection = useTaskSelection();
-  const selectActions = useTaskSelectActions(tasks, setTasks, selection);
+  const inboxSelection = useInboxSelection();
+  const todoUndo = useTodoUndo();
+  const selectActions = useTaskSelectActions(tasks, setTasks, selection, todoUndo, () => {
+    void todoFeed.refresh({ silent: true });
+  });
+  const inboxDismiss = useInboxDismiss({
+    dismissNudge: todoFeed.dismissInboxNudge,
+    dismissFailure: todoFeed.dismissInboxFailure,
+    dismissMail: todoFeed.dismissMailReply,
+    refresh: todoFeed.refresh,
+    pushUndo: todoUndo.push,
+    undo: todoUndo.undo,
+  });
 
   const proLocked = !proAllowed || proBlocked;
 
@@ -159,17 +168,19 @@ export default function TasksPanel({
     setSyncing(true);
     try {
       const sync = await syncTasksFromIntegrations();
-      setSyncReport({ created: sync.created, statuses: sync.statuses });
-      setLastSyncAt(new Date().toISOString());
       await load();
       void noiseCleanup.refreshPreview();
-      if (sync.total_created > 0) {
-        toast.success(
-          t(sync.total_created === 1 ? "tasks.toastFoundOne" : "tasks.toastFoundOther", {
-            n: sync.total_created,
-          }),
-        );
-      }
+      announceTaskSync(
+        sync,
+        {
+          foundOne: t("tasks.toastFoundOne", { n: sync.total_created }),
+          foundOther: t("tasks.toastFoundOther", { n: sync.total_created }),
+          none: t("tasks.toastNone"),
+          notConnected: t("tasks.toastNotConnected"),
+          connectLabel: t("tasks.connectInSources"),
+        },
+        onOpenSources,
+      );
     } catch (e) {
       if (e instanceof EntitlementBlockedError) {
         setProBlocked(true);
@@ -180,16 +191,11 @@ export default function TasksPanel({
     } finally {
       setSyncing(false);
     }
-  }, [backendOnline, load, t, noiseCleanup.refreshPreview]);
+  }, [backendOnline, load, t, noiseCleanup.refreshPreview, onOpenSources]);
 
   useEffect(() => {
     if (!backendOnline) return;
     void load();
-    void fetchSchedulerStatus().then((status) => {
-      if (!status) return;
-      const job = status.jobs.find((j) => j.name === "integration_task_sync");
-      if (job?.last_run_at) setLastSyncAt(job.last_run_at);
-    });
   }, [backendOnline, load]);
 
   const todaySplit = useMemo(() => splitTodayTasks(tasks), [tasks]);
@@ -207,14 +213,28 @@ export default function TasksPanel({
   }, [tasks, showTasks, showDone]);
 
   const clearSelection = selection.clear;
+  const clearInboxSelection = inboxSelection.clear;
   useEffect(() => {
     clearSelection();
-  }, [subTab, clearSelection]);
+    clearInboxSelection();
+  }, [subTab, clearSelection, clearInboxSelection]);
+
+  const { pendingKeys, showSelect, onHeaderSelect } = useTodoSelectHeader({
+    proLocked,
+    subTab,
+    showAllSections,
+    taskSelecting: selection.selecting,
+    inboxSelecting: inboxSelection.selecting,
+    visibleTaskIds: visibleSelectIds,
+    inbox: todoFeed.inbox,
+    enterTasks: selection.enter,
+  });
 
   const handleToggle = async (task: Task) => {
     try {
       const updated = await setTaskCompleted(task.id, !task.completed);
       setTasks((prev) => prev.map((item) => (item.id === task.id ? updated : item)));
+      void todoFeed.refresh({ silent: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("tasks.toastUpdateFailed"));
     }
@@ -226,20 +246,22 @@ export default function TasksPanel({
     void openTarget(() => fetchTaskOpenTarget(task.id)).finally(() => setOpenBusyTaskId(null));
   };
 
-  const renderTaskRow = (task: Task, dueDisplay: "grouped" | "full" | "none") => (
-    <TaskRow
-      key={task.id}
-      task={task}
-      sourceBadge={taskSourceBadge(task.source, t)}
-      dueDisplay={dueDisplay}
-      onToggle={(item) => void handleToggle(item)}
-      onSelect={(item) => selection.onSelect(item.id)}
-      selected={selection.isSelected(task.id)}
-      selecting={selection.selecting}
-      onOpenSource={taskMayHaveOpenTarget(task) ? openSource : undefined}
-      openBusy={openBusyTaskId === task.id}
-    />
-  );
+  const { mailHarvesting, unmatchedReplies, renderTaskRow, onMailHarvested } = useTasksPanelMail({
+    backendOnline,
+    harvestEnabled: backendOnline && showTasks && !proLocked,
+    refreshFeed: todoFeed.refresh,
+    setTasks,
+    tasks,
+    mailReplies: todoFeed.inbox.mailReplies,
+    t,
+    onToggle: (item) => void handleToggle(item),
+    onSelect: (item) => selection.onSelect(item.id),
+    isSelected: selection.isSelected,
+    selecting: selection.selecting,
+    openSource,
+    openBusyTaskId,
+    dismissMail: inboxDismiss.dismissItems,
+  });
 
   const scrollToDaySection = (sectionId: string | null) => {
     if (!sectionId) return;
@@ -248,60 +270,52 @@ export default function TasksPanel({
 
   const todayHasTasks = todaySplit.overdue.length + todaySplit.dueToday.length > 0;
   const hasUpcomingContent = upcomingDayGroups.length > 0 || somedayTasks.length > 0;
-  const hasAnyOpenTasks = todayHasTasks || hasUpcomingContent;
+  const hasAnyOpenTasks = todayHasTasks || hasUpcomingContent || unmatchedReplies.length > 0;
   const showSubNav = !proLocked && sidebarCompact && !showAllSections;
   const showSyncAction = !proLocked && (showAllSections || subTab !== "inbox");
   const showMeetingFab = !proLocked && showTasks;
-
   const sectionHeading = (titleKey: string) =>
     showAllSections ? (
       <h2 className="border-b border-border pb-2 text-base font-semibold text-text-primary">{t(titleKey)}</h2>
     ) : null;
 
-  const renderTasksBody = () => {
-    if (proLocked) return null;
-    if (loading && tasks.length === 0) return <ListSkeleton />;
-    if (loading) return null;
-
-    if (!hasAnyOpenTasks) {
-      return (
-        <EmptyState
-          title={t("tasks.emptyTitle")}
-          description={t("tasks.emptyDesc")}
-          primaryAction={{
-            label: t("tasks.syncFromAccounts"),
-            onClick: () => void refreshAll(),
-          }}
-        />
-      );
-    }
-
-    return (
-      <>
-        {todayHasTasks ? (
-          <TodoTaskTimeline mode="today" dueGroups={todayDayGroups} renderTask={renderTaskRow} />
-        ) : null}
-        <div className="mt-6">
-          <TodayBriefingCard
-            backendOnline={backendOnline}
-            proAllowed={proAllowed}
-            onUpgrade={onUpgrade}
-            hideProCard={proLocked}
+  const renderTasksBody = () => (
+    <TodoOpenTasksBody
+      proLocked={proLocked}
+      loading={loading}
+      hasLoadedTasks={tasks.length > 0}
+      hasAnyOpenTasks={hasAnyOpenTasks}
+      todayHasTasks={todayHasTasks}
+      hasUpcomingContent={hasUpcomingContent}
+      backendOnline={backendOnline}
+      proAllowed={proAllowed}
+      onUpgrade={onUpgrade}
+      todayDayGroups={todayDayGroups}
+      upcomingDayGroups={upcomingDayGroups}
+      somedayTasks={somedayTasks}
+      laterOpen={laterOpen}
+      onToggleLater={() => setLaterOpen((value) => !value)}
+      renderTask={renderTaskRow}
+      unmatchedReplies={
+        unmatchedReplies.length > 0 ? (
+          <MailReplyInboxSection
+            items={unmatchedReplies}
+            licensed
+            showHeading={false}
+            onDismiss={(id) => inboxDismiss.dismissItems([{ kind: "mail", id }])}
+            onSent={() => void onMailHarvested({ silent: true })}
           />
-        </div>
-        {hasUpcomingContent ? (
-          <TodoUpcomingLater
-            showDivider={todayHasTasks}
-            dueGroups={upcomingDayGroups}
-            somedayTasks={somedayTasks}
-            laterOpen={laterOpen}
-            onToggleLater={() => setLaterOpen((value) => !value)}
-            renderTask={renderTaskRow}
-          />
-        ) : null}
-      </>
-    );
-  };
+        ) : null
+      }
+      mailHarvesting={mailHarvesting}
+      readingLabel={t("todo.inbox.mailReply.reading")}
+      readyRepliesHeading={t("todo.readyRepliesHeading")}
+      emptyTitle={t("tasks.emptyTitle")}
+      emptyDesc={t("tasks.emptyDesc")}
+      syncLabel={t("tasks.syncFromAccounts")}
+      onSync={() => void refreshAll()}
+    />
+  );
 
   const renderDoneBody = () => {
     if (loading && tasks.length === 0) return <ListSkeleton />;
@@ -313,6 +327,28 @@ export default function TasksPanel({
     );
   };
 
+  const attentionPanes = (
+    <TodoAttentionPanes
+      showAllSections={showAllSections}
+      showInbox={showInbox}
+      sectionHeading={sectionHeading}
+      feed={todoFeed}
+      dismissItems={inboxDismiss.dismissItems}
+      registerUndo={inboxDismiss.registerUndo}
+      onOpenMemoryReview={onOpenMemoryReview}
+      onOpenToday={() => onSelectSubTab?.("today")}
+      onOpenChat={() => onOpenConversation?.()}
+      onRetryFailureInChat={retryFailureInChat}
+      selecting={inboxSelection.selecting}
+      selectedIds={inboxSelection.selectedIds}
+      pendingKeys={pendingKeys}
+      isSelected={inboxSelection.isSelected}
+      onSelect={backendOnline ? inboxSelection.onSelect : undefined}
+      onSelectAll={inboxSelection.selectAll}
+      onClear={inboxSelection.clear}
+    />
+  );
+
   return (
     <div className="relative w-full pb-20">
       <PanelShell
@@ -320,14 +356,14 @@ export default function TasksPanel({
         subtitle={t(heading.subtitleKey)}
         actions={
           <TaskPanelHeaderActions
-            showSelect={!proLocked && !selection.selecting && visibleSelectIds.length > 0}
+            showSelect={showSelect && backendOnline}
             selectLabel={t("tasks.select")}
-            onSelect={selection.enter}
+            onSelect={onHeaderSelect}
             showSync={showSyncAction}
-            syncDisabled={!backendOnline}
-            syncLabel={t("tasks.syncAccounts")}
+            syncDisabled={!backendOnline || syncing}
+            syncLabel={syncing ? t("tasks.syncing") : t("tasks.syncAccounts")}
             syncTitle={t("tasks.syncDetails")}
-            onSync={() => setSyncDrawerOpen(true)}
+            onSync={() => void refreshAll()}
           />
         }
         offlineBanner={
@@ -352,8 +388,9 @@ export default function TasksPanel({
             active={subTab}
             onSelect={(next) => onSelectSubTab?.(next)}
             badges={{
-              today: todoFeed.counts.today,
+              today: todoFeed.counts.open + todoFeed.counts.replies,
               inbox: todoFeed.counts.inbox,
+              done: todoFeed.counts.done,
             }}
           />
         ) : null}
@@ -379,6 +416,7 @@ export default function TasksPanel({
                     overdueCount={todaySplit.overdue.length}
                     dueTodayCount={todaySplit.dueToday.length}
                     inboxCount={todoFeed.counts.inbox}
+                    undatedCount={somedayTasks.length}
                     onOpenInbox={() => onSelectSubTab?.("inbox")}
                     onScrollToOverdue={() => scrollToDaySection(firstOverdueSectionId(todayDayGroups))}
                     onScrollToToday={() => scrollToDaySection(todaySectionId(todayDayGroups))}
@@ -391,23 +429,7 @@ export default function TasksPanel({
               </section>
             ) : null}
 
-            {showInbox ? (
-              <section id="todo-section-inbox" className="space-y-4 border-t border-border pt-10">
-                {sectionHeading("nav.todoInbox")}
-                <TodoInboxSection
-                  inbox={todoFeed.inbox}
-                  onDismissNudge={todoFeed.dismissInboxNudge}
-                  onDismissAllNudges={todoFeed.dismissAllInboxNudges}
-                  onDismissFailure={todoFeed.dismissInboxFailure}
-                  onDismissMailReply={todoFeed.dismissMailReply}
-                  onMailReplySent={() => void todoFeed.refresh()}
-                  onOpenMemoryReview={() => onOpenMemoryReview?.()}
-                  onOpenToday={() => onSelectSubTab?.("today")}
-                  onOpenChat={() => onOpenConversation?.()}
-                  onRetryFailureInChat={retryFailureInChat}
-                />
-              </section>
-            ) : null}
+            {attentionPanes}
 
             {showDone ? (
               <section id="todo-section-done" className="space-y-4 border-t border-border pt-10">
@@ -421,20 +443,7 @@ export default function TasksPanel({
           </div>
         ) : (
           <>
-            {showInbox ? (
-              <TodoInboxSection
-                inbox={todoFeed.inbox}
-                onDismissNudge={todoFeed.dismissInboxNudge}
-                onDismissAllNudges={todoFeed.dismissAllInboxNudges}
-                onDismissFailure={todoFeed.dismissInboxFailure}
-                onDismissMailReply={todoFeed.dismissMailReply}
-                onMailReplySent={() => void todoFeed.refresh()}
-                onOpenMemoryReview={() => onOpenMemoryReview?.()}
-                onOpenToday={() => onSelectSubTab?.("today")}
-                onOpenChat={() => onOpenConversation?.()}
-                onRetryFailureInChat={retryFailureInChat}
-              />
-            ) : null}
+            {attentionPanes}
 
             {!proLocked && showTasks ? (
               <>
@@ -448,6 +457,7 @@ export default function TasksPanel({
                 overdueCount={todaySplit.overdue.length}
                 dueTodayCount={todaySplit.dueToday.length}
                 inboxCount={todoFeed.counts.inbox}
+                undatedCount={somedayTasks.length}
                 onOpenInbox={() => onSelectSubTab?.("inbox")}
                 onScrollToOverdue={() => scrollToDaySection(firstOverdueSectionId(todayDayGroups))}
                 onScrollToToday={() => scrollToDaySection(todaySectionId(todayDayGroups))}
@@ -473,13 +483,6 @@ export default function TasksPanel({
       ) : null}
 
       <TasksPanelModals
-        syncDrawerOpen={syncDrawerOpen}
-        onCloseSyncDrawer={() => setSyncDrawerOpen(false)}
-        lastSyncAt={lastSyncAt}
-        syncReport={syncReport}
-        onOpenSources={onOpenSources}
-        onSync={() => void refreshAll()}
-        syncing={syncing}
         cleanup={noiseCleanup}
         meetingOpen={meetingOpen}
         onCloseMeeting={() => setMeetingOpen(false)}

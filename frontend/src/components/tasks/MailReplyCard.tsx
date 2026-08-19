@@ -1,13 +1,16 @@
-import { useEffect, useId, useRef, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, type KeyboardEvent } from "react";
 import { useI18n } from "../../i18n/I18nContext";
 import {
   isMailReplyDrafty,
   useMailReplyReview,
   type MailReplyReviewState,
 } from "../../hooks/useMailReplyReview";
+import { useMailReplyOriginal, type OriginalView } from "../../hooks/useMailReplyOriginal";
 import type { MailReplyItem } from "../../api/mailReplies";
 import MailReplyDraftFields from "./MailReplyDraftFields";
+import MailReplyOriginalBlock from "./MailReplyOriginalBlock";
 import MailReplySendConfirm from "./MailReplySendConfirm";
+import InboxSelectCheck from "./InboxSelectCheck";
 
 interface MailReplyCardProps {
   item: MailReplyItem;
@@ -16,6 +19,9 @@ interface MailReplyCardProps {
   onDismiss: () => void;
   onSent: (displayName: string) => void;
   onCollapse: () => void;
+  selecting?: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
 }
 
 function displayName(item: MailReplyItem, fallback: string): string {
@@ -23,9 +29,19 @@ function displayName(item: MailReplyItem, fallback: string): string {
 }
 
 function errorText(state: MailReplyReviewState): string | null {
-  if (state.status === "error") return state.error;
   if (isMailReplyDrafty(state)) return state.error;
   return null;
+}
+
+function originalFailCopy(
+  view: OriginalView,
+  t: (key: string) => string,
+): string {
+  if (view.kind !== "failed") return t("todo.inbox.mailReply.originalFailed");
+  if (view.fail === "disconnected") return t("todo.inbox.mailReply.originalFailedDisconnected");
+  if (view.fail === "offline") return t("todo.inbox.mailReply.originalFailedOffline");
+  if (view.fail === "gone") return t("todo.inbox.mailReply.originalGone");
+  return t("todo.inbox.mailReply.originalFailed");
 }
 
 export default function MailReplyCard({
@@ -35,39 +51,76 @@ export default function MailReplyCard({
   onDismiss,
   onSent,
   onCollapse,
+  selecting = false,
+  selected = false,
+  onSelect,
 }: MailReplyCardProps) {
   const { t } = useI18n();
   const regionId = useId();
   const waitingId = useId();
+  const originalHeadingId = useId();
+  const originalRegionId = useId();
   const wasExpanded = useRef(expanded);
   const name = displayName(item, t("todo.inbox.mailReply.thisSender"));
+  const seed = useMemo(
+    () => ({
+      subject: item.draft_subject,
+      body: item.draft_body,
+      toName: item.from_name.trim() || name,
+    }),
+    [item.draft_body, item.draft_subject, item.from_name, name],
+  );
   const { state, review, collapse, setSubject, setBody, openConfirm, keepEditing, send } =
-    useMailReplyReview(item.id, {
-      threadChanged: t("todo.inbox.mailReply.threadChanged"),
-      sendFailed: t("todo.inbox.mailReply.sendFailed"),
-      draftFailed: t("todo.inbox.mailReply.draftFailed"),
-      draftDiscarded: t("todo.inbox.mailReply.draftDiscarded"),
-    });
+    useMailReplyReview(
+      item.id,
+      {
+        threadChanged: t("todo.inbox.mailReply.threadChanged"),
+        sendFailed: t("todo.inbox.mailReply.sendFailed"),
+        checkFailed: t("todo.inbox.mailReply.checkFailed"),
+      },
+      seed,
+    );
+  const original = useMailReplyOriginal(item.id);
 
-  const working = state.status === "working";
   const sending = state.status === "sending";
+  const checking = isMailReplyDrafty(state) && state.check === "pending";
   const open = expanded || state.status !== "collapsed";
   const drafty = isMailReplyDrafty(state);
   const alertText = errorText(state);
-  const liveStatus = working
-    ? t("todo.inbox.mailReply.reading")
-    : sending
-      ? t("todo.inbox.mailReply.sending")
+  const liveStatus = sending
+    ? t("todo.inbox.mailReply.sending")
+    : checking && state.status === "confirm"
+      ? t("todo.inbox.mailReply.checking")
       : "";
   const hideLabel = t("todo.inbox.mailReply.dismissAria");
+  const preview = item.draft_body.trim();
+  const sendBlocked =
+    sending ||
+    !drafty ||
+    !state.body.trim() ||
+    state.block !== "none" ||
+    (state.check !== "ok" && state.status !== "confirm");
 
   useEffect(() => {
     if (wasExpanded.current && !expanded && state.status !== "collapsed") collapse();
     wasExpanded.current = expanded;
   }, [collapse, expanded, state.status]);
 
+  useEffect(() => {
+    if (selecting) {
+      original.hide();
+      if (open) {
+        collapse();
+        onCollapse();
+      }
+    }
+    // hide/collapse only when entering select — open/original identity is stable enough
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selecting is the trigger
+  }, [selecting]);
+
   const closeCard = () => {
     collapse();
+    original.hide();
     onCollapse();
   };
 
@@ -78,35 +131,62 @@ export default function MailReplyCard({
       return;
     }
     onToggle();
+    original.show();
     void review();
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key !== "Escape") return;
     if (state.status === "confirm" || sending) return;
-    if (open) closeCard();
+    if (open) {
+      closeCard();
+      return;
+    }
+    if (original.open) original.hide();
   };
 
+  const hasSavedDraft = Boolean(item.draft_body.trim() || item.draft_subject.trim());
+  const showActions = !selecting;
+  const showReview = showActions && (hasSavedDraft || open);
+
   return (
-    <li className="rounded-xl border border-border bg-bg-secondary px-4 py-3" onKeyDown={handleKeyDown}>
+    <li className="flex items-start gap-2" onKeyDown={handleKeyDown}>
+      {onSelect ? (
+        <InboxSelectCheck selected={selected} label={name} onSelect={onSelect} />
+      ) : null}
+      <div
+        className={`min-w-0 flex-1 rounded-xl border px-4 py-3 ${
+          selected ? "border-accent bg-accent/10" : "border-border bg-bg-secondary"
+        }`}
+      >
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {liveStatus}
       </p>
       <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
+        <button type="button" onClick={() => onSelect?.()} className="min-w-0 flex-1 text-left">
           <p id={waitingId} className="text-sm font-medium text-text-primary">
             {t("todo.inbox.mailReply.waiting", { name })}
           </p>
           <p className="mt-1 text-xs text-muted leading-relaxed">{item.subject}</p>
           {!drafty ? (
-            <p className="mt-1 text-2xs text-muted leading-snug">{t("todo.inbox.mailReply.willDraft")}</p>
+            preview ? (
+              <div className="mt-2">
+                <p className="text-2xs font-semibold uppercase tracking-wide text-muted">
+                  {t("todo.inbox.mailReply.draftPreviewLabel")}
+                </p>
+                <p className="mt-1 text-xs text-text-secondary leading-relaxed line-clamp-2">{preview}</p>
+              </div>
+            ) : (
+              <p className="mt-1 text-2xs text-muted leading-snug">{t("todo.inbox.mailReply.readyLine")}</p>
+            )
           ) : null}
-        </div>
+        </button>
+        {showActions ? (
         <button
           type="button"
           title={t("todo.inbox.mailReply.dismissTitle")}
           onClick={() => onDismiss()}
-          disabled={working || sending}
+          disabled={sending}
           className="shrink-0 rounded p-1 text-muted hover:text-text-primary min-h-8 min-w-8"
           aria-label={hideLabel}
         >
@@ -114,8 +194,23 @@ export default function MailReplyCard({
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+        ) : null}
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      {showActions ? (
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <button
+          type="button"
+          onClick={original.toggle}
+          disabled={sending}
+          aria-expanded={original.open}
+          aria-controls={originalRegionId}
+          className="min-h-8 text-xs font-medium text-accent hover:underline"
+        >
+          {original.open
+            ? t("todo.inbox.mailReply.originalToggleHide")
+            : t("todo.inbox.mailReply.originalToggleShow")}
+        </button>
+        {showReview ? (
         <button
           id={`mail-reply-review-${item.id}`}
           type="button"
@@ -127,26 +222,44 @@ export default function MailReplyCard({
         >
           {open ? t("todo.inbox.mailReply.closeReview") : t("todo.inbox.mailReply.review")}
         </button>
+        ) : null}
       </div>
-      {open ? (
+      ) : null}
+      {showActions && original.open ? (
+        <div className="mt-3">
+          <MailReplyOriginalBlock
+            view={original.view}
+            headingId={originalHeadingId}
+            regionId={originalRegionId}
+            heading={t("todo.inbox.mailReply.originalHeading")}
+            loading={t("todo.inbox.mailReply.originalLoading")}
+            empty={t("todo.inbox.mailReply.originalEmpty")}
+            truncated={t("todo.inbox.mailReply.originalTruncated")}
+            failed={originalFailCopy(original.view, t)}
+            retryLabel={t("todo.inbox.mailReply.retry")}
+            onRetry={() => void original.retry()}
+          />
+        </div>
+      ) : null}
+      {showActions && open ? (
         <div
           id={regionId}
           role="region"
           aria-labelledby={waitingId}
-          aria-busy={working || sending}
+          aria-busy={sending}
           className="mt-3 space-y-3 border-t border-border pt-3"
         >
-          {working ? <p className="text-xs text-muted">{t("todo.inbox.mailReply.reading")}</p> : null}
           {sending ? <p className="text-xs text-muted">{t("todo.inbox.mailReply.sending")}</p> : null}
           {alertText ? (
             <p role="alert" className="text-xs text-red-400">
               {alertText}
             </p>
           ) : null}
-          {state.status === "error" ? (
+          {drafty && state.block !== "none" ? (
             <button
               type="button"
               onClick={() => void review()}
+              disabled={sending}
               className="min-h-8 text-xs font-medium text-accent hover:underline"
             >
               {t("todo.inbox.mailReply.retry")}
@@ -164,26 +277,19 @@ export default function MailReplyCard({
                 bodyLabel={t("todo.inbox.mailReply.bodyLabel")}
                 emptyBodyHint={t("todo.inbox.mailReply.emptyBody")}
                 noRecipient={t("todo.inbox.mailReply.noRecipient")}
-                hasRecipient={Boolean(state.toEmail.trim())}
+                hasRecipient={Boolean(state.toEmail.trim()) || state.check === "pending"}
                 disabled={sending}
                 onSubjectChange={setSubject}
                 onBodyChange={setBody}
                 onOpenConfirm={openConfirm}
               />
-              {state.llmFailed ? (
-                <button
-                  type="button"
-                  onClick={() => void review()}
-                  disabled={sending}
-                  className="min-h-8 text-xs font-medium text-accent hover:underline"
-                >
-                  {t("todo.inbox.mailReply.retry")}
-                </button>
+              {checking && !state.toEmail.trim() ? (
+                <p className="text-2xs text-muted">{t("todo.inbox.mailReply.checking")}</p>
               ) : null}
               <button
                 type="button"
                 onClick={openConfirm}
-                disabled={sending || !state.body.trim() || !state.toEmail.trim()}
+                disabled={sendBlocked || !state.toEmail.trim()}
                 className="min-h-8 rounded-lg bg-button-primary px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
                 {t("todo.inbox.mailReply.send")}
@@ -198,6 +304,8 @@ export default function MailReplyCard({
           body={t("todo.inbox.mailReply.confirmBody", { name, email: state.toEmail })}
           confirmLabel={t("todo.inbox.mailReply.send")}
           cancelLabel={t("todo.inbox.mailReply.keepEditing")}
+          confirmDisabled={state.check === "pending"}
+          statusText={state.check === "pending" ? t("todo.inbox.mailReply.checking") : undefined}
           onCancel={keepEditing}
           onConfirm={() => {
             void send().then((ok) => {
@@ -206,6 +314,7 @@ export default function MailReplyCard({
           }}
         />
       ) : null}
+      </div>
     </li>
   );
 }

@@ -145,9 +145,18 @@ def enrich_voice_tool_args(
     args: dict[str, Any],
     last_user_text: str,
     open_tasks: list[dict[str, Any]] | None = None,
+    context_texts: list[str] | None = None,
 ) -> dict[str, Any]:
     """Fill missing required fields voice models often omit (e.g. dev_scaffold description)."""
     enriched = dict(args)
+    if name == "find_home_folder":
+        from voice.folder_query import resolve_folder_query
+
+        enriched["query"] = resolve_folder_query(
+            str(enriched.get("query") or enriched.get("name") or ""),
+            last_user_text,
+            context_texts or [],
+        )
     if name == "dev_scaffold_project":
         desc = str(
             enriched.get("description")

@@ -50,6 +50,8 @@ export interface AppMainWorkspaceProps {
   modelHook: UseModelsReturn;
   settings: ComponentProps<typeof QueuePanel>["settings"];
   entitlement: EntitlementStatus | null;
+  entitlementLoaded: boolean;
+  toastEntitlementBlocked: () => void;
   currentJob: Job | null;
   sessionId: string | null;
   isRunning: boolean;

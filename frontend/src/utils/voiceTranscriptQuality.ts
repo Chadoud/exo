@@ -85,12 +85,37 @@ export function isVoiceTranscriptNoisePlaceholder(text: string): boolean {
   return NOISE_TAG_PATTERN.test(trimmed) || /^\[noise\]$/i.test(trimmed);
 }
 
-/**
- * Append one incremental Live STT chunk to the in-flight user transcript.
- * Junk filtering for micro-fragments is deferred to turn_complete commit.
- */
+function isWordSubsequence(shorter: string[], longer: string[]): boolean {
+  let index = 0;
+  for (const word of shorter) {
+    const key = wordKey(word);
+    while (index < longer.length && wordKey(longer[index] ?? "") !== key) {
+      index += 1;
+    }
+    if (index >= longer.length) return false;
+    index += 1;
+  }
+  return true;
+}
+
+function looksLikeSnapshot(previous: string, chunk: string): boolean {
+  const incomingWords = chunk.trim().split(/\s+/);
+  const previousWords = previous.trim().split(/\s+/);
+  if (incomingWords.length < 4 || previousWords.length < 3) return false;
+  return incomingWords.slice(0, 3).map(wordKey).join(" ") === previousWords.slice(0, 3).map(wordKey).join(" ");
+}
+
+/** Append one incremental Live STT chunk. Junk filtering waits for turn_complete. */
 export function appendStreamingVoiceInputTranscript(previous: string, chunk: string): string {
   if (isVoiceTranscriptNoisePlaceholder(chunk)) return previous;
+  if (looksLikeSnapshot(previous, chunk)) {
+    const previousWords = previous.trim().split(/\s+/);
+    const incomingWords = chunk.trim().split(/\s+/);
+    if (incomingWords.length < previousWords.length && isWordSubsequence(incomingWords, previousWords)) {
+      return previous;
+    }
+    return chunk;
+  }
   return previous + chunk;
 }
 

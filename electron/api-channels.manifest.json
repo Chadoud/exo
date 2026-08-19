@@ -53,7 +53,6 @@
     "accountProfile:getState",
     "privacy:wipeElectronFiles",
     "privacy:wipeAllLocalData",
-    "privacy:wipeAllProfilesOnDevice",
     "integration:clearInfomaniakApiToken",
     "integration:clearNotionOAuthClient",
     "integration:clearSlackOAuthClient",

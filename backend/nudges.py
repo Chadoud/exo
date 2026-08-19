@@ -192,8 +192,18 @@ def dismiss_nudge(nudge_id: int) -> bool:
         return cur.rowcount > 0
 
 
-def dismiss_all() -> int:
+def restore_nudge(nudge_id: int) -> bool:
     with _conn() as conn:
-        cur = conn.execute("UPDATE nudges SET dismissed=1 WHERE dismissed=0")
+        cur = conn.execute("UPDATE nudges SET dismissed=0 WHERE id=?", (nudge_id,))
         conn.commit()
-        return cur.rowcount
+        return cur.rowcount > 0
+
+
+def dismiss_all() -> list[int]:
+    with _conn() as conn:
+        rows = conn.execute("SELECT id FROM nudges WHERE dismissed=0").fetchall()
+        ids = [int(r["id"]) for r in rows]
+        if ids:
+            conn.execute("UPDATE nudges SET dismissed=1 WHERE dismissed=0")
+            conn.commit()
+        return ids

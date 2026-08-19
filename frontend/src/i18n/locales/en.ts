@@ -294,9 +294,10 @@ export default {
     title: "External sources",
     connectorStatusConnected: "Connected",
     connectorStatusNotConnected: "Not connected",
+    connectorActionConnect: "Connect",
     disconnectConfirmTitle: "Disconnect {source}?",
     disconnectConfirmBody:
-      "Exo will stop using {source} on this device until you connect again.",
+      "Exo will stop using {source} on this device. Imported tasks, leftover reply drafts, and calendar notes Exo saved from that account are removed. Tasks you typed stay.",
     disconnectConfirmAction: "Disconnect",
     disconnectConfirmCancel: "Keep connected",
     connectorOauthNotConfigured:
@@ -351,8 +352,7 @@ export default {
     gmailTitle: "Gmail",
     gmailAccountDesc:
       "Connect the Google account you use for Gmail. Approving a background plan allows mail moves and filters for that run only.",
-    gmailFiltersReconnectHint:
-      "Gmail needs an updated connection for inbox filters. Disconnect and connect Gmail again under External sources.",
+    gmailAccountUnknown: "Couldn't read which account. Disconnect and connect again.",
     gmailWebDesktopDriveSeparateNote:
       "Google Drive has its own Connect button above. This Gmail connection does not change Drive.",
     gmailNotConfigured:
@@ -1500,11 +1500,10 @@ export default {
       "Coarse usage analytics and crash reports run on our legitimate interest in product reliability and improvement, as described in the Privacy Policy. You can object anytime below — never file names, paths, or what you organize.",
     mailReply: {
       privacySentence:
-        "Ready-to-send Gmail replies (Tasks → Inbox) periodically checks recent Gmail threads for metadata only (sender, subject); the full message goes to cloud AI only when you open Review, and nothing sends without your confirmation.",
-      toggleLabel: "Suggest replies in Inbox",
-      toggleHint: "Inbox shows who is waiting on a reply, with a draft ready for you to review and send.",
+        "Ready-to-send Gmail replies (To Do → Tasks) periodically reads recent inbox threads and writes a reply for you to review on the mail’s task card; nothing sends without your confirmation.",
+      toggleLabel: "Suggest replies on Tasks",
+      toggleHint: "When someone is waiting, the mail task card can include a draft to review and send.",
       reconnectHint: "Connect Gmail with send access to turn this on.",
-      firstCheck: "First check can take a few minutes.",
     },
     privacyTelemetryLabel: "Usage analytics",
     privacyTelemetryDisclosure:
@@ -1535,13 +1534,6 @@ export default {
     privacyLocalWipeConfirm: "Confirm erase",
     privacyLocalWipeDone: "This account’s local data was erased.",
     privacyLocalWipeError: "Couldn't erase local data. Is the app service running?",
-    privacyWipeAllProfilesTitle: "Erase all accounts on this Mac",
-    privacyWipeAllProfilesHint:
-      "Deletes every local account vault on this Mac and signs you out. Use this for a full factory reset of Exo data on this device.",
-    privacyWipeAllProfilesAction: "Erase all local accounts",
-    privacyWipeAllProfilesConfirm: "Confirm erase all accounts",
-    privacyWipeAllProfilesDone: "All local account data on this Mac was erased.",
-    privacyWipeAllProfilesError: "Couldn't erase all local accounts. Is the app service running?",
     accountLocalVaultHint:
       "API keys and chats stay in a local vault for this account on this Mac. Signing out locks that vault — the next account won’t see it.",
     voiceGroupTitle: "Voice",

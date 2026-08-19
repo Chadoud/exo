@@ -9,6 +9,8 @@ const MailReplyItemSchema = z.object({
   from_local_part: z.string(),
   subject: z.string(),
   created_at: z.string(),
+  draft_subject: z.string(),
+  draft_body: z.string(),
 });
 
 export type MailReplyItem = z.infer<typeof MailReplyItemSchema>;
@@ -38,8 +40,19 @@ const MailReplyDraftSchema = z.object({
 
 export type MailReplyDraft = z.infer<typeof MailReplyDraftSchema>;
 
+const MailReplyOriginalSchema = z.object({
+  text: z.string(),
+  truncated: z.boolean(),
+});
+
+export type MailReplyOriginal = z.infer<typeof MailReplyOriginalSchema>;
+
 export function fetchMailReplies(): Promise<MailReplyList> {
   return requestValidated("/mail/replies", MailReplyListSchema);
+}
+
+export function refreshMailReplies(): Promise<MailReplyList> {
+  return requestValidated("/mail/replies/refresh", MailReplyListSchema, { method: "POST" });
 }
 
 export function fetchMailReplySettings(): Promise<MailReplySettings> {
@@ -53,12 +66,30 @@ export function patchMailReplySettings(enabled: boolean): Promise<MailReplySetti
   });
 }
 
+export function fetchMailReplyOriginal(id: number): Promise<MailReplyOriginal> {
+  return requestValidated(`/mail/replies/${id}/original`, MailReplyOriginalSchema);
+}
+
 export function draftMailReply(id: number): Promise<MailReplyDraft> {
   return requestValidated(`/mail/replies/${id}/draft`, MailReplyDraftSchema, { method: "POST" });
 }
 
+export async function saveMailReplyDraft(
+  id: number,
+  body: { subject: string; body: string },
+): Promise<void> {
+  await request<unknown>(`/mail/replies/${id}/draft`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function dismissMailReply(id: number): Promise<void> {
   await request<unknown>(`/mail/replies/${id}/dismiss`, { method: "POST" });
+}
+
+export async function restoreMailReply(id: number): Promise<void> {
+  await request<unknown>(`/mail/replies/${id}/restore`, { method: "POST" });
 }
 
 export async function sendMailReply(body: {

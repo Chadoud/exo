@@ -99,7 +99,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   cloudAuthDeleteAccount: () => ipcRenderer.invoke("cloudAuth:deleteAccount"),
   privacyWipeElectronFiles: () => ipcRenderer.invoke("privacy:wipeElectronFiles"),
   privacyWipeAllLocalData: () => ipcRenderer.invoke("privacy:wipeAllLocalData"),
-  privacyWipeAllProfilesOnDevice: () => ipcRenderer.invoke("privacy:wipeAllProfilesOnDevice"),
   accountProfileGetState: () => ipcRenderer.invoke("accountProfile:getState"),
   voicePrimeSession: (payload) => ipcRenderer.invoke("voice:primeSession", payload),
   integrationRelayAllTokens: () => ipcRenderer.invoke("integration:relayAllTokens"),

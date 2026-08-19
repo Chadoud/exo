@@ -32,9 +32,16 @@ describe("TrialEndedBanner", () => {
 
     expect(container.textContent).toContain("AI sorting, voice and sync are paused");
 
+    const banner = container.querySelector('[role="status"]');
+    expect(banner?.className).toContain("bg-button-primary");
+    expect(banner?.querySelector("p")?.className).toContain("text-white");
+
     const seePlans = Array.from(container.querySelectorAll("button")).find(
       (b) => b.textContent === "See plans",
     ) as HTMLButtonElement;
+    expect(seePlans.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["text-white", "underline"]),
+    );
     await act(async () => {
       seePlans.click();
     });

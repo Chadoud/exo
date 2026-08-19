@@ -40,4 +40,26 @@ describe("TaskPanelHeaderActions", () => {
     });
     expect(onSelect).toHaveBeenCalledOnce();
   });
+
+  it("runs Sync immediately", async () => {
+    const onSync = vi.fn();
+    await act(async () => {
+      root.render(
+        <TaskPanelHeaderActions
+          showSelect={false}
+          selectLabel="Select"
+          onSelect={() => {}}
+          showSync
+          syncDisabled={false}
+          syncLabel="Sync"
+          syncTitle="Pull mail and calendar into this list"
+          onSync={onSync}
+        />,
+      );
+    });
+    await act(async () => {
+      container.querySelector("button")?.click();
+    });
+    expect(onSync).toHaveBeenCalledOnce();
+  });
 });

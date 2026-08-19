@@ -3,6 +3,8 @@ REST endpoints for the task / action-item store.
 
 GET    /tasks            — list (filterable by status)
 POST   /tasks            — create {description, due_at?, priority?}
+POST   /tasks/sync       — harvest from connected mail/calendar
+POST   /tasks/forget-source — drop harvested rows after disconnect
 PUT    /tasks/{id}       — patch description/due_at/priority
 PATCH  /tasks/{id}/done  — mark complete / reopen
 DELETE /tasks/{id}       — dismiss (stays gone on next account sync)
@@ -12,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -62,16 +64,24 @@ class TaskDoneBody(BaseModel):
     completed: bool = True
 
 
+class ForgetSourceBody(BaseModel):
+    source: Literal["gmail", "google-calendar", "outlook", "outlook-calendar"]
+
+
 @router.get("")
 def list_all_tasks(
     include_completed: bool = Query(default=True),
     exclude_manual: bool = Query(default=False),
     map_eligible: bool = Query(default=False),
 ) -> list[dict[str, Any]]:
-    return tasks_store.list_tasks(
-        include_completed=include_completed,
-        exclude_manual=exclude_manual,
-        map_eligible=map_eligible,
+    from mail_initiative.task_join import attach_mail_reply_ids
+
+    return attach_mail_reply_ids(
+        tasks_store.list_tasks(
+            include_completed=include_completed,
+            exclude_manual=exclude_manual,
+            map_eligible=map_eligible,
+        )
     )
 
 
@@ -84,6 +94,15 @@ def sync_tasks_from_integrations() -> dict[str, Any]:
     from tasks_integration_sync import sync_integration_tasks
 
     return sync_integration_tasks()
+
+
+@router.post("/forget-source")
+def forget_integration_source(body: ForgetSourceBody) -> dict[str, Any]:
+    """Remove harvested tasks after the user disconnects that mail/calendar account."""
+    from tasks_source_forget import forget_tasks_for_sources
+
+    dropped = forget_tasks_for_sources({body.source}, evict_tokens=True)
+    return {"ok": True, "dropped": dropped}
 
 
 @router.post("")
@@ -147,3 +166,11 @@ def delete_task_entry(task_id: int) -> dict[str, Any]:
     if not removed:
         raise HTTPException(status_code=404, detail="task_not_found")
     return {"ok": "true", "removed": removed}
+
+
+@router.post("/{task_id}/restore")
+def restore_task_entry(task_id: int) -> dict[str, Any]:
+    restored = tasks_store.restore_task(task_id)
+    if not restored:
+        raise HTTPException(status_code=404, detail="task_not_found")
+    return restored

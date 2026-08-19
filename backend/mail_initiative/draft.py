@@ -103,6 +103,28 @@ def _llm_draft(thread_text: str) -> tuple[str, str]:
     return _parse_draft_json(raw or "")
 
 
+def compose_reply(thread_text: str, fallback_subject: str) -> tuple[str, str]:
+    """LLM reply only — no send token. Empty body means not enough context."""
+    subject = reply_subject(fallback_subject)
+    body = ""
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import TimeoutError as FuturesTimeout
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_llm_draft, thread_text)
+            try:
+                parsed_subject, parsed_body = future.result(timeout=30)
+            except FuturesTimeout:
+                parsed_subject, parsed_body = "", ""
+        if parsed_subject:
+            subject = parsed_subject[:_SUBJECT_MAX]
+        body = parsed_body[:_BODY_MAX]
+    except Exception:
+        logger.exception("mail reply compose LLM failed")
+    return subject, body
+
+
 def _header(message: dict[str, Any], name: str) -> str:
     headers = (message.get("payload") or {}).get("headers") or []
     needle = name.lower()
@@ -152,28 +174,15 @@ def create_draft(candidate_id: int) -> dict[str, Any]:
         message_ids=cand["message_ids"],
     )
 
-    subject = reply_subject(cand["subject"])
-    body = ""
-    try:
-        from concurrent.futures import ThreadPoolExecutor
-        from concurrent.futures import TimeoutError as FuturesTimeout
-
-        with ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(_llm_draft, thread_plain_text(thread))
-            try:
-                parsed_subject, parsed_body = future.result(timeout=30)
-            except FuturesTimeout:
-                parsed_subject, parsed_body = "", ""
-        if parsed_subject:
-            subject = parsed_subject[:_SUBJECT_MAX]
-        body = parsed_body[:_BODY_MAX]
-    except Exception:
-        logger.exception("mail reply draft LLM failed")
+    subject = str(cand.get("draft_subject") or "").strip() or reply_subject(cand["subject"])
+    body = str(cand.get("draft_body") or "").strip()
+    if not body:
+        subject, body = compose_reply(thread_plain_text(thread), cand["subject"])
 
     return {
         "draft_token": token,
         "to_name": cand["from_name"],
         "to_email": cand["from_email"],
-        "subject": subject,
-        "body": body,
+        "subject": subject[:_SUBJECT_MAX],
+        "body": body[:_BODY_MAX],
     }

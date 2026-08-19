@@ -21,6 +21,7 @@ interface ModalShellProps {
   dismissible?: boolean;
   /** "center" for dialogs whose body copy is centered (trial gates) — keeps header and body on one axis. */
   titleAlign?: "left" | "center";
+  busy?: boolean;
 }
 
 export default function ModalShell({
@@ -31,6 +32,7 @@ export default function ModalShell({
   maxWidthClass = "max-w-md",
   dismissible = true,
   titleAlign = "left",
+  busy = false,
 }: ModalShellProps) {
   const titleId = useId();
 
@@ -57,6 +59,7 @@ export default function ModalShell({
         role={dismissible ? "dialog" : "alertdialog"}
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-busy={busy || undefined}
       >
         {/* Header — always visible */}
         <div className={MODAL_HEADER_ROW_CLASS}>

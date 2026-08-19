@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 VALID_PRIORITIES = frozenset({"low", "normal", "high"})
 MAX_TASKS = 5000
 _MAIL_SOURCES = frozenset({"gmail", "outlook"})
+# Typed / conversation tasks must survive a mailbox switch.
+_PROTECTED_SOURCES = frozenset(
+    {"manual", "conversation", "meeting", "assistant", "chat", "auto"}
+)
 
 
 def _task_passes_signal_gate(description: str, source: str) -> bool:
@@ -314,12 +318,67 @@ def delete_task(task_id: int) -> bool:
         return cur.rowcount > 0
 
 
+def restore_task(task_id: int) -> dict[str, Any] | None:
+    """Bring a soft-dismissed task back onto the list."""
+    now = datetime.now(UTC).isoformat()
+    with _conn() as conn:
+        cur = conn.execute(
+            "UPDATE tasks SET dismissed=0, dismissed_at=NULL, updated_at=? "
+            "WHERE id=? AND dismissed=1",
+            (now, task_id),
+        )
+        conn.commit()
+        if cur.rowcount <= 0:
+            return None
+    return get_task(task_id)
+
+
+def purge_task(task_id: int) -> bool:
+    """Hard-delete so the same ``external_id`` can be ingested again."""
+    with _conn() as conn:
+        cur = conn.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+        conn.commit()
+        return cur.rowcount > 0
+
+
 def clear_all_tasks() -> int:
     """Remove every stored task (local erasure)."""
     with _conn() as conn:
         cur = conn.execute("DELETE FROM tasks")
         conn.commit()
         return cur.rowcount
+
+
+def count_tasks_for_sources(sources: set[str]) -> int:
+    """Count harvested rows for sources, including completed and dismissed."""
+    wanted = {str(s).strip() for s in sources if str(s).strip()}
+    if not wanted:
+        return 0
+    placeholders = ",".join("?" * len(wanted))
+    with _conn() as conn:
+        row = conn.execute(
+            f"SELECT COUNT(*) AS n FROM tasks WHERE source IN ({placeholders})",
+            tuple(wanted),
+        ).fetchone()
+    return int(row["n"]) if row else 0
+
+
+def clear_tasks_by_sources(sources: set[str]) -> int:
+    """Hard-delete harvested rows for the given sources. Refuses typed tasks."""
+    wanted = {str(s).strip() for s in sources if str(s).strip()}
+    if not wanted:
+        return 0
+    blocked = wanted & _PROTECTED_SOURCES
+    if blocked:
+        raise ValueError("refusing to clear protected task sources")
+    placeholders = ",".join("?" * len(wanted))
+    with _conn() as conn:
+        cur = conn.execute(
+            f"DELETE FROM tasks WHERE source IN ({placeholders})",
+            tuple(wanted),
+        )
+        conn.commit()
+        return int(cur.rowcount)
 
 
 def task_exists(description: str) -> bool:

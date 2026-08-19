@@ -175,7 +175,7 @@ async def run_gemini_live_session(
                 if startup_message and not startup_injected:
                     startup_injected = True
                     await incoming_audio.put(f"[STARTUP] {startup_message}")
-                    yield frame("startup_routine_running")
+                    # Offer prompt only — WORKING is reserved for the accepted briefing pipeline.
 
                 speaking = False
                 turn_buffer = TurnBuffer()
@@ -483,6 +483,15 @@ async def run_gemini_live_session(
                                 hydrate_dispatch_pending_delete(
                                     tool_dispatch_state, pending_delete_holder
                                 )
+                                context_texts = [
+                                    text
+                                    for turn in voice_history
+                                    for text in (
+                                        str(turn.get("user") or ""),
+                                        str(turn.get("assistant") or ""),
+                                    )
+                                    if text
+                                ]
                                 async for tool_frame in handle_voice_tool_calls(
                                     session,
                                     genai_types,
@@ -496,6 +505,7 @@ async def run_gemini_live_session(
                                     deferred_tool_reason=deferred_reason,
                                     provider_holder=provider_holder,
                                     allow_sensitive=allow_sensitive,
+                                    context_texts=context_texts,
                                 ):
                                     yield tool_frame
                                 tool_ok_this_turn = tool_dispatch_state.last_tool_ok

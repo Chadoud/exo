@@ -22,6 +22,7 @@ from actions import (
     dropbox_tool,
     end_voice_session,
     file_workspace,
+    find_home_folder,
     flight_finder,
     google_workspace_tool,
     icloud_tool,
@@ -67,6 +68,7 @@ TOOLS_NEEDING_APPROVAL = APPROVAL_TOOLS
 
 HANDLERS: dict[str, Handler] = {
     "list_directory": system_safe.list_directory,
+    "find_home_folder": find_home_folder.find_home_folder,
     "terminal_safe": system_safe.terminal_safe,
     "get_running_apps": system_safe.get_running_apps,
     "system_volume": system_safe.system_volume,

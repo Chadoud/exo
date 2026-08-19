@@ -4,6 +4,7 @@
  */
 
 const { desktopCapturer, systemPreferences } = require("electron");
+const { shouldAttemptScreenCapture } = require("./screenCaptureGate");
 
 /** Full-screen JPEG for vision tools (web_agent, desktop nav). */
 const VISION_THUMBNAIL = { width: 1920, height: 1080 };
@@ -16,7 +17,7 @@ const VISION_THUMBNAIL = { width: 1920, height: 1080 };
 async function capturePrimaryScreenJpeg() {
   if (process.platform === "darwin") {
     const status = systemPreferences.getMediaAccessStatus("screen");
-    if (status !== "granted") {
+    if (!shouldAttemptScreenCapture(status)) {
       return { ok: false, error: "screen_permission_denied" };
     }
   }
@@ -37,4 +38,4 @@ async function capturePrimaryScreenJpeg() {
   }
 }
 
-module.exports = { capturePrimaryScreenJpeg, VISION_THUMBNAIL };
+module.exports = { capturePrimaryScreenJpeg, shouldAttemptScreenCapture, VISION_THUMBNAIL };

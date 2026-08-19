@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { EntitlementBlockedError } from "../api/client";
-import { draftMailReply, sendMailReply, type MailReplyDraft } from "../api/mailReplies";
+import {
+  draftMailReply,
+  saveMailReplyDraft,
+  sendMailReply,
+  type MailReplyDraft,
+} from "../api/mailReplies";
 import { trackProductEvent } from "../telemetry/assistantTelemetry";
 import { TelemetryEventNames } from "../telemetry/schema";
+
+type Check = "pending" | "ok" | "fail";
+type Block = "none" | "token_fail" | "thread_changed";
 
 type DraftFields = {
   subject: string;
@@ -12,15 +19,14 @@ type DraftFields = {
   toEmail: string;
   draftToken: string;
   dirty: boolean;
-  llmFailed: boolean;
+  check: Check;
+  block: Block;
   error: string | null;
 };
 
 export type MailReplyReviewState =
   | { status: "collapsed" }
-  | { status: "working" }
-  | { status: "error"; error: string }
-  | ({ status: "draft" } & DraftFields)
+  | ({ status: "ready" } & DraftFields)
   | ({ status: "confirm" } & DraftFields)
   | ({ status: "sending" } & DraftFields);
 
@@ -29,7 +35,7 @@ const COLLAPSED: MailReplyReviewState = { status: "collapsed" };
 export function isMailReplyDrafty(
   state: MailReplyReviewState,
 ): state is Extract<MailReplyReviewState, { subject: string }> {
-  return state.status === "draft" || state.status === "confirm" || state.status === "sending";
+  return state.status === "ready" || state.status === "confirm" || state.status === "sending";
 }
 
 function errorClass(err: unknown): string {
@@ -40,16 +46,31 @@ function errorClass(err: unknown): string {
   return "failed";
 }
 
-function draftFromApi(draft: MailReplyDraft, error: string | null = null): DraftFields {
+function seedFields(seed: { subject: string; body: string; toName: string }): DraftFields {
   return {
-    subject: draft.subject,
-    body: draft.body,
-    toName: draft.to_name,
-    toEmail: draft.to_email,
-    draftToken: draft.draft_token,
+    subject: seed.subject,
+    body: seed.body,
+    toName: seed.toName,
+    toEmail: "",
+    draftToken: "",
     dirty: false,
-    llmFailed: !draft.body.trim(),
-    error,
+    check: "pending",
+    block: "none",
+    error: null,
+  };
+}
+
+function mergeMint(prev: DraftFields, draft: MailReplyDraft): DraftFields {
+  return {
+    ...prev,
+    draftToken: draft.draft_token,
+    toName: draft.to_name || prev.toName,
+    toEmail: draft.to_email,
+    subject: prev.dirty ? prev.subject : draft.subject,
+    body: prev.dirty ? prev.body : draft.body,
+    check: "ok",
+    block: "none",
+    error: null,
   };
 }
 
@@ -58,72 +79,66 @@ export function useMailReplyReview(
   copy: {
     threadChanged: string;
     sendFailed: string;
-    draftFailed: string;
-    draftDiscarded: string;
+    checkFailed: string;
   },
+  seed: { subject: string; body: string; toName: string },
 ) {
   const [state, setState] = useState<MailReplyReviewState>(COLLAPSED);
-  const dirtyRef = useRef(false);
   const sendingRef = useRef(false);
   const reviewGen = useRef(0);
   const reviewInFlight = useRef(false);
+  const latestRef = useRef(state);
+  latestRef.current = state;
 
-  useEffect(() => {
-    dirtyRef.current = isMailReplyDrafty(state) ? state.dirty : false;
-  }, [state]);
-
-  const discardIfNeeded = useCallback(
-    (edited: boolean) => {
-      if (edited) toast.message(copy.draftDiscarded);
+  const persistIfDirty = useCallback(
+    (current: MailReplyReviewState) => {
+      if (!isMailReplyDrafty(current) || !current.dirty) return;
+      void saveMailReplyDraft(cardId, { subject: current.subject, body: current.body });
     },
-    [copy.draftDiscarded],
+    [cardId],
   );
 
-  const collapse = useCallback(
-    (opts?: { silent?: boolean }) => {
-      if (sendingRef.current) return;
-      reviewGen.current += 1;
-      reviewInFlight.current = false;
-      const edited = dirtyRef.current;
-      setState(COLLAPSED);
-      if (!opts?.silent) discardIfNeeded(edited);
-    },
-    [discardIfNeeded],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (sendingRef.current) return;
-      if (dirtyRef.current) toast.message(copy.draftDiscarded);
-    };
-  }, [copy.draftDiscarded]);
+  const collapse = useCallback(() => {
+    if (sendingRef.current) return;
+    reviewGen.current += 1;
+    reviewInFlight.current = false;
+    persistIfDirty(latestRef.current);
+    setState(COLLAPSED);
+  }, [persistIfDirty]);
 
   const failMessage = useCallback(
-    (err: unknown, kind: "draft" | "send") => {
+    (err: unknown, kind: "check" | "send") => {
       if (errorClass(err) === "thread_changed") return copy.threadChanged;
-      return kind === "draft" ? copy.draftFailed : copy.sendFailed;
+      return kind === "check" ? copy.checkFailed : copy.sendFailed;
     },
-    [copy.draftFailed, copy.sendFailed, copy.threadChanged],
+    [copy.checkFailed, copy.sendFailed, copy.threadChanged],
   );
 
   const review = useCallback(async () => {
     if (sendingRef.current || reviewInFlight.current) return;
     const gen = ++reviewGen.current;
     reviewInFlight.current = true;
-    setState({ status: "working" });
+    setState({ status: "ready", ...seedFields(seed) });
     try {
       const draft = await draftMailReply(cardId);
       if (gen !== reviewGen.current) return;
-      setState({ status: "draft", ...draftFromApi(draft) });
+      setState((prev) =>
+        isMailReplyDrafty(prev) ? { ...prev, ...mergeMint(prev, draft) } : prev,
+      );
       trackProductEvent(TelemetryEventNames.mailReplyOpened, {});
     } catch (err) {
       if (gen !== reviewGen.current) return;
       trackProductEvent(TelemetryEventNames.mailReplyFailed, { error_class: errorClass(err) });
-      setState({ status: "error", error: failMessage(err, "draft") });
+      const block: Block = errorClass(err) === "thread_changed" ? "thread_changed" : "token_fail";
+      setState((prev) =>
+        isMailReplyDrafty(prev)
+          ? { ...prev, status: "ready", check: "fail", block, error: failMessage(err, "check") }
+          : prev,
+      );
     } finally {
       if (gen === reviewGen.current) reviewInFlight.current = false;
     }
-  }, [cardId, failMessage]);
+  }, [cardId, failMessage, seed]);
 
   const setSubject = useCallback((subject: string) => {
     setState((prev) => (isMailReplyDrafty(prev) ? { ...prev, subject, dirty: true } : prev));
@@ -135,17 +150,21 @@ export function useMailReplyReview(
 
   const openConfirm = useCallback(() => {
     setState((prev) => {
-      if (!isMailReplyDrafty(prev) || !prev.body.trim() || !prev.toEmail.trim()) return prev;
+      if (!isMailReplyDrafty(prev) || !prev.body.trim()) return prev;
+      if (prev.block !== "none") return prev;
       return { ...prev, status: "confirm" };
     });
   }, []);
 
   const keepEditing = useCallback(() => {
-    setState((prev) => (isMailReplyDrafty(prev) ? { ...prev, status: "draft" } : prev));
+    setState((prev) => (isMailReplyDrafty(prev) ? { ...prev, status: "ready" } : prev));
   }, []);
 
   const send = useCallback(async (): Promise<boolean> => {
     if (sendingRef.current || !isMailReplyDrafty(state)) return false;
+    if (state.check !== "ok" || !state.draftToken || !state.body.trim() || !state.toEmail.trim()) {
+      return false;
+    }
     sendingRef.current = true;
     setState({ ...state, status: "sending", error: null });
     try {
@@ -155,17 +174,23 @@ export function useMailReplyReview(
         body: state.body,
       });
       trackProductEvent(TelemetryEventNames.mailReplySent, {});
-      dirtyRef.current = false;
       setState(COLLAPSED);
       return true;
     } catch (err) {
       trackProductEvent(TelemetryEventNames.mailReplyFailed, { error_class: errorClass(err) });
-      setState({ ...state, status: "draft", error: failMessage(err, "send") });
+      setState({ ...state, status: "ready", error: failMessage(err, "send") });
       return false;
     } finally {
       sendingRef.current = false;
     }
   }, [failMessage, state]);
+
+  useEffect(() => {
+    return () => {
+      if (sendingRef.current) return;
+      persistIfDirty(latestRef.current);
+    };
+  }, [persistIfDirty]);
 
   return {
     state,

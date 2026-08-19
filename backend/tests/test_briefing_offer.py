@@ -41,7 +41,7 @@ def test_begin_land_ask_emits_offer_not_pipeline(monkeypatch):
     async def _run():
         msg = await ctrl.begin_land()
         assert ctrl.phase == OfferPhase.OFFERING
-        assert msg is not None and "ask" in msg.lower()
+        assert msg is None
         assert "briefing_offer" in _types(frames)
         assert frames[0]["reason"] == "startup_ask"
         assert "briefing_loading" not in _types(frames)
@@ -63,6 +63,19 @@ def test_begin_land_auto_when_granted(monkeypatch):
         assert "briefing_loading" in _types(frames)
         assert started["n"] == 1
         await ctrl.cleanup()
+
+    asyncio.run(_run())
+
+
+def test_begin_land_skip_when_unpaid(monkeypatch):
+    ctrl, frames, started = _make_controller(monkeypatch)
+    monkeypatch.setattr("voice.briefing.offer._paid_features_allowed", lambda: False)
+
+    async def _run():
+        assert await ctrl.begin_land() is None
+        assert ctrl.phase == OfferPhase.IDLE
+        assert frames == []
+        assert started["n"] == 0
 
     asyncio.run(_run())
 

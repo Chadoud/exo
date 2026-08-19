@@ -65,6 +65,8 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
     modelHook,
     settings,
     entitlement,
+    entitlementLoaded,
+    toastEntitlementBlocked,
     currentJob,
     sessionId,
     isRunning,
@@ -155,6 +157,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
     entitlement,
     jumpToSettingsSection,
     registerSettingsSubTabSelector,
+    todoAttentionCounts: todoFeed.counts,
   });
 
   useCodegenPreviewDetach(tab);
@@ -200,6 +203,9 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
     setSettings,
     settingsHydrated,
     backendOnline,
+    entitlement,
+    entitlementLoaded,
+    toastEntitlementBlocked,
     activeTab: tab,
     jumpToSettingsSection,
     onRetryBackend: handleRetryBackend,
@@ -288,7 +294,9 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
                 ? null
                 : titleBar}
           </div>
-          {workspaceBanner}
+          <div role="status" aria-live="polite" aria-atomic="true">
+            {workspaceBanner}
+          </div>
         </div>
         <div className="app-shell-sidebar row-start-2 col-start-1 flex min-h-0 min-w-0 flex-col overflow-hidden bg-bg-secondary border-r border-border">
           <div className="app-shell-sidebar-inner flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

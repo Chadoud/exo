@@ -91,6 +91,14 @@ def test_gmail_disconnect_clears_store(mail_dir):
         from_email="ada@example.com",
         subject="Hi",
     )
+    import tasks_store
+
+    harvested = tasks_store.create_task(
+        "Follow up with Alice",
+        source="gmail",
+        external_id="gmail:mail:disconnect-1",
+    )
+    typed = tasks_store.create_task("Buy milk", source="manual")
     from main import app
 
     client = TestClient(app)
@@ -98,6 +106,8 @@ def test_gmail_disconnect_clears_store(mail_dir):
         res = client.delete("/gmail/oauth")
     assert res.status_code == 200
     assert store.list_candidates() == []
+    assert tasks_store.get_task(harvested["id"]) is None
+    assert tasks_store.get_task(typed["id"]) is not None
 
 
 def test_clear_endpoint_drops_token_and_store(mail_dir):

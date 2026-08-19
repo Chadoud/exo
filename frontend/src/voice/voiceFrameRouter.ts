@@ -235,6 +235,8 @@ export function routeVoiceFrame(frame: Record<string, unknown>, deps: VoiceFrame
   }
 
   if (type === "briefing_offer") {
+    // Offer is a question, not a running job — don't leave the Exo cube on WORKING.
+    actions.setToolPhaseLabel(null);
     emitBriefingOffer(deps, { type: "briefing_offer" });
     return;
   }
@@ -249,11 +251,13 @@ export function routeVoiceFrame(frame: Record<string, unknown>, deps: VoiceFrame
       typeof frame.message === "string" && frame.message.trim()
         ? frame.message.trim()
         : "Couldn't start today's briefing.";
+    actions.setToolPhaseLabel(null);
     emitBriefingOffer(deps, { type: "briefing_offer_error", message });
     return;
   }
 
   if (type === "briefing_offer_clear") {
+    actions.setToolPhaseLabel(null);
     emitBriefingOffer(deps, { type: "briefing_offer_clear" });
     return;
   }

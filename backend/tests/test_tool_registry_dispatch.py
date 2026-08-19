@@ -22,6 +22,20 @@ def test_send_message_passes_approval_gate_when_granted(monkeypatch):
     assert result["ok"] is True
 
 
+def test_send_mail_blocked_when_unpaid(monkeypatch):
+    monkeypatch.setattr(
+        "entitlement_gate.may_use_proactive",
+        lambda: (False, "trial_expired"),
+    )
+    result = dispatch_sync(
+        "google_workspace",
+        {"operation": "send_mail", "to": "me", "body": "hi"},
+        approval_granted=True,
+    )
+    assert result["ok"] is False
+    assert "paused" in str(result.get("error", "")).lower()
+
+
 def test_approval_tools_include_write_connectors():
     for name in (
         "send_message",

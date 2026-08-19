@@ -11,6 +11,7 @@ import type { MemorySubTab } from "../../utils/memoryUi";
 import { memorySubTabForScrollSection } from "../../utils/memoryUi";
 import type { TodoSubTab } from "../../utils/todoUi";
 import { todoSubTabForScrollSection } from "../../utils/todoUi";
+import { pickTodoLandingTab } from "../../utils/todoNavigation";
 import type { SettingsNavTab } from "../../utils/settingsNav";
 
 type Tab = MainNavTab;
@@ -21,6 +22,7 @@ interface UseWorkspaceSidebarNavParams {
   entitlement: EntitlementStatus | null;
   jumpToSettingsSection: (sectionId: string) => void;
   registerSettingsSubTabSelector: (select: (tab: SettingsNavTab) => void) => void;
+  todoAttentionCounts?: { inbox: number; replies: number };
 }
 
 /**
@@ -32,6 +34,7 @@ export function useWorkspaceSidebarNav({
   entitlement,
   jumpToSettingsSection,
   registerSettingsSubTabSelector,
+  todoAttentionCounts = { inbox: 0, replies: 0 },
 }: UseWorkspaceSidebarNavParams) {
   const {
     memorySubTab,
@@ -39,7 +42,7 @@ export function useWorkspaceSidebarNav({
     selectMemorySubTab,
     selectMemoryAllSections,
   } = useMemorySubTab();
-  const { todoSubTab, todoShowAllSections, selectTodoSubTab, selectTodoAllSections } = useTodoSubTab();
+  const { todoSubTab, todoShowAllSections, selectTodoSubTab } = useTodoSubTab();
   const {
     settingsSubTab,
     settingsShowAllSections,
@@ -107,7 +110,8 @@ export function useWorkspaceSidebarNav({
       }
 
       if (openAllSections && nextTab === "tasks") {
-        selectTodoAllSections();
+        // Parent To Do is not an all-sections dump — land on last or urgent tab.
+        selectTodoSubTab(pickTodoLandingTab(todoSubTab, todoAttentionCounts));
         setTodoHighlightedSubTab(null);
       } else if (nextTodoSubTab) {
         selectTodoSubTab(nextTodoSubTab);
@@ -130,8 +134,9 @@ export function useWorkspaceSidebarNav({
       selectMemorySubTab,
       selectSettingsAllSections,
       selectSettingsSubTab,
-      selectTodoAllSections,
       selectTodoSubTab,
+      todoAttentionCounts,
+      todoSubTab,
     ],
   );
 

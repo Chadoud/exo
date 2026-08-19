@@ -90,7 +90,7 @@ export function useCommandPaletteCommands(
       {
         id: "tab-todo-inbox",
         label: translate(uiLocale, "nav.todoInbox"),
-        keywords: "inbox attention failures reminders review nudges",
+        keywords: "inbox pending attention failures reminders review nudges",
         run: () => {
           queueTodoSubTab("inbox");
           requestTab("tasks");

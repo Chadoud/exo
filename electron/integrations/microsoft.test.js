@@ -11,6 +11,17 @@ afterEach(() => {
   globalThis.fetch = origFetch;
 });
 
+test("emailFromGraphMePayload prefers mail then UPN", () => {
+  delete require.cache[require.resolve("./microsoft.js")];
+  const microsoft = require("./microsoft.js");
+  assert.equal(microsoft.emailFromGraphMePayload({ mail: "you@contoso.com" }), "you@contoso.com");
+  assert.equal(
+    microsoft.emailFromGraphMePayload({ userPrincipalName: "you@contoso.com" }),
+    "you@contoso.com",
+  );
+  assert.equal(microsoft.emailFromGraphMePayload({}), undefined);
+});
+
 test("graphMeHealth succeeds on 200", async () => {
   globalThis.fetch = async () => ({
     ok: true,

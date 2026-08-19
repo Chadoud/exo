@@ -10,6 +10,21 @@ from .handlers import HANDLERS, TOOLS_NEEDING_APPROVAL
 
 logger = logging.getLogger(__name__)
 
+_MAIL_SEND_TOOLS = frozenset({"google_workspace", "microsoft_graph", "infomaniak_services"})
+
+
+def _unpaid_mail_send_block(name: str, params: dict[str, Any]) -> dict[str, Any] | None:
+    if name not in _MAIL_SEND_TOOLS:
+        return None
+    if str(params.get("operation", "")).strip() != "send_mail":
+        return None
+    from entitlement_gate import may_use_proactive
+
+    ok, _ = may_use_proactive()
+    if ok:
+        return None
+    return {"ok": False, "error": "Sending mail is paused until you subscribe."}
+
 
 def _safe_repr(obj: Any, max_len: int = 200) -> str:
     """Return a truncated repr of obj, safe to include in log lines."""
@@ -44,6 +59,9 @@ def dispatch_sync(
         }
 
     raw_params = parameters if isinstance(parameters, dict) else {}
+    unpaid = _unpaid_mail_send_block(name, raw_params)
+    if unpaid is not None:
+        return unpaid
     if approval_granted:
         raw_params = {**raw_params, "_approval_granted": True}
     logger.debug("[tool] START    %s | args=%s", name, _safe_repr(raw_params))

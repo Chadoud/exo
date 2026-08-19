@@ -40,7 +40,7 @@ User overrides: Gmail `STARRED` / `IMPORTANT`, Outlook flagged/high importance, 
 | Source | Gate |
 |--------|------|
 | `tasks_integration_sync` | Gmail/Outlook mail evaluated before task create; only **ALLOW** tier creates tasks; query excludes promotion categories |
-| `mail_initiative` harvest | Unanswered Gmail cards: same `evaluate_gmail_message` **ALLOW** gate + noise query exclusions; metadata only (no body/snippet at rest) |
+| `mail_initiative` harvest | Unanswered Gmail cards: same `evaluate_gmail_message` **ALLOW** gate + noise query exclusions; persist outbound draft text only (no inbound body at rest); re-check a truncated snippet before compose |
 | `integration_memory_loop` | **No auto-memory from mail**; calendar prep tasks only |
 | `memory_extract` | Transcript recap/promo-density skip; subject-line shape reject; post-LLM `evaluate_memory_item` (**ALLOW** only); reject promotional tasks |
 | `save_memory` tool | `evaluate_memory_item` (consent keys bypass) |
