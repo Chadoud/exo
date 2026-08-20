@@ -4,7 +4,11 @@ const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
 
-const { normalizeFrameworkDir, normalizeFrameworksInTree } = require("./mac-framework-sign.cjs");
+const {
+  flattenPythonFrameworks,
+  normalizeFrameworkDir,
+  normalizeFrameworksInTree,
+} = require("./mac-framework-sign.cjs");
 
 function makeFramework(root, { materialized = false } = {}) {
   const framework = path.join(root, "Python.framework");
@@ -37,6 +41,23 @@ test("normalizeFrameworkDir writes Info.plist and turns root entries into versio
     assert.ok(fs.lstatSync(path.join(framework, "Versions", "Current")).isSymbolicLink());
     assert.equal(fs.readFileSync(path.join(framework, "Python"), "utf8"), "real-python");
     assert.ok(fs.existsSync(path.join(versionDir, "Resources", "empty.txt")));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("flattenPythonFrameworks replaces the framework with a real _internal/Python dylib", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-fw-flat-"));
+  try {
+    const internals = path.join(dir, "_internal");
+    fs.mkdirSync(internals, { recursive: true });
+    const framework = makeFramework(internals);
+    fs.symlinkSync(path.join("Python.framework", "Versions", "3.11", "Python"), path.join(internals, "Python"));
+    assert.equal(flattenPythonFrameworks(dir), true);
+    assert.ok(!fs.existsSync(framework));
+    const dest = path.join(internals, "Python");
+    assert.ok(!fs.lstatSync(dest).isSymbolicLink());
+    assert.equal(fs.readFileSync(dest, "utf8"), "real-python");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

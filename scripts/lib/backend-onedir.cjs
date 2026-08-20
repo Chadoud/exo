@@ -11,6 +11,7 @@ const path = require("path");
 const { execFileSync, execSync } = require("child_process");
 const {
   collectFrameworkDirs,
+  flattenPythonFrameworks,
   normalizeFrameworksInTree,
 } = require("./mac-framework-sign.cjs");
 
@@ -207,6 +208,7 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
     throw new Error(`codesign: no backend executable in ${sliceDir}`);
   }
 
+  flattenPythonFrameworks(sliceDir);
   normalizeFrameworksInTree(sliceDir);
   const machOFiles = collectMachOFilesDeepestFirst(sliceDir).filter(
     (filePath) => !isInsideFramework(filePath),

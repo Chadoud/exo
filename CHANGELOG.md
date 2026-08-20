@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.67] - 2026-08-20
+
+### Fixed
+
+- **Packaging:** Flatten PyInstaller’s `Python.framework` to `_internal/Python` (a real dylib). Apple notarize kept rejecting the framework-wrapped interpreter even after a valid `codesign --verify`.
+
 ## [1.1.66] - 2026-08-20
 
 ### Fixed

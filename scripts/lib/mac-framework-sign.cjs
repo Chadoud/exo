@@ -132,6 +132,29 @@ function normalizeFrameworksInTree(rootDir) {
     .filter(Boolean);
 }
 
+/**
+ * Replace `_internal/Python` → framework symlink with a real dylib and delete
+ * Python.framework. Notary rejects the framework-wrapped dylib even when
+ * `codesign --verify` passes.
+ */
+function flattenPythonFrameworks(sliceDir) {
+  const internals = path.join(sliceDir, "_internal");
+  const framework = path.join(internals, "Python.framework");
+  if (!fs.existsSync(framework)) return false;
+  const versionDir = normalizeFrameworkDir(framework);
+  const realPython = path.join(versionDir, frameworkName(framework));
+  if (!fs.existsSync(realPython)) {
+    throw new Error(`flatten: missing ${realPython}`);
+  }
+  const dest = path.join(internals, "Python");
+  const existing = fs.lstatSync(dest, { throwIfNoEntry: false });
+  if (existing) fs.rmSync(dest, { recursive: true, force: true });
+  fs.copyFileSync(realPython, dest);
+  fs.chmodSync(dest, 0o755);
+  fs.rmSync(framework, { recursive: true, force: true });
+  return true;
+}
+
 module.exports = {
   frameworkName,
   frameworkVersionName,
@@ -139,4 +162,5 @@ module.exports = {
   normalizeFrameworkDir,
   collectFrameworkDirs,
   normalizeFrameworksInTree,
+  flattenPythonFrameworks,
 };
