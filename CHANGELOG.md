@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.68] - 2026-08-20
+
+### Fixed
+
+- **Packaging:** Sign backend slices in `afterPack` (before the app is sealed). Re-signing in `afterSign` was modifying sealed resources and breaking codesign.
+
 ## [1.1.67] - 2026-08-20
 
 ### Fixed

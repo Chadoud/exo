@@ -1,33 +1,21 @@
 /**
- * electron-builder `afterSign` hook: re-sign backend slices in the packaged
- * app (copy/merge can break Python.framework), then notarize with Apple.
+ * electron-builder `afterSign` hook: notarize the macOS app with Apple.
  *
- * Notarize runs only when ALL of these are present:
+ * Runs only when ALL of these are present in the environment:
  *   APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
  *
- * Without them (local dev, unsigned CI), this is a no-op so the unsigned build
- * keeps working. `@electron/notarize` is required lazily, after the credential
- * check, so the dependency is only needed on real release runners.
+ * Do not re-sign extraResources here — that invalidates the app seal.
+ * Slice signing happens in afterPack (`scripts/after-pack-mac.cjs`).
+ *
+ * Without Apple credentials (local dev, unsigned CI), this is a no-op.
+ * `@electron/notarize` is required lazily so only release runners need it.
  */
-const path = require("path");
-const { resignPackagedBackendSlices } = require("./lib/backend-onedir.cjs");
-
-function resignSlicesIfIdentity(appPath) {
-  const identity = process.env.MAC_SIGN_IDENTITY || process.env.CSC_NAME;
-  if (!identity) return;
-  const entitlements = path.join(__dirname, "..", "electron", "entitlements.mac.plist");
-  resignPackagedBackendSlices(appPath, identity, entitlements);
-}
 
 exports.default = async function notarize(context) {
   const { electronPlatformName, appOutDir } = context;
   if (electronPlatformName !== "darwin") {
     return;
   }
-
-  const appName = context.packager.appInfo.productFilename;
-  const appPath = `${appOutDir}/${appName}.app`;
-  resignSlicesIfIdentity(appPath);
 
   const appleId = process.env.APPLE_ID;
   const appleIdPassword = process.env.APPLE_APP_SPECIFIC_PASSWORD;
@@ -36,6 +24,9 @@ exports.default = async function notarize(context) {
     console.log("[notarize] Apple credentials not set — skipping notarization (unsigned build).");
     return;
   }
+
+  const appName = context.packager.appInfo.productFilename;
+  const appPath = `${appOutDir}/${appName}.app`;
 
   const { notarize } = require("@electron/notarize");
 
