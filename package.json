@@ -1,6 +1,6 @@
 {
   "name": "exosites-assistant",
-  "version": "1.1.68",
+  "version": "1.1.69",
   "description": "Exo — AI file sorting and second brain (desktop; cloud sort for subscribers)",
   "main": "electron/main.js",
   "author": "Exosites",
@@ -123,7 +123,6 @@
         ]
       }
     ],
-    "afterPack": "scripts/after-pack-mac.cjs",
     "afterSign": "scripts/notarize.cjs",
     "publish": [
       {

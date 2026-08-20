@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.69] - 2026-08-20
+
+### Fixed
+
+- **Packaging:** Do not re-sign backend slices after they are copied into the app. Re-signing made the Intel and Apple Silicon copies differ, so the universal merge tried to lipo two arm64 binaries.
+
 ## [1.1.68] - 2026-08-20
 
 ### Fixed

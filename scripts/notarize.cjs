@@ -5,7 +5,7 @@
  *   APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
  *
  * Do not re-sign extraResources here — that invalidates the app seal.
- * Slice signing happens in afterPack (`scripts/after-pack-mac.cjs`).
+ * Slice signing happens once in CI before package (codesignMacOnedirSlice).
  *
  * Without Apple credentials (local dev, unsigned CI), this is a no-op.
  * `@electron/notarize` is required lazily so only release runners need it.
