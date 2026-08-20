@@ -9,7 +9,10 @@
 const fs = require("fs");
 const path = require("path");
 const { execFileSync, execSync } = require("child_process");
-const { normalizeFrameworksInTree } = require("./mac-framework-sign.cjs");
+const {
+  collectFrameworkDirs,
+  normalizeFrameworksInTree,
+} = require("./mac-framework-sign.cjs");
 
 /**
  * @param {string} sliceDir Directory that holds the onedir payload (or legacy one-file).
@@ -205,18 +208,29 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
   }
 
   const versionDirs = normalizeFrameworksInTree(sliceDir);
-  const machOFiles = collectMachOFilesDeepestFirst(sliceDir);
+  const machOFiles = collectMachOFilesDeepestFirst(sliceDir).filter(
+    (filePath) => !isInsideFramework(filePath),
+  );
 
   for (const filePath of machOFiles) {
-    const ents = isInsideFramework(filePath) ? null : entitlementsPath;
-    execFileSync("codesign", codesignArgs(identity, filePath, ents), { stdio: "inherit" });
+    execFileSync("codesign", codesignArgs(identity, filePath, entitlementsPath), {
+      stdio: "inherit",
+    });
   }
 
   for (const versionDir of versionDirs) {
     execFileSync("codesign", codesignArgs(identity, versionDir, null), { stdio: "inherit" });
-    execFileSync("codesign", ["--verify", "--deep", "--strict", versionDir], {
-      stdio: "inherit",
-    });
+  }
+  for (const frameworkDir of collectFrameworkDirs(sliceDir)) {
+    try {
+      execFileSync("codesign", codesignArgs(identity, frameworkDir, null), { stdio: "inherit" });
+      execFileSync("codesign", ["--verify", "--deep", "--strict", frameworkDir], {
+        stdio: "inherit",
+      });
+    } catch (err) {
+      execSync(`ls -la "${frameworkDir}" "${frameworkDir}/Versions"`, { stdio: "inherit" });
+      throw err;
+    }
   }
   normalizeFrameworksInTree(sliceDir);
 

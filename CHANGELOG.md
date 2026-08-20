@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.65] - 2026-08-20
+
+### Fixed
+
+- **Packaging:** After normalizing `Python.framework`, codesign the framework bundle itself (not only `Versions/<x.y>`) so notarize sees a sealed principal executable.
+
 ## [1.1.64] - 2026-08-20
 
 ### Fixed
