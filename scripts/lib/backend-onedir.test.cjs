@@ -12,6 +12,7 @@ const {
   isFrameworkShortcutPath,
   isInsideFramework,
   repairFrameworkShortcuts,
+  detachFrameworkTopExec,
   codesignArgs,
 } = require("./backend-onedir.cjs");
 
@@ -133,6 +134,23 @@ test("repairFrameworkShortcuts turns materialized stubs back into relative symli
     assert.ok(fs.lstatSync(top).isSymbolicLink());
     assert.ok(fs.lstatSync(current).isSymbolicLink());
     assert.equal(fs.readFileSync(top, "utf8"), "real");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("detachFrameworkTopExec removes the ambiguous Foo.framework/Foo stub", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-fw-detach-"));
+  try {
+    const framework = path.join(dir, "Python.framework");
+    const versionDir = path.join(framework, "Versions", "3.11");
+    fs.mkdirSync(versionDir, { recursive: true });
+    fs.writeFileSync(path.join(versionDir, "Python"), "real");
+    repairFrameworkShortcuts(dir);
+    assert.ok(fs.existsSync(path.join(framework, "Python")));
+    detachFrameworkTopExec(dir);
+    assert.ok(!fs.existsSync(path.join(framework, "Python")));
+    assert.ok(fs.existsSync(path.join(versionDir, "Python")));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

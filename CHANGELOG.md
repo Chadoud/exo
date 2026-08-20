@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.63] - 2026-08-20
+
+### Fixed
+
+- **Packaging:** Remove `Python.framework/Python` before signing the framework bundle, then restore the symlink, so notarize can accept the inner interpreter.
+
 ## [1.1.62] - 2026-08-19
 
 ### Fixed
