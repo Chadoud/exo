@@ -207,7 +207,7 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
     throw new Error(`codesign: no backend executable in ${sliceDir}`);
   }
 
-  const versionDirs = normalizeFrameworksInTree(sliceDir);
+  normalizeFrameworksInTree(sliceDir);
   const machOFiles = collectMachOFilesDeepestFirst(sliceDir).filter(
     (filePath) => !isInsideFramework(filePath),
   );
@@ -218,9 +218,6 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
     });
   }
 
-  for (const versionDir of versionDirs) {
-    execFileSync("codesign", codesignArgs(identity, versionDir, null), { stdio: "inherit" });
-  }
   for (const frameworkDir of collectFrameworkDirs(sliceDir)) {
     try {
       execFileSync("codesign", codesignArgs(identity, frameworkDir, null), { stdio: "inherit" });
@@ -242,6 +239,17 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
   });
 }
 
+/** Re-sign onedir slices inside a packaged .app (after electron-builder copy/merge). */
+function resignPackagedBackendSlices(appPath, identity, entitlementsPath) {
+  const resources = path.join(appPath, "Contents", "Resources");
+  for (const name of ["backend-x64", "backend-arm64"]) {
+    const slice = path.join(resources, name);
+    if (!resolveBackendInSlice(slice, "darwin")) continue;
+    console.log(`[codesign] re-signing packaged slice ${name}`);
+    codesignMacOnedirSlice(slice, identity, entitlementsPath);
+  }
+}
+
 /**
  * @param {string} binPath
  * @param {string} pattern
@@ -258,6 +266,7 @@ module.exports = {
   stageOnedirDirectory,
   collectMachOFilesDeepestFirst,
   codesignMacOnedirSlice,
+  resignPackagedBackendSlices,
   fileOutputMatches,
   isFrameworkShortcutPath,
   isInsideFramework,

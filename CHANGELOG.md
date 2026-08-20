@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.66] - 2026-08-20
+
+### Fixed
+
+- **Packaging:** Re-sign backend slices inside the packaged `.app` after electron-builder copy/merge, immediately before notarize. Slice-level signatures were valid, then broken in the app tree.
+
 ## [1.1.65] - 2026-08-20
 
 ### Fixed

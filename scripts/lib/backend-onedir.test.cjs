@@ -14,6 +14,7 @@ const {
   repairFrameworkShortcuts,
   detachFrameworkTopExec,
   codesignArgs,
+  resignPackagedBackendSlices,
 } = require("./backend-onedir.cjs");
 
 test("nestedBackendExecutable uses platform-specific launcher name", () => {
@@ -163,6 +164,16 @@ test("codesignArgs omits entitlements for framework targets", () => {
   assert.ok(withEnts.includes("--entitlements"));
   const noEnts = codesignArgs("ID", "/slice/Python.framework", null);
   assert.ok(!noEnts.includes("--entitlements"));
+});
+
+test("resignPackagedBackendSlices is a no-op when the app has no backend slices", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-resign-"));
+  try {
+    fs.mkdirSync(path.join(dir, "Contents", "Resources"), { recursive: true });
+    resignPackagedBackendSlices(dir, "ID", "/ents.plist");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("stageOnedirDirectory replaces destination with a fresh copy", () => {
