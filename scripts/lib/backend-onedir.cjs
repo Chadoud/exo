@@ -9,6 +9,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execFileSync, execSync } = require("child_process");
+const { normalizeFrameworksInTree } = require("./mac-framework-sign.cjs");
 
 /**
  * @param {string} sliceDir Directory that holds the onedir payload (or legacy one-file).
@@ -179,22 +180,6 @@ function detachFrameworkTopExec(rootDir) {
   walk(rootDir);
 }
 
-function collectFrameworkBundles(sliceDir) {
-  const bundles = [];
-  const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (fs.lstatSync(full).isSymbolicLink()) continue;
-      if (!entry.isDirectory()) continue;
-      if (entry.name.endsWith(".framework")) bundles.push(full);
-      walk(full);
-    }
-  };
-  walk(sliceDir);
-  bundles.sort((a, b) => b.length - a.length || b.localeCompare(a));
-  return bundles;
-}
-
 function codesignArgs(identity, targetPath, entitlementsPath) {
   const args = ["--force", "--options", "runtime", "--timestamp", "--sign", identity];
   if (entitlementsPath) args.push("--entitlements", entitlementsPath);
@@ -204,9 +189,8 @@ function codesignArgs(identity, targetPath, entitlementsPath) {
 
 /**
  * Codesign every Mach-O in an onedir slice (inner libs first, launcher last).
- * Framework binaries are signed without app entitlements. The top-level
- * Foo.framework/Foo stub is removed before signing the .framework directory
- * (otherwise codesign reports "bundle format is ambiguous"), then restored.
+ * Sign Versions/<x.y> as the framework bundle — not Python.framework itself
+ * (codesign reports "bundle format is ambiguous" on the root).
  * @param {string} sliceDir
  * @param {string} identity
  * @param {string} entitlementsPath
@@ -220,8 +204,7 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
     throw new Error(`codesign: no backend executable in ${sliceDir}`);
   }
 
-  repairFrameworkShortcuts(sliceDir);
-  detachFrameworkTopExec(sliceDir);
+  const versionDirs = normalizeFrameworksInTree(sliceDir);
   const machOFiles = collectMachOFilesDeepestFirst(sliceDir);
 
   for (const filePath of machOFiles) {
@@ -229,10 +212,13 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
     execFileSync("codesign", codesignArgs(identity, filePath, ents), { stdio: "inherit" });
   }
 
-  for (const bundle of collectFrameworkBundles(sliceDir)) {
-    execFileSync("codesign", codesignArgs(identity, bundle, null), { stdio: "inherit" });
+  for (const versionDir of versionDirs) {
+    execFileSync("codesign", codesignArgs(identity, versionDir, null), { stdio: "inherit" });
+    execFileSync("codesign", ["--verify", "--deep", "--strict", versionDir], {
+      stdio: "inherit",
+    });
   }
-  repairFrameworkShortcuts(sliceDir);
+  normalizeFrameworksInTree(sliceDir);
 
   execFileSync("codesign", codesignArgs(identity, launcher, entitlementsPath), {
     stdio: "inherit",
@@ -263,6 +249,5 @@ module.exports = {
   isInsideFramework,
   repairFrameworkShortcuts,
   detachFrameworkTopExec,
-  collectFrameworkBundles,
   codesignArgs,
 };

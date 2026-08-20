@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.64] - 2026-08-20
+
+### Fixed
+
+- **Packaging:** Normalize PyInstaller’s `Python.framework` (Info.plist + versioned symlinks) and codesign `Versions/<x.y>` as the bundle so Apple notarize can seal it.
+
 ## [1.1.63] - 2026-08-20
 
 ### Fixed
