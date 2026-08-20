@@ -3,8 +3,6 @@ import { memoryOriginProviderKey } from "./memoryOrigin";
 import { MEMORY_SUB_TAB_STORAGE_KEY, MEMORY_LIST_EXPANDED_STORAGE_KEY } from "../constants";
 import { HIDDEN_INTERNAL_MEMORY_KEYS } from "./memoryInternalKeys";
 
-export { HIDDEN_INTERNAL_MEMORY_KEYS } from "./memoryInternalKeys";
-
 export type MemorySubTab = "overview" | "activity" | "map";
 
 /** Align with backend/signal_quality/constants.py — keep in sync when thresholds change. */
