@@ -72,6 +72,15 @@ describe("computeMemoryOverviewStats", () => {
     expect(stats.byCategory.find((row) => row.category === "projects")?.count).toBe(2);
     expect(stats.recent).toHaveLength(3);
   });
+
+  it("omits internal briefing flags from totals and recent", () => {
+    const stats = computeMemoryOverviewStats([
+      entry({ id: 1, category: "preferences", key: "startup_briefing_consent", value: "granted" }),
+      entry({ id: 2, category: "preferences", key: "startup_briefing_consent_v2", value: "1" }),
+    ]);
+    expect(stats.total).toBe(1);
+    expect(stats.recent.map((row) => row.key)).toEqual(["startup_briefing_consent"]);
+  });
 });
 
 describe("computeWeeklyActivity", () => {

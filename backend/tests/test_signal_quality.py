@@ -183,9 +183,43 @@ def test_visibility_thresholds_aligned() -> None:
 
 
 def test_bypass_consent_keys_in_constants() -> None:
-    from signal_quality import SIGNAL_CHECK_BYPASS_KEYS
+    from signal_quality import MEMORY_HIDDEN_FROM_UI_KEYS, SIGNAL_CHECK_BYPASS_KEYS
 
     assert "startup_briefing_consent" in SIGNAL_CHECK_BYPASS_KEYS
+    assert "startup_briefing_consent_v2" in MEMORY_HIDDEN_FROM_UI_KEYS
+
+
+def test_hidden_internal_memory_hides_briefing_v2_flag() -> None:
+    from signal_quality import is_hidden_internal_memory, is_prompt_visible, is_recall_visible
+
+    flag = {
+        "category": "preferences",
+        "key": "startup_briefing_consent_v2",
+        "value": "1",
+        "source": "manual",
+        "reviewed": True,
+        "archived_at": None,
+        "noise_score": 0,
+    }
+    assert is_hidden_internal_memory(flag) is True
+    assert is_prompt_visible(flag) is False
+    assert is_recall_visible(flag) is False
+
+    granted = {**flag, "key": "startup_briefing_consent", "value": "granted"}
+    assert is_hidden_internal_memory(granted) is False
+    assert is_prompt_visible(granted) is True
+
+    from signal_quality import strip_hidden_keys_from_memory_dict
+
+    store = strip_hidden_keys_from_memory_dict(
+        {
+            "preferences": {
+                "startup_briefing_consent": "granted",
+                "startup_briefing_consent_v2": "1",
+            }
+        }
+    )
+    assert store["preferences"] == {"startup_briefing_consent": "granted"}
 
 
 def test_prompt_and_recall_visibility_aligned() -> None:

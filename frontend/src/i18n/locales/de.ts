@@ -3078,7 +3078,7 @@ Beispiele:
       "Exo beenden (Cmd+Q), aus Programme neu öffnen und erneut versuchen. Wenn es weiterhin fehlschlägt, Support kontaktieren.",
     apiStillStarting:
       "Exo startet noch auf diesem Mac. Bitte einen Moment warten.",
-    jobRefreshFailed: "Auftragsstatus konnte nicht aktualisiert werden",
+    jobRefreshFailed: "Exo ist noch nicht bereit.",
     dropWhileOfflineTitle: "Exo startet noch",
     dropWhileOfflineDesc:
       "Der App-Dienst wird im Hintergrund gestartet — bitte gleich erneut versuchen.",

@@ -27,6 +27,7 @@ import { hasElectronBridge } from "../utils/platform";
 import { hasEntitlementIpc } from "../utils/electronDesktop";
 import { allPathsUsableForLocalBackend } from "../utils/localBackendPaths";
 import { toastUserError } from "../utils/userGuidance";
+import { isLocalAssistantReady } from "../utils/localAssistantReady";
 import { track } from "../telemetry/client";
 import { TelemetryEventNames } from "../telemetry/schema";
 import {
@@ -61,6 +62,8 @@ function kickSilentBackendRestart(): void {
 export function useSortPipelineActions(opts: {
   uiLocale: UiLocale;
   backendOnline: boolean;
+  backendHealthProbing?: boolean;
+  backendServiceStarting?: boolean;
   settings: AppSettings;
   installedTesseractLangs: string[] | undefined;
   entitlement: EntitlementStatus | null;
@@ -88,6 +91,8 @@ export function useSortPipelineActions(opts: {
   const {
     uiLocale,
     backendOnline,
+    backendHealthProbing = false,
+    backendServiceStarting = false,
     settings,
     installedTesseractLangs,
     entitlement,
@@ -110,6 +115,11 @@ export function useSortPipelineActions(opts: {
     jumpToSettingsSection,
     gmailMergePrefsRef,
   } = opts;
+  const serviceReady = isLocalAssistantReady({
+    backendOnline,
+    backendHealthProbing,
+    backendServiceStarting,
+  });
 
   const emitJobStartedTelemetry = useCallback(
     (paths: string[], gmailForRun: GmailAnalyzeSlice | null, driveStream = false) => {
@@ -261,7 +271,7 @@ export function useSortPipelineActions(opts: {
   );
 
   const assertDriveStreamPreconditions = useCallback((): boolean => {
-    if (!backendOnline) {
+    if (!serviceReady) {
       trackSortBlocked(settings.telemetryOptIn, settings.uiLocale, "offline");
       kickSilentBackendRestart();
       toast.message(translate(uiLocale, "toast.dropWhileOfflineTitle"), {
@@ -292,7 +302,7 @@ export function useSortPipelineActions(opts: {
     if (blockIfAnalysisModelsNotReady()) return false;
     return true;
   }, [
-    backendOnline,
+    serviceReady,
     uiLocale,
     entitlement,
     toastCloudAccountRequired,
@@ -441,7 +451,7 @@ export function useSortPipelineActions(opts: {
   const handleBrowserFiles = useCallback(
     async (files: File[], context?: BrowserUploadContext) => {
       void context;
-      if (!backendOnline) {
+      if (!serviceReady) {
         trackSortBlocked(settings.telemetryOptIn, settings.uiLocale, "offline");
         kickSilentBackendRestart();
         toast.message(translate(uiLocale, "toast.dropWhileOfflineTitle"), {
@@ -505,7 +515,7 @@ export function useSortPipelineActions(opts: {
       }
     },
     [
-      backendOnline,
+      serviceReady,
       settings,
       installedTesseractLangs,
       startPolling,

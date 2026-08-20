@@ -3,6 +3,7 @@ import { CATEGORY_COLORS } from "../components/brainMap/graphModel";
 import { topNWithOtherRows } from "./topNWithOther";
 import {
   countNeedsReview,
+  isHiddenInternalMemory,
   isPromptVisibleMemory,
   memoryEntryMatchesFilter,
   memoryProvenanceGroup,
@@ -150,6 +151,7 @@ export function computeMemoryOverviewStats(
   entries: ScopedMemoryEntry[],
   now = new Date(),
 ): MemoryOverviewStats {
+  entries = entries.filter((entry) => !isHiddenInternalMemory(entry));
   const categoryMap = new Map<MemoryCategory, number>();
   for (const category of MEMORY_CATEGORIES) {
     categoryMap.set(category, 0);

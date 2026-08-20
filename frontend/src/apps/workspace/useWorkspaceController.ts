@@ -25,6 +25,7 @@ import { TelemetryEventNames } from "../../telemetry/schema";
 import { APP_DISPLAY_NAME } from "../../constants";
 import { translate } from "../../i18n/translate";
 import { toastUserError } from "../../utils/userGuidance";
+import { shouldNotifyJobPollError } from "../../utils/localAssistantReady";
 import { syncSortDefaultsToBackend } from "../../utils/syncSortDefaultsToBackend";
 import {
   createWorkspaceAssistantBridge,
@@ -45,6 +46,8 @@ export function useWorkspaceController(opts: {
   uiLocale: UiLocale;
   settings: AppSettings;
   backendOnline: boolean;
+  backendHealthProbing?: boolean;
+  backendServiceStarting?: boolean;
   mainAppReady: boolean;
   entitlement: EntitlementStatus | null;
   refreshEntitlement: () => Promise<void>;
@@ -64,6 +67,8 @@ export function useWorkspaceController(opts: {
     uiLocale,
     settings,
     backendOnline,
+    backendHealthProbing = false,
+    backendServiceStarting = false,
     mainAppReady,
     entitlement,
     refreshEntitlement,
@@ -90,6 +95,18 @@ export function useWorkspaceController(opts: {
   const telemetryJobStartedAtRef = useRef<number | null>(null);
   const telemetryTerminalRef = useRef<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const notifyJobPollErrorRef = useRef(
+    shouldNotifyJobPollError({
+      backendOnline,
+      backendHealthProbing,
+      backendServiceStarting,
+    }),
+  );
+  notifyJobPollErrorRef.current = shouldNotifyJobPollError({
+    backendOnline,
+    backendHealthProbing,
+    backendServiceStarting,
+  });
 
   const { startPolling, stopPolling } = useJobPolling({
     onJob: (job) => {
@@ -124,6 +141,7 @@ export function useWorkspaceController(opts: {
       if (settings.outputDir) void refreshTree();
       void refreshEntitlement();
     },
+    shouldNotifyError: () => notifyJobPollErrorRef.current,
     onError: (err) => {
       toastUserError(translate(uiLocale, "toast.jobRefreshFailed"), err, {
         id: "toast.jobRefreshFailed",
@@ -193,6 +211,8 @@ export function useWorkspaceController(opts: {
   const sortPipeline = useSortPipelineActions({
     uiLocale,
     backendOnline,
+    backendHealthProbing,
+    backendServiceStarting,
     settings,
     installedTesseractLangs: modelHook.ocrInfo?.languages,
     entitlement,

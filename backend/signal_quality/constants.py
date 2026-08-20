@@ -30,6 +30,13 @@ SIGNAL_CHECK_BYPASS_KEYS = frozenset(
     }
 )
 
+# Vault keys that must never appear in Memory browse / search / prompts.
+MEMORY_HIDDEN_FROM_UI_KEYS = frozenset(
+    {
+        "startup_briefing_consent_v2",
+    }
+)
+
 # Provenance values stored on memory_entries.
 PROVENANCE_MANUAL = "manual"
 PROVENANCE_CHAT = "chat"

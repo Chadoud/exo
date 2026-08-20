@@ -90,4 +90,52 @@ describe("useJobPolling", () => {
 
     expect(onError).toHaveBeenCalledTimes(1);
   });
+
+  it("does not toast when the caller says the wait overlay is showing", async () => {
+    const shouldNotifyError = vi.fn(() => false);
+    vi.mocked(api.job).mockRejectedValue(new Error("local_assistant_unreachable"));
+
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => {
+      root!.render(
+        createElement(function Probe() {
+          const polling = useJobPolling({ onJob, onTerminal, onError, shouldNotifyError });
+          useEffect(() => {
+            latest = polling;
+          });
+          return null;
+        }),
+      );
+    });
+    await act(async () => {
+      latest?.startPolling("job-1");
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    });
+    expect(onError).not.toHaveBeenCalled();
+    expect(shouldNotifyError).toHaveBeenCalled();
+  });
+
+  it("keeps polling after a transient fetch failure", async () => {
+    vi.mocked(api.job)
+      .mockRejectedValueOnce(new Error("local_assistant_unreachable"))
+      .mockResolvedValueOnce({ id: "job-1", status: "running" } as never);
+
+    await renderHook();
+    await act(async () => {
+      latest?.startPolling("job-1");
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    });
+    expect(onError).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    });
+    expect(api.job).toHaveBeenCalledTimes(2);
+    expect(onJob).toHaveBeenCalledTimes(1);
+  });
 });

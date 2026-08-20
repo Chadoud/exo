@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { folderDestinationCounts } from "../../utils/folderDestinationSummary";
 import { OTHER_REASON_LABEL, topNWithOtherRows } from "../../utils/topNWithOther";
 import { useI18n } from "../../i18n/I18nContext";
+import { isLocalAssistantReady } from "../../utils/localAssistantReady";
 import type { QueuePanelProps } from "./queuePanelProps";
 import { useWorkspaceBatch } from "./useWorkspaceBatch";
 import { useSortWizard } from "./useSortWizard";
@@ -18,6 +19,7 @@ export function useQueuePanelController(props: QueuePanelProps) {
     settings,
     backendOnline,
     backendHealthProbing,
+    backendServiceStarting = false,
     canStartSort = true,
     needsCloudAccount = false,
     gmailMergePrefsSnapshot,
@@ -61,15 +63,28 @@ export function useQueuePanelController(props: QueuePanelProps) {
     onOpenOutputSettings,
   } = actions;
 
-  const sortInputDisabled = isRunning || !backendOnline || !canStartSort;
+  const serviceReady = isLocalAssistantReady({
+    backendOnline,
+    backendHealthProbing,
+    backendServiceStarting,
+  });
+  const sortInputDisabled = isRunning || !serviceReady || !canStartSort;
   const sortInputDisabledReason = useMemo(() => {
-    if (backendHealthProbing) return t("queue.connecting");
+    if (backendHealthProbing || backendServiceStarting) return t("queue.connecting");
     if (!backendOnline) return t("queue.offlineRetry");
     if (needsCloudAccount) return t("queue.cloudAccountRequiredHint");
     if (!canStartSort) return t("queue.entitlementDisabledHint");
     if (isRunning) return t("queue.jobBlocking");
     return undefined;
-  }, [backendHealthProbing, backendOnline, needsCloudAccount, canStartSort, isRunning, t]);
+  }, [
+    backendHealthProbing,
+    backendServiceStarting,
+    backendOnline,
+    needsCloudAccount,
+    canStartSort,
+    isRunning,
+    t,
+  ]);
 
   const workspaceBatch = useWorkspaceBatch({
     t,

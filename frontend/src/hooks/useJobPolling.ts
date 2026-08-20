@@ -7,9 +7,11 @@ interface UseJobPollingArgs {
   onJob: (job: Job) => void;
   onTerminal: () => void;
   onError?: (err: Error) => void;
+  /** When false, keep polling and do not latch the error toast. */
+  shouldNotifyError?: () => boolean;
 }
 
-export function useJobPolling({ onJob, onTerminal, onError }: UseJobPollingArgs) {
+export function useJobPolling({ onJob, onTerminal, onError, shouldNotifyError }: UseJobPollingArgs) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const visibilityCleanupRef = useRef<(() => void) | null>(null);
   const inFlightRef = useRef(false);
@@ -30,6 +32,7 @@ export function useJobPolling({ onJob, onTerminal, onError }: UseJobPollingArgs)
       inFlightRef.current = true;
       try {
         const job = await api.job(jobId);
+        errorNotifiedRef.current = false;
         onJob(job);
         if (
           job.status === "done" ||
@@ -40,7 +43,9 @@ export function useJobPolling({ onJob, onTerminal, onError }: UseJobPollingArgs)
           onTerminal();
         }
       } catch (e) {
-        stopPolling();
+        if (shouldNotifyError && !shouldNotifyError()) {
+          return;
+        }
         if (!errorNotifiedRef.current) {
           errorNotifiedRef.current = true;
           onError?.(e instanceof Error ? e : new Error(String(e)));
@@ -49,7 +54,7 @@ export function useJobPolling({ onJob, onTerminal, onError }: UseJobPollingArgs)
         inFlightRef.current = false;
       }
     },
-    [onJob, onTerminal, onError, stopPolling]
+    [onJob, onTerminal, onError, shouldNotifyError, stopPolling]
   );
 
   const startPolling = useCallback(

@@ -369,6 +369,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
             settingsHydrated={settingsHydrated}
             backendOnline={backendOnline}
             backendHealthProbing={backendHealthProbing}
+            backendServiceStarting={backendServiceStarting}
             handleRetryBackend={handleRetryBackend}
             openHelpModal={openHelpModal}
             isAwaitingApproval={isAwaitingApproval}

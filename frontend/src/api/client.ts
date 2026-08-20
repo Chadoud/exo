@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BACKEND_PORT, DEFAULT_API_BASE } from "../constants";
+import { APP_DISPLAY_NAME, BACKEND_PORT, DEFAULT_API_BASE } from "../constants";
 import { formatError } from "../utils/formatError";
 
 export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.trim() || DEFAULT_API_BASE;
@@ -129,9 +129,12 @@ export function mapFetchFailureToError(e: unknown): Error {
     e instanceof TypeError ||
     /failed to fetch|fetch failed|econnrefused|econnreset/i.test(msg)
   ) {
-    return new Error(
-      `Cannot reach the API at ${API_BASE} (is the backend running on port ${BACKEND_PORT}?)`
-    );
+    if (import.meta.env.DEV) {
+      return new Error(
+        `Cannot reach the API at ${API_BASE} (is the backend running on port ${BACKEND_PORT}?)`,
+      );
+    }
+    return new Error(`${APP_DISPLAY_NAME} could not reach the local assistant service yet.`);
   }
   return new Error(msg);
 }

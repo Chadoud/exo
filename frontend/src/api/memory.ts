@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { request, requestValidated } from "./client";
+import { HIDDEN_INTERNAL_MEMORY_KEYS } from "../utils/memoryInternalKeys";
 
 export const MEMORY_CATEGORIES = [
   "identity",
@@ -269,7 +270,9 @@ export function formatMemoryForPrompt(store: MemoryStore): string {
   let truncated = false;
 
   for (const cat of Object.keys(store) as MemoryCategory[]) {
-    const pairs = Object.entries(store[cat]);
+    const pairs = Object.entries(store[cat] ?? {}).filter(
+      ([key]) => !HIDDEN_INTERNAL_MEMORY_KEYS.has(key),
+    );
     if (pairs.length === 0) continue;
     const catLine = `[${cat.toUpperCase()}]`;
     if (used + catLine.length + 1 > budget) { truncated = true; break; }

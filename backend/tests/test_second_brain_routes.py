@@ -66,6 +66,31 @@ class TestSecondBrainRoutes(unittest.TestCase):
         self.assertEqual(r_all.status_code, 200)
         self.assertIsInstance(r_all.json(), list)
 
+    def test_memory_all_scopes_hides_briefing_v2_flag(self) -> None:
+        created = self.client.post(
+            "/memory",
+            json={
+                "category": "preferences",
+                "key": "startup_briefing_consent_v2",
+                "value": "1",
+            },
+        )
+        self.assertEqual(created.status_code, 200)
+        listed = self.client.get("/memory?all_scopes=true")
+        self.assertEqual(listed.status_code, 200)
+        keys = {row.get("key") for row in listed.json()}
+        self.assertNotIn("startup_briefing_consent_v2", keys)
+        category_dict = self.client.get("/memory")
+        self.assertEqual(category_dict.status_code, 200)
+        prefs = category_dict.json().get("preferences") or {}
+        self.assertNotIn("startup_briefing_consent_v2", prefs)
+        exported = self.client.get("/memory/export")
+        self.assertEqual(exported.status_code, 200)
+        self.assertEqual(
+            (exported.json().get("preferences") or {}).get("startup_briefing_consent_v2"),
+            "1",
+        )
+
     def test_conversations_list_and_search(self) -> None:
         self.assertEqual(self.client.get("/conversations").status_code, 200)
         r = self.client.get("/conversations/search?q=launch")

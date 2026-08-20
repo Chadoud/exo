@@ -3083,7 +3083,7 @@ Esempi:
       "Chiudi Exo (Cmd+Q), riaprilo da Applicazioni e riprova. Se continua a fallire, contatta l’assistenza.",
     apiStillStarting:
       "Exo si sta ancora avviando su questo computer. Attendi un momento.",
-    jobRefreshFailed: "Impossibile aggiornare lo stato del lavoro",
+    jobRefreshFailed: "Exo non è ancora pronto.",
     dropWhileOfflineTitle: "Exo si sta ancora avviando",
     dropWhileOfflineDesc:
       "Il servizio si sta avviando in background — riprova tra un momento.",

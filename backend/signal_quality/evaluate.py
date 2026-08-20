@@ -15,6 +15,7 @@ from signal_quality.constants import (
     AUTO_MEMORY_HIDDEN_NOISE_THRESHOLD,
     GMAIL_NOISE_LABELS,
     GMAIL_UPDATES_LABEL,
+    MEMORY_HIDDEN_FROM_UI_KEYS,
 )
 
 # ── Tiers ─────────────────────────────────────────────────────────────────────
@@ -249,8 +250,33 @@ def evaluate_memory_item(
     return verdict
 
 
+def is_hidden_internal_memory(entry: dict[str, Any]) -> bool:
+    """True for vault migration flags that must stay out of browse / prompts."""
+    key = str(entry.get("key") or "").strip()
+    return key in MEMORY_HIDDEN_FROM_UI_KEYS
+
+
+def strip_hidden_keys_from_memory_dict(store: dict[str, Any]) -> dict[str, Any]:
+    """Drop hidden vault flags from a category→{key: value} memory dict."""
+    visible: dict[str, Any] = {}
+    for category, pairs in store.items():
+        if not isinstance(pairs, dict):
+            visible[category] = pairs
+            continue
+        visible[category] = {
+            key: value
+            for key, value in pairs.items()
+            if not is_hidden_internal_memory(
+                {"category": category, "key": key, "value": value}
+            )
+        }
+    return visible
+
+
 def is_prompt_visible(entry: dict[str, Any]) -> bool:
     """Whether a stored memory row should appear in prompts / briefing."""
+    if is_hidden_internal_memory(entry):
+        return False
     if entry.get("archived_at"):
         return False
     if entry.get("source") == "manual":
@@ -263,6 +289,8 @@ def is_prompt_visible(entry: dict[str, Any]) -> bool:
 
 def is_recall_visible(entry: dict[str, Any], *, include_unreviewed: bool = False) -> bool:
     """Whether a memory row should appear in search/recall by default."""
+    if is_hidden_internal_memory(entry):
+        return False
     if entry.get("archived_at"):
         return False
     if not include_unreviewed and entry.get("source") == "auto" and not entry.get("reviewed"):

@@ -3237,7 +3237,7 @@ Override examples:
       "Quit Exo completely (Cmd+Q), open it again from Applications, and try once more. If it still fails, email support.",
     apiStillStarting:
       "Exo is still starting on this computer. Please wait a moment.",
-    jobRefreshFailed: "Could not refresh job status",
+    jobRefreshFailed: "Exo isn't ready yet.",
     dropWhileOfflineTitle: "Exo is still starting up",
     dropWhileOfflineDesc:
       "We're starting the app service in the background — try again in a moment.",

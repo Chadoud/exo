@@ -24,6 +24,8 @@ export interface QueuePanelProps {
   backendOnline: boolean;
   /** True during startup health fast-retry — show “Connecting…” not “offline”. */
   backendHealthProbing: boolean;
+  /** True while Electron is restarting the local assistant. */
+  backendServiceStarting?: boolean;
   /** “How sorting works” strip — pass from App for tour wiring. */
   sortFlow: {
     jobCompleted: boolean;

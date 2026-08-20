@@ -37,6 +37,7 @@ from assistant_memory import (
 from memory_origin import backfill_all_memory_origins, resolve_memory_open_target
 from memory_search import search_memories
 from second_brain_cleanup import cleanup_second_brain_noise
+from signal_quality import is_hidden_internal_memory, strip_hidden_keys_from_memory_dict
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -52,8 +53,8 @@ def get_memory(
     - all_scopes=true: flat list of every entry including scoped rows (for Settings UI).
     """
     if all_scopes:
-        return list_all_memory_scoped()
-    return memory_as_dict(conversation_id)
+        return [e for e in list_all_memory_scoped() if not is_hidden_internal_memory(e)]
+    return strip_hidden_keys_from_memory_dict(memory_as_dict(conversation_id))
 
 
 class MemoryUpsertBody(BaseModel):

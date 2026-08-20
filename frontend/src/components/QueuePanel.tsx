@@ -20,6 +20,7 @@ export default function QueuePanel(props: QueuePanelProps) {
     uiLocale,
     backendOnline,
     backendHealthProbing,
+    backendServiceStarting = false,
     sortFlow,
     canStartSort = true,
     needsCloudAccount = false,
@@ -102,6 +103,7 @@ export default function QueuePanel(props: QueuePanelProps) {
       <QueuePanelHeader
         backendOnline={backendOnline}
         backendHealthProbing={backendHealthProbing}
+        backendServiceStarting={backendServiceStarting}
         needsCloudAccount={needsCloudAccount}
         canStartSort={canStartSort}
         sortIntroHint={sortIntroHint}

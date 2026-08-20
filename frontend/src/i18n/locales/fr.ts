@@ -3084,7 +3084,7 @@ Exemples :
       "Quittez Exo (Cmd+Q), rouvrez-le depuis Applications, puis réessayez. Si le problème continue, contactez le support.",
     apiStillStarting:
       "Exo démarre encore sur cet ordinateur. Patientez un instant.",
-    jobRefreshFailed: "Impossible d’actualiser l’état du travail",
+    jobRefreshFailed: "Exo n’est pas encore prêt.",
     dropWhileOfflineTitle: "Exo démarre encore",
     dropWhileOfflineDesc:
       "Le service de l’app démarre en arrière-plan — réessayez dans un instant.",

@@ -6,6 +6,7 @@ import {
   formatMemorySourceLine,
   groupMemoryEntriesByProvenance,
   isPromptVisibleMemory,
+  isHiddenInternalMemory,
   isSystemManagedMemory,
   memoryEntryMatchesFilter,
   memoryKeyFromText,
@@ -140,6 +141,43 @@ describe("systemMemoryLabelKey", () => {
 
   it("returns null for normal user facts", () => {
     expect(systemMemoryLabelKey(entry({ id: 3, category: "notes", key: "dog", value: "Rex" }))).toBeNull();
+  });
+});
+
+describe("isHiddenInternalMemory", () => {
+  it("hides the briefing v2 migration flag", () => {
+    const flag = entry({
+      id: 10,
+      category: "preferences",
+      key: "startup_briefing_consent_v2",
+      value: "1",
+    });
+    expect(isHiddenInternalMemory(flag)).toBe(true);
+    expect(memoryEntryMatchesFilter(flag, "all")).toBe(false);
+    expect(isPromptVisibleMemory(flag)).toBe(false);
+  });
+
+  it("keeps the friendly briefing preference and startup routine", () => {
+    expect(
+      isHiddenInternalMemory(
+        entry({
+          id: 11,
+          category: "preferences",
+          key: "startup_briefing_consent",
+          value: "granted",
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isHiddenInternalMemory(
+        entry({
+          id: 12,
+          category: "preferences",
+          key: "startup_routine",
+          value: "news, weather for Geneva",
+        }),
+      ),
+    ).toBe(false);
   });
 });
 

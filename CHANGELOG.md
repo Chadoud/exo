@@ -6,6 +6,13 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.70] - 2026-08-21
+
+### Fixed
+
+- **Sort:** Packaged error toasts no longer show loopback, ports, or developer commands when the local service is restarting. Job status keeps polling through a restart; Sort waits until the service is ready.
+- **Memory:** Hide the internal briefing-consent flag (`startup_briefing_consent_v2`) from browse, search, counts, and chat prompts. The vault flag stays so briefing consent still works.
+
 ## [1.1.69] - 2026-08-20
 
 ### Fixed

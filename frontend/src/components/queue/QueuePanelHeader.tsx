@@ -5,6 +5,7 @@ import { useI18n } from "../../i18n/I18nContext";
 type QueuePanelHeaderProps = {
   backendOnline: boolean;
   backendHealthProbing: boolean;
+  backendServiceStarting?: boolean;
   needsCloudAccount: boolean;
   canStartSort: boolean;
   sortIntroHint: ReactNode;
@@ -16,6 +17,7 @@ type QueuePanelHeaderProps = {
 export function QueuePanelHeader({
   backendOnline,
   backendHealthProbing,
+  backendServiceStarting = false,
   needsCloudAccount,
   canStartSort,
   sortIntroHint,
@@ -33,17 +35,17 @@ export function QueuePanelHeader({
           </div>
         </HoverHelpCard>
       </div>
-      {backendHealthProbing && (
+      {(backendHealthProbing || backendServiceStarting) && (
         <p className="text-xs text-muted bg-bg-secondary border border-border rounded-lg px-3 py-2 mt-2 inline-block">
           {t("queue.connecting")} {t("queue.connectingSub")}
         </p>
       )}
-      {!backendOnline && !backendHealthProbing && (
+      {!backendOnline && !backendHealthProbing && !backendServiceStarting && (
         <p className="text-xs text-warning bg-warning-soft border border-warning-line rounded-lg px-3 py-2 mt-2 inline-block">
           {t("queue.offlineBanner")}
         </p>
       )}
-      {backendOnline && !backendHealthProbing && needsCloudAccount && (
+      {backendOnline && !backendHealthProbing && !backendServiceStarting && needsCloudAccount && (
         <p className="text-xs text-warning bg-warning-soft border border-warning-line rounded-lg px-3 py-2 mt-2 inline-block max-w-xl">
           {t("queue.cloudAccountBanner")}{" "}
           <button
@@ -55,7 +57,7 @@ export function QueuePanelHeader({
           </button>
         </p>
       )}
-      {backendOnline && !backendHealthProbing && !needsCloudAccount && !canStartSort && (
+      {backendOnline && !backendHealthProbing && !backendServiceStarting && !needsCloudAccount && !canStartSort && (
         <p className="text-xs text-warning bg-warning-soft border border-warning-line rounded-lg px-3 py-2 mt-2 inline-block max-w-xl">
           {t("queue.entitlementBanner")}{" "}
           <button

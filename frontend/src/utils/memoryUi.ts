@@ -1,6 +1,9 @@
 import type { MemoryCategory, ScopedMemoryEntry } from "../api/memory";
 import { memoryOriginProviderKey } from "./memoryOrigin";
 import { MEMORY_SUB_TAB_STORAGE_KEY, MEMORY_LIST_EXPANDED_STORAGE_KEY } from "../constants";
+import { HIDDEN_INTERNAL_MEMORY_KEYS } from "./memoryInternalKeys";
+
+export { HIDDEN_INTERNAL_MEMORY_KEYS } from "./memoryInternalKeys";
 
 export type MemorySubTab = "overview" | "activity" | "map";
 
@@ -69,6 +72,11 @@ export function isSystemManagedMemory(entry: ScopedMemoryEntry): boolean {
   return systemMemoryLabelKey(entry) !== null;
 }
 
+/** Migration flags — never show in Memory browse. Keep the vault row. */
+export function isHiddenInternalMemory(entry: ScopedMemoryEntry): boolean {
+  return HIDDEN_INTERNAL_MEMORY_KEYS.has(entry.key);
+}
+
 const ABOUT_YOU_CATEGORIES = new Set<MemoryCategory>([
   "identity",
   "preferences",
@@ -79,6 +87,7 @@ const WORK_CATEGORIES = new Set<MemoryCategory>(["projects", "context"]);
 
 /** Whether a row should appear in prompts / trusted All view (mirrors backend is_prompt_visible). */
 export function isPromptVisibleMemory(entry: ScopedMemoryEntry): boolean {
+  if (isHiddenInternalMemory(entry)) return false;
   if (entry.archived_at) return false;
   if (entry.source === "manual") return true;
   if (entry.reviewed) return true;
@@ -95,6 +104,7 @@ export function memoryEntryMatchesFilter(
   entry: ScopedMemoryEntry,
   filter: MemoryFactsFilter,
 ): boolean {
+  if (isHiddenInternalMemory(entry)) return false;
   if (filter === "all") return isPromptVisibleMemory(entry);
   if (filter === "needsReview") {
     return (

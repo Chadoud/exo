@@ -2,20 +2,36 @@ import { toast } from "sonner";
 import { APP_DISPLAY_NAME, BACKEND_PORT } from "../constants";
 import { formatError } from "./formatError";
 import { isFreeTierQuotaError } from "./quotaToast";
-import { isProductDebugEnabled } from "./productDebugAccess";
 
-/** Strip port numbers and dev API paths from user-visible error detail. */
-function formatUserBackendDetail(detail: string): string {
-  if (import.meta.env.DEV || isProductDebugEnabled()) return detail;
+/** Packaged / product-admin toasts use this path. Dev builds keep raw detail. */
+export function sanitizeBackendErrorForUser(detail: string, verbose: boolean): string {
+  if (verbose) return detail;
   const low = detail.toLowerCase();
   if (
     low.includes("cannot reach the api") ||
+    low.includes("cannot reach the local assistant") ||
     low.includes("failed to fetch") ||
-    low.includes("fetch failed")
+    low.includes("fetch failed") ||
+    low.includes("local_assistant_unreachable")
   ) {
     return `${APP_DISPLAY_NAME} could not reach the local assistant service yet.`;
   }
-  return detail.replace(new RegExp(`127\\.0\\.0\\.1:${BACKEND_PORT}|localhost:${BACKEND_PORT}`, "g"), "the local service");
+  return detail.replace(
+    new RegExp(`127\\.0\\.0\\.1:${BACKEND_PORT}|localhost:${BACKEND_PORT}`, "g"),
+    "the local service",
+  );
+}
+
+export function backendOfflineHint(verbose: boolean): string {
+  if (verbose) {
+    return "If the title bar shows API offline, click Retry (restarts the local API in the desktop app). In dev with SKIP_BACKEND=1, run uvicorn on 127.0.0.1 yourself.";
+  }
+  return `${APP_DISPLAY_NAME} is still starting on this computer. This can take up to two minutes — wait a moment, or tap Restart service.`;
+}
+
+/** Strip port numbers and dev API paths from user-visible error detail. */
+function formatUserBackendDetail(detail: string): string {
+  return sanitizeBackendErrorForUser(detail, import.meta.env.DEV);
 }
 
 /**
@@ -50,12 +66,16 @@ export function userFacingErrorDetail(e: unknown): {
     low.includes("load failed") ||
     low.includes("network error") ||
     low.includes("cannot reach the api") ||
+    low.includes("cannot reach the local assistant") ||
+    low.includes("could not reach the local assistant") ||
+    low.includes("local_assistant_unreachable") ||
     (e instanceof TypeError && low.includes("fetch"))
   ) {
-    const hint = import.meta.env.DEV || isProductDebugEnabled()
-      ? "If the title bar shows API offline, click Retry (restarts the local API in the desktop app). In dev with SKIP_BACKEND=1, run uvicorn on 127.0.0.1 yourself."
-      : `${APP_DISPLAY_NAME} is still starting on this computer. This can take up to two minutes — wait a moment, or tap Restart service.`;
-    return { detail: formatUserBackendDetail(detail), hint, actionId: "backend:retry" as const };
+    return {
+      detail: formatUserBackendDetail(detail),
+      hint: backendOfflineHint(import.meta.env.DEV),
+      actionId: "backend:retry" as const,
+    };
   }
 
   if (low.includes("ollama") && (low.includes("refused") || low.includes("connection") || low.includes("econnrefused"))) {
@@ -179,7 +199,9 @@ export function userFacingErrorDetail(e: unknown): {
   ) {
     return {
       detail,
-      hint: `Voice requires a Gemini API key and the local backend on port ${BACKEND_PORT}. Check Settings → AI agents → AI provider, then try again.`,
+      hint: import.meta.env.DEV
+      ? `Voice requires a Gemini API key and the local backend on port ${BACKEND_PORT}. Check Settings → AI agents → AI provider, then try again.`
+      : "Voice needs a Gemini API key. Check Settings → AI agents → AI provider, then try again.",
       actionId: "settings:ai-provider",
     };
   }

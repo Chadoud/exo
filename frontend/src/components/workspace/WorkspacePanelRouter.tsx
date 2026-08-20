@@ -70,6 +70,7 @@ interface WorkspacePanelRouterProps {
   settingsHydrated: boolean;
   backendOnline: boolean;
   backendHealthProbing: boolean;
+  backendServiceStarting?: boolean;
   handleRetryBackend?: () => void | Promise<void>;
   openHelpModal: () => void;
   isAwaitingApproval: boolean;
@@ -183,6 +184,7 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
     settingsHydrated,
     backendOnline,
     backendHealthProbing,
+    backendServiceStarting = false,
     handleRetryBackend,
     openHelpModal: _openHelpModal,
     isAwaitingApproval,
@@ -293,6 +295,7 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
           uiLocale={settings.uiLocale}
           backendOnline={backendOnline}
           backendHealthProbing={backendHealthProbing}
+          backendServiceStarting={backendServiceStarting}
           canStartSort={entitlement?.canAnalyze !== false}
           entitlement={entitlement}
           needsCloudAccount={needsCloudAccount}

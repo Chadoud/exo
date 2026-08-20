@@ -63,6 +63,8 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
     uiLocale,
     settings,
     backendOnline: chrome.backendOnline,
+    backendHealthProbing: chrome.backendHealthProbing,
+    backendServiceStarting: chrome.backendServiceStarting,
     mainAppReady: chrome.mainAppReady,
     entitlement: chrome.entitlement,
     refreshEntitlement: chrome.refreshEntitlement,
