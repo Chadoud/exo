@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.71] - 2026-08-21
+
+### Fixed
+
+- **Tasks:** Do not draft a reply to automatic receipts (ATS application confirmations, Auto-Submitted mail). Still draft when the last message asks a real question.
+
 ## [1.1.70] - 2026-08-21
 
 ### Fixed

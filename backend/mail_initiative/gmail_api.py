@@ -29,6 +29,7 @@ _META_HEADERS = (
     "List-Unsubscribe-Post",
     "List-Id",
     "Precedence",
+    "Auto-Submitted",
 )
 
 

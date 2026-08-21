@@ -56,6 +56,16 @@ def _walk_parts(part: dict[str, Any]) -> list[str]:
     return texts
 
 
+def last_message_plain_text(thread: dict[str, Any]) -> str:
+    messages = [m for m in (thread.get("messages") or []) if isinstance(m, dict)]
+    if not messages:
+        return ""
+    payload = messages[-1].get("payload")
+    part = payload if isinstance(payload, dict) else {}
+    texts = _walk_parts(part)
+    return (texts[0].strip() if texts else "")[:_THREAD_TEXT_MAX]
+
+
 def thread_plain_text(thread: dict[str, Any]) -> str:
     chunks: list[str] = []
     for msg in thread.get("messages") or []:

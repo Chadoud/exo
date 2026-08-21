@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import email.utils
 import logging
 from typing import Any, Callable
 
-from mail_initiative.draft import compose_reply, thread_plain_text
+from mail_initiative.draft import compose_reply, last_message_plain_text, thread_plain_text
 from mail_initiative.gmail_api import HarvestRateLimited
+from mail_initiative.reply_needed import skip_reason_for_draft
 from signal_quality import SignalTier, evaluate_gmail_message
 
 logger = logging.getLogger(__name__)
@@ -38,18 +40,39 @@ def _header_map(message: dict[str, Any]) -> dict[str, str]:
     return out
 
 
-def _still_allow(cand: dict[str, Any], thread: dict[str, Any], snippet: str) -> bool:
+def _addr(headers: dict[str, str], *names: str) -> str:
+    for name in names:
+        _, addr = email.utils.parseaddr(headers.get(name) or "")
+        if addr.strip():
+            return addr.strip().lower()
+    return ""
+
+
+def _drop_reason(
+    cand: dict[str, Any], thread: dict[str, Any], snippet: str, last_text: str
+) -> str | None:
     last = _last_message(thread)
     labels = last.get("labelIds") if last and isinstance(last.get("labelIds"), list) else []
     headers = _header_map(last) if last else {}
+    from_addr = _addr(headers, "From", "from") or str(cand.get("from_email") or "")
+    to_addr = _addr(headers, "Reply-To", "reply-to") or from_addr
+    subject = str(cand.get("subject") or "")
     verdict = evaluate_gmail_message(
         label_ids=[str(x) for x in labels],
-        from_addr=str(cand.get("from_email") or ""),
-        subject=str(cand.get("subject") or ""),
+        from_addr=from_addr,
+        subject=subject,
         snippet=snippet,
         headers=headers,
     )
-    return verdict.tier == SignalTier.ALLOW
+    if verdict.tier != SignalTier.ALLOW:
+        return "signal"
+    return skip_reason_for_draft(
+        from_addr=from_addr,
+        to_addr=to_addr,
+        subject=subject,
+        text=last_text,
+        headers=headers,
+    )
 
 
 def fill_drafts(
@@ -76,8 +99,9 @@ def fill_drafts(
             if isinstance(meta, dict):
                 last = _last_message(meta)
                 snippet = str((last or {}).get("snippet") or meta.get("snippet") or "")
-                if not _still_allow(cand, meta, snippet):
-                    drops["signal"] = drops.get("signal", 0) + 1
+                reason = _drop_reason(cand, meta, snippet, snippet)
+                if reason:
+                    drops[reason] = drops.get(reason, 0) + 1
                     continue
             ready.append(_public_cand(cand, prior))
             continue
@@ -94,8 +118,10 @@ def fill_drafts(
             drops["too_short"] = drops.get("too_short", 0) + 1
             continue
         snippet = _signal_snippet(text)
-        if not _still_allow(cand, thread, snippet):
-            drops["signal"] = drops.get("signal", 0) + 1
+        last_text = last_message_plain_text(thread) or snippet
+        reason = _drop_reason(cand, thread, snippet, last_text)
+        if reason:
+            drops[reason] = drops.get(reason, 0) + 1
             continue
         subject, body = compose_fn(text, str(cand.get("subject") or ""))
         if not body.strip():

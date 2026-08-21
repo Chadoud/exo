@@ -11,6 +11,7 @@ from typing import Any, Callable
 
 from mail_initiative import store
 from mail_initiative.gmail_api import HarvestRateLimited
+from mail_initiative.reply_needed import header_skip_reason
 from mail_initiative.settings import gated_reason
 from signal_quality import SignalTier, evaluate_gmail_message
 
@@ -81,15 +82,23 @@ def _thread_to_candidate(
         return None, "list"
     labels = last.get("labelIds") if isinstance(last.get("labelIds"), list) else []
     snippet = str(last.get("snippet") or thread.get("snippet") or "")
+    subject = str(headers.get("Subject") or headers.get("subject") or "")
     verdict = evaluate_gmail_message(
         label_ids=[str(x) for x in labels],
         from_addr=from_email,
-        subject=str(headers.get("Subject") or headers.get("subject") or ""),
+        subject=subject,
         snippet=snippet,
         headers=headers,
     )
     if verdict.tier != SignalTier.ALLOW:
         return None, "signal"
+    auto_skip = header_skip_reason(
+        from_addr=from_email,
+        to_addr=to_email,
+        headers=headers,
+    )
+    if auto_skip:
+        return None, auto_skip
     message_ids = [str(m.get("id") or "") for m in messages if isinstance(m, dict) and m.get("id")]
     last_id = str(last.get("id") or "")
     to_name = from_name
@@ -102,7 +111,7 @@ def _thread_to_candidate(
         "last_message_id": last_id,
         "from_name": to_name,
         "from_email": to_email,
-        "subject": str(headers.get("Subject") or headers.get("subject") or ""),
+        "subject": subject,
     }, None
 
 

@@ -216,6 +216,79 @@ def test_promo_body_snippet_hides_card(mail_dir, _ungated):
     assert store.list_candidates(drafted_only=True) == []
 
 
+def test_keeps_ask_after_earlier_ats_receipt(mail_dir, _ungated):
+    receipt = (
+        "Thank you for applying. We'll review your application and get back to you. "
+        "Access My Application: https://jobs.smartrecruiters.com/my-applications/x"
+    )
+    ask = "Do you have 20 minutes Thursday to talk through the role?"
+
+    def _msg(mid: str, text: str, subject: str) -> dict:
+        data = base64.urlsafe_b64encode(text.encode()).decode().rstrip("=")
+        return {
+            "id": mid,
+            "labelIds": ["INBOX"],
+            "payload": {
+                "mimeType": "text/plain",
+                "headers": [
+                    {"name": "From", "value": "Jane <recruitment@swissquote.ch>"},
+                    {"name": "Subject", "value": subject},
+                ],
+                "body": {"data": data},
+            },
+        }
+
+    thread = {
+        "id": "t-ok",
+        "messages": [
+            _msg("m0", receipt, "Thank you for applying"),
+            _msg("m1", ask, "Interview next week"),
+        ],
+    }
+    called = {"n": 0}
+
+    def compose(_text: str, _subject: str) -> tuple[str, str]:
+        called["n"] += 1
+        return ("Re: Interview next week", "Thursday works.")
+
+    out = harvest.run_harvest(
+        list_ids=lambda _q, _n: ["t-ok"],
+        get_meta=lambda tid: _meta(tid),
+        get_full=lambda _tid: thread,
+        compose=compose,
+        profile=lambda: "me@exosites.ch",
+        force=True,
+    )
+    assert out["created"] == 1
+    assert called["n"] == 1
+    assert store.list_candidates(drafted_only=True)[0]["draft_body"] == "Thursday works."
+
+
+def test_ats_body_hides_card_before_compose(mail_dir, _ungated):
+    body = (
+        "Thank you for applying. We'll review your application and get back to you. "
+        "Access My Application: https://jobs.smartrecruiters.com/my-applications/x "
+        "Please do not share or forward this email."
+    )
+    called = {"n": 0}
+
+    def compose(_text: str, _subject: str) -> tuple[str, str]:
+        called["n"] += 1
+        return ("Re: Update", "Thanks!")
+
+    out = harvest.run_harvest(
+        list_ids=lambda _q, _n: ["t-ok"],
+        get_meta=lambda tid: _meta(tid),
+        get_full=lambda tid: _full(tid, text=body),
+        compose=compose,
+        profile=lambda: "me@exosites.ch",
+        force=True,
+    )
+    assert out["created"] == 0
+    assert called["n"] == 0
+    assert store.list_candidates(drafted_only=True) == []
+
+
 def test_create_draft_uses_saved_body_no_llm(mail_dir):
     row = store.upsert_candidate(
         thread_id="thr-1",

@@ -265,6 +265,7 @@ def test_get_thread_metadata_repeats_list_headers(mock_get, _token):
     assert "List-Unsubscribe" in names
     assert "List-Id" in names
     assert "Precedence" in names
+    assert "Auto-Submitted" in names
     assert all(key != "metadataHeaders" or isinstance(value, str) for key, value in params)
 
 
@@ -387,6 +388,89 @@ def test_harvest_first_seen_mailbox_drops_leftover_cards(mail_dir, _ungated):
         force=True,
     )
     assert store.list_candidates() == []
+
+
+def test_harvest_skips_ats_receipt_before_compose(mail_dir, _ungated):
+    thread = _thread(
+        "t-ats",
+        from_addr="Swissquote Recruitment <recruitment@swissquote.ch>",
+        subject="Thank you for applying to Product Manager Associate - Trading",
+    )
+    thread["snippet"] = (
+        "Thank you for applying. We'll review your application and get back to you. "
+        "Access My Application on smartrecruiters.com"
+    )
+    called = {"full": 0, "compose": 0}
+
+    def get_full(_tid: str) -> dict:
+        called["full"] += 1
+        return _full(
+            "t-ats",
+            text=(
+                "Thank you for applying. We'll review your application and get back to you. "
+                "Access My Application on smartrecruiters.com. "
+                "Please do not share or forward this email."
+            ),
+        )
+
+    def compose(_text: str, _subject: str) -> tuple[str, str]:
+        called["compose"] += 1
+        return ("Re: x", "Thanks!")
+
+    out = harvest.run_harvest(
+        list_ids=lambda _q, _n: ["t-ats"],
+        get_meta=lambda _t: thread,
+        get_full=get_full,
+        compose=compose,
+        profile=lambda: "me@exosites.ch",
+        force=True,
+    )
+    assert out["created"] == 0
+    assert out["drops"].get("auto_ack") == 1
+    assert called["full"] == 1
+    assert called["compose"] == 0
+    assert store.list_candidates(drafted_only=True) == []
+
+
+def test_harvest_drafts_when_recruiter_asks(mail_dir, _ungated):
+    thread = _thread(
+        "t-ask",
+        from_addr="Jane <recruitment@swissquote.ch>",
+        subject="Interview next week",
+    )
+    out = harvest.run_harvest(
+        list_ids=lambda _q, _n: ["t-ask"],
+        get_meta=lambda _t: thread,
+        get_full=lambda tid: _full(
+            tid, text="Thank you for applying. Are you free Tuesday at 10 to talk?"
+        ),
+        compose=_compose,
+        profile=lambda: "me@exosites.ch",
+        force=True,
+    )
+    assert out["created"] == 1
+    assert store.list_candidates(drafted_only=True)[0]["from_email"] == "recruitment@swissquote.ch"
+
+
+def test_harvest_skips_auto_submitted(mail_dir, _ungated):
+    thread = _thread(
+        "t-auto",
+        from_addr="Ada <ada@example.com>",
+        subject="Lunch tomorrow?",
+        extra_headers={"Auto-Submitted": "auto-replied"},
+    )
+    called = {"full": 0}
+    out = harvest.run_harvest(
+        list_ids=lambda _q, _n: ["t-auto"],
+        get_meta=lambda _t: thread,
+        get_full=lambda _t: called.__setitem__("full", 1) or _full("t-auto"),
+        compose=_compose,
+        profile=lambda: "me@exosites.ch",
+        force=True,
+    )
+    assert out["created"] == 0
+    assert out["drops"].get("auto_submitted") == 1
+    assert called["full"] == 0
 
 
 def test_reply_to_locks_recipient(mail_dir, _ungated):
