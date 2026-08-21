@@ -106,6 +106,8 @@ export const SETTINGS_NAV_ENTRIES: SettingsNavEntry[] = [
   { id: "settings-anchor-privacy", labelKey: "settings.nav.privacyTelemetry", depth: 0, tab: "privacyAccount" },
   { id: "settings-anchor-sync", labelKey: "settings.nav.syncDevices", depth: 0, tab: "privacyAccount" },
   { id: "settings-anchor-license", labelKey: "settings.nav.licenseTrial", depth: 0, tab: "privacyAccount" },
+  { id: "license-trial", labelKey: "settings.nav.trial", depth: 1, tab: "privacyAccount" },
+  { id: "license-key", labelKey: "settings.nav.licenseKey", depth: 1, tab: "privacyAccount" },
 
   // —— About & help ——
   { id: "settings-anchor-system", labelKey: "settings.nav.systemDiagnostics", depth: 0, tab: "aboutHelp" },

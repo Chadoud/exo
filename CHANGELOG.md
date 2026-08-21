@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.72] - 2026-08-21
+
+### Changed
+
+- **Settings:** Subscription is the parent section. Trial and License are nested under it.
+
 ## [1.1.71] - 2026-08-21
 
 ### Fixed

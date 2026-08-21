@@ -91,7 +91,7 @@ export default function SettingsLicenseSection({
   return (
     <div id="license-usage" className="space-y-4 scroll-mt-28">
       <SettingsBillingStatusCard entitlement={entitlement} />
-      <div className="rounded-xl border border-border bg-bg-card p-4 space-y-3">
+      <div id="license-trial" className="rounded-xl border border-border bg-bg-card p-4 space-y-3 scroll-mt-28">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-medium text-text-primary">{t("settings.licenseQuotaHeading")}</p>
           {unlimitedBuild ? (
@@ -143,50 +143,52 @@ export default function SettingsLicenseSection({
       </div>
 
       {/* Subscription is the primary path — license entry stays reachable for key holders, collapsed for everyone else. */}
-      {!licenseEntryVisible && (
-        <button
-          type="button"
-          onClick={() => setLicenseEntryOpened(true)}
-          className="text-xs font-medium text-muted underline-offset-2 hover:text-text-primary hover:underline"
-        >
-          {t("settings.licenseHaveKeyLink")}
-        </button>
-      )}
-      {licenseEntryVisible && (
-        <div className="rounded-xl border border-border bg-bg-card p-4 space-y-3">
-          <label htmlFor="license-key-input" className="block text-xs font-medium text-text-primary">
-            {t("settings.licenseKeyLabel")}
-          </label>
-          <textarea
-            id="license-key-input"
-            value={licenseInput}
-            onChange={(e) => setLicenseInput(e.target.value)}
-            placeholder={t("settings.licensePastePlaceholder")}
-            rows={3}
-            disabled={busy}
-            className="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm font-mono text-text-primary placeholder:text-muted resize-y min-h-[5rem]"
-          />
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void activate()}
-              disabled={busy || !licenseInput.trim()}
-              className="px-4 py-2 rounded-lg text-sm font-semibold bg-button-primary text-white hover:bg-button-hover disabled:opacity-40 disabled:pointer-events-none"
-            >
-              {t("settings.licenseActivate")}
-            </button>
-            <button
-              type="button"
-              onClick={() => void clearDevice()}
-              disabled={busy || !entitlement?.hasLicenseKey}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-text-primary hover:border-accent-line disabled:opacity-40 disabled:pointer-events-none"
-            >
-              {t("settings.licenseClearDevice")}
-            </button>
+      <div id="license-key" className="scroll-mt-28 space-y-3">
+        {!licenseEntryVisible && (
+          <button
+            type="button"
+            onClick={() => setLicenseEntryOpened(true)}
+            className="text-xs font-medium text-muted underline-offset-2 hover:text-text-primary hover:underline"
+          >
+            {t("settings.licenseHaveKeyLink")}
+          </button>
+        )}
+        {licenseEntryVisible && (
+          <div className="rounded-xl border border-border bg-bg-card p-4 space-y-3">
+            <label htmlFor="license-key-input" className="block text-xs font-medium text-text-primary">
+              {t("settings.licenseKeyLabel")}
+            </label>
+            <textarea
+              id="license-key-input"
+              value={licenseInput}
+              onChange={(e) => setLicenseInput(e.target.value)}
+              placeholder={t("settings.licensePastePlaceholder")}
+              rows={3}
+              disabled={busy}
+              className="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm font-mono text-text-primary placeholder:text-muted resize-y min-h-[5rem]"
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void activate()}
+                disabled={busy || !licenseInput.trim()}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-button-primary text-white hover:bg-button-hover disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {t("settings.licenseActivate")}
+              </button>
+              <button
+                type="button"
+                onClick={() => void clearDevice()}
+                disabled={busy || !entitlement?.hasLicenseKey}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-text-primary hover:border-accent-line disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {t("settings.licenseClearDevice")}
+              </button>
+            </div>
+            <p className="text-2xs text-muted leading-relaxed">{t("settings.licensePrivacyNote")}</p>
           </div>
-          <p className="text-2xs text-muted leading-relaxed">{t("settings.licensePrivacyNote")}</p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

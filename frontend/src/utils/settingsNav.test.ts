@@ -65,6 +65,20 @@ describe("settingsNavTabForTourHighlight", () => {
   });
 });
 
+describe("subscription nav hierarchy", () => {
+  it("nests trial and license under Subscription", () => {
+    const parent = SETTINGS_NAV_ENTRIES.find((e) => e.id === "settings-anchor-license");
+    const trial = SETTINGS_NAV_ENTRIES.find((e) => e.id === "license-trial");
+    const key = SETTINGS_NAV_ENTRIES.find((e) => e.id === "license-key");
+    expect(parent?.depth).toBe(0);
+    expect(parent?.labelKey).toBe("settings.nav.licenseTrial");
+    expect(trial?.depth).toBe(1);
+    expect(key?.depth).toBe(1);
+    expect(trial?.tab).toBe("privacyAccount");
+    expect(key?.tab).toBe("privacyAccount");
+  });
+});
+
 describe("firstSettingsSectionIdForTab", () => {
   it("returns the first depth-0 section for each category tab", () => {
     expect(firstSettingsSectionIdForTab("fileSorting")).toBe("settings-anchor-models");

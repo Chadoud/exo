@@ -109,9 +109,11 @@ const SECTION_CONTENT_KEYS: Record<string, readonly string[]> = {
   "settings-anchor-license": [
     "settings.licenseTitle",
     "settings.licenseSummary",
-    "settings.nav.licenseUsage",
+    "settings.nav.licenseTrial",
   ],
-  "license-usage": ["settings.nav.licenseUsage"],
+  "license-trial": ["settings.nav.trial", "settings.licenseQuotaHeading"],
+  "license-key": ["settings.nav.licenseKey", "settings.licenseKeyLabel"],
+  "license-usage": ["settings.nav.licenseKey"],
   "settings-anchor-general": [
     "settings.sortingHeading",
     "settings.sortingSectionSummary",

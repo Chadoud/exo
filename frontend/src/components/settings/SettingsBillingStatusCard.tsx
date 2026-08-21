@@ -19,7 +19,7 @@ interface SettingsBillingStatusCardProps {
 }
 
 /**
- * Plan & billing card in Settings → Trial & license: shows the subscription
+ * Plan & billing card in Settings → Subscription: status and checkout.
  * state and opens the Stripe Customer Portal (card, invoices, cancel) or
  * Checkout. Hidden until billing exists for this build/account combination.
  */
