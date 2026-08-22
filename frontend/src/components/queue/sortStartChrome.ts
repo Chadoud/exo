@@ -1,4 +1,4 @@
-export type SortStartChrome = "idle" | "inFlight" | "stopped" | "job";
+type SortStartChrome = "idle" | "inFlight" | "stopped" | "job";
 export type SortStartStoppedReason = "failed" | "canceled";
 
 /** Prep chrome after Run sort — leftover previewCount is never in-flight. */
