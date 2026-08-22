@@ -80,6 +80,7 @@ async function applySessionProfile(deviceRoot) {
   // Always restart Python. Skipping when the active id was already the
   // account left a guest-spawned backend running (402 trial_expired).
   await remountProfileRuntime(deviceRoot, { restartBackend: true });
+  cloudSessionPrefs.setRememberDevice(deviceRoot, cloudSessionPrefs.getRememberDevice(deviceRoot));
   return aligned;
 }
 
@@ -199,18 +200,8 @@ function stripLegacySensitiveKeysFromDisk(existing) {
 function registerAppHandlers() {
   const { app } = require("electron");
   const deviceRoot = app.getPath("userData");
-  // Align vault with cached session (or guest) before workers/backend see paths.
-  try {
-    const session = cloudAuth.readSession(deviceRoot);
-    alignProfileWithSession(deviceRoot, session);
-  } catch (err) {
-    console.warn("[main] profile align on startup failed:", err?.message || err);
-    try {
-      activateGuestProfile(deviceRoot);
-    } catch {
-      /* ignore */
-    }
-  }
+  // Profile align happens in main whenReady — reading the encrypted session
+  // here runs before safeStorage is ready and used to delete cloud_session.json.
   syncWorker.startSyncWorker(deviceRoot);
   try {
     const whatsappCloudSync = require("../integrations/whatsappCloudSync");

@@ -109,9 +109,9 @@ function readSession(userData) {
       const decrypted = safeStorage.decryptString(Buffer.from(parsed.data, "base64"));
       parsed = JSON.parse(decrypted);
     } else if (parsed && parsed.__enc === true) {
-      // Encrypted but safeStorage unavailable — cannot decrypt, clear and re-auth.
-      console.warn("[cloudAuth] Cannot decrypt session: safeStorage unavailable. Clearing.");
-      clearSession(userData);
+      // Crypto is not ready yet (common before app.ready on Windows when the
+      // display name differs from Exo.exe). Keep the blob for the next read.
+      console.warn("[cloudAuth] Encrypted session unread: safeStorage not ready");
       return null;
     } else if (parsed && typeof parsed === "object" && parsed.access_token) {
       // M2.6/M2.7: legacy plaintext session — wipe, do not use.

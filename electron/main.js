@@ -45,6 +45,9 @@ const { getClapToLaunchEnabled, launchedAsClapBackground, syncLoginItem } = requ
 const { installMainProcessGuards } = require("./mainProcessDiagnostics");
 
 app.setName(APP_NAME);
+if (process.platform === "win32") {
+  app.setAppUserModelId(APP_NAME === "Exo Test" ? "ch.exosites.exo.test" : "ch.exosites.exo");
+}
 
 if (isUnlimitedEntitlementBuild()) {
   process.env.EXOSITES_UNLIMITED_ENTITLEMENT = "1";

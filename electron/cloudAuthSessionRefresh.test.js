@@ -185,3 +185,24 @@ describe("ensureFreshSession refresh single-flight", () => {
     assert.ok(fs.existsSync(path.join(userData, "cloud_session.json")));
   });
 });
+
+describe("readSession encrypted blob", () => {
+  let userData = "";
+
+  beforeEach(() => {
+    userData = fs.mkdtempSync(path.join(os.tmpdir(), "exo-cloud-auth-keep-"));
+  });
+
+  it("does not delete an encrypted session when safeStorage is not ready", () => {
+    writeEncSession(userData, { access_token: "tok", refresh_token: "rt" });
+    const prev = safeStorageMock.isEncryptionAvailable;
+    safeStorageMock.isEncryptionAvailable = () => false;
+    try {
+      const cloudAuth = loadCloudAuth();
+      assert.equal(cloudAuth.readSession(userData), null);
+      assert.ok(fs.existsSync(path.join(userData, "cloud_session.json")));
+    } finally {
+      safeStorageMock.isEncryptionAvailable = prev;
+    }
+  });
+});
