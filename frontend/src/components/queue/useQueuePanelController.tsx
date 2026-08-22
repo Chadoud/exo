@@ -8,6 +8,7 @@ import type { QueuePanelProps } from "./queuePanelProps";
 import { useWorkspaceBatch } from "./useWorkspaceBatch";
 import { useSortWizard } from "./useSortWizard";
 import { WORKSPACE_PREP_STALL_MESSAGE } from "./workspaceBatchLogic";
+import { resolveSortStartChrome } from "./sortStartChrome";
 import { usePostRunCardState } from "./usePostRunCardState";
 import { useQueueJobMetrics } from "./useQueueJobMetrics";
 import type { PrepProgressMode } from "./GmailJobProgressBlock";
@@ -101,7 +102,7 @@ export function useQueuePanelController(props: QueuePanelProps) {
     icloudMergePrefsSnapshot,
     infomaniakMergePrefsSnapshot,
     infomaniakMailMergePrefsSnapshot,
-    onStartExplicitLocalSort: onStartExplicitLocalSort ?? (async () => {}),
+    onStartExplicitLocalSort: onStartExplicitLocalSort ?? (async () => null),
     onStartProgressiveDriveSort,
     workspaceGmailMailOnlyRunnerRef,
     workspaceAssistantBridge,
@@ -130,25 +131,32 @@ export function useQueuePanelController(props: QueuePanelProps) {
     !!currentJob && currentJob.status === "done" && currentJob.phase === "done";
 
   const sendingWithoutJobYet = workspaceBatch.previewCount !== null && !currentJob;
+  const sortStartChrome = resolveSortStartChrome({
+    hasJob: !!currentJob,
+    starting: workspaceBatch.workspaceBatchStarting,
+    awaitingFirstJob: workspaceBatch.awaitingFirstJob,
+    stoppedReason: workspaceBatch.sortStartStoppedReason,
+  });
+  const sortStartInFlight = sortStartChrome === "inFlight";
 
   const prepStallTranslationKey = useMemo(() => {
     if (workspaceBatch.workspaceBatchStarting) return workspaceBatch.workspacePrepStallMessageKey;
-    if (sendingWithoutJobYet) return WORKSPACE_PREP_STALL_MESSAGE.sending;
+    if (sortStartInFlight) return WORKSPACE_PREP_STALL_MESSAGE.sending;
     return WORKSPACE_PREP_STALL_MESSAGE.default;
   }, [
     workspaceBatch.workspaceBatchStarting,
-    sendingWithoutJobYet,
+    sortStartInFlight,
     workspaceBatch.workspacePrepStallMessageKey,
   ]);
 
   const prepProgressMode: PrepProgressMode = useMemo(() => {
     if (workspaceBatch.workspaceBatchStarting) return "starting";
-    if (sendingWithoutJobYet) return "sending";
+    if (sortStartInFlight) return "sending";
     if (currentJob && isRunning && processedCount === 0 && totalCount > 0) return "queued";
     return "off";
   }, [
     workspaceBatch.workspaceBatchStarting,
-    sendingWithoutJobYet,
+    sortStartInFlight,
     currentJob,
     isRunning,
     processedCount,
@@ -156,36 +164,27 @@ export function useQueuePanelController(props: QueuePanelProps) {
   ]);
 
   useEffect(() => {
-    const waiting = workspaceBatch.workspaceBatchStarting || sendingWithoutJobYet;
-    if (!waiting) {
+    if (!sortStartInFlight) {
       setPrepStallHint(false);
       return;
     }
     setPrepStallHint(false);
     const id = window.setTimeout(() => setPrepStallHint(true), 8000);
     return () => window.clearTimeout(id);
-  }, [workspaceBatch.workspaceBatchStarting, sendingWithoutJobYet]);
+  }, [sortStartInFlight]);
 
   const hideWorkspaceCardsRow =
     !workspaceBatch.workspaceSourcesRevealRequested &&
-    (workspaceBatch.workspaceBatchStarting ||
+    (sortStartInFlight ||
       isRunning ||
       currentJob?.status === "paused" ||
       currentJob?.status === "awaiting_approval" ||
       !!currentJob?.worker_active ||
-      sendingWithoutJobYet ||
       currentJob?.status === "done");
 
-  const hideSortInstructionsStrip =
-    workspaceBatch.workspaceBatchStarting ||
-    sendingWithoutJobYet ||
-    !!currentJob;
+  const hideSortInstructionsStrip = sortStartInFlight || !!currentJob;
 
-  const showDesktopWorkspaceStrip =
-    workspaceBatch.desktop &&
-    (!hideWorkspaceCardsRow ||
-      workspaceBatch.workspaceBatchStarting ||
-      sendingWithoutJobYet);
+  const showDesktopWorkspaceStrip = workspaceBatch.desktop && !hideWorkspaceCardsRow;
 
   const rowVirtualizer = useVirtualizer({
     count: jobMetrics.files.length,
@@ -240,8 +239,11 @@ export function useQueuePanelController(props: QueuePanelProps) {
     tourHighlightId,
   });
 
-  const showSortWizard =
-    !currentJob && !workspaceBatch.workspaceBatchStarting && !sendingWithoutJobYet;
+  useEffect(() => {
+    if (sortStartInFlight) sortWizard.setWizardStep(3);
+  }, [sortStartInFlight, sortWizard.setWizardStep]);
+
+  const showSortWizard = sortStartChrome !== "job";
 
   return {
     t,
@@ -267,6 +269,8 @@ export function useQueuePanelController(props: QueuePanelProps) {
     hideSortInstructionsStrip,
     showDesktopWorkspaceStrip,
     showSortWizard,
+    sortStartChrome,
+    sortStartInFlight,
     sortWizard,
     sendingWithoutJobYet,
     jobFinishedUi,

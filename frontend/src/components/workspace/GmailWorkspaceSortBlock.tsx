@@ -51,7 +51,7 @@ export interface GmailWorkspaceSortBlockProps {
   hideWorkspacePrimaryImportButton?: boolean;
   /** Registers the mail-only import runner for the workspace batch Run control (desktop). */
   onRegisterWorkspaceGmailMailOnlyRunner?: (
-    runner: ((opts?: { signal?: AbortSignal }) => Promise<void>) | null
+    runner: ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
   ) => void;
 }
 
@@ -158,10 +158,10 @@ export default function GmailWorkspaceSortBlock({
     return t("queue.workspaceGmailSummaryConnected");
   }, [loadingStatus, oauthConfigured, connected, t]);
 
-  const runMailImport = useCallback(async (signal?: AbortSignal) => {
+  const runMailImport = useCallback(async (signal?: AbortSignal): Promise<string | null> => {
     if (!backendOnline || !settings.outputDir?.trim()) {
       toast.message(t("queue.gmailNeedOutputDir"));
-      return;
+      return null;
     }
     setImportBusy(true);
     try {
@@ -194,13 +194,14 @@ export default function GmailWorkspaceSortBlock({
       );
       onGmailSortJobStarted(job_id, session_id);
       toast.message(t("queue.gmailImportStarted"));
+      return job_id;
     } catch (e) {
-      if (signal?.aborted) return;
-      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (signal?.aborted) return null;
+      if (e instanceof DOMException && e.name === "AbortError") return null;
       if (e instanceof EntitlementBlockedError) {
         toastEntitlementBlocked();
         void onEntitlementRefresh();
-        return;
+        return null;
       }
       const msg = formatError(e);
       const capMatch = msg.match(/less than or equal to (\d+)/i);
@@ -214,6 +215,7 @@ export default function GmailWorkspaceSortBlock({
       } else {
         toastUserError(t("queue.gmailImportFailed"), e);
       }
+      return null;
     } finally {
       setImportBusy(false);
     }

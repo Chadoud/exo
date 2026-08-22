@@ -90,14 +90,14 @@ interface WorkspacePanelRouterProps {
     paths: string[],
     gmail: GmailAnalyzeSlice | null,
     opts?: { signal?: AbortSignal }
-  ) => Promise<void>;
+  ) => Promise<string | null>;
   startProgressiveDriveSort: (
     initialFilePaths: string[],
     opts?: { signal?: AbortSignal; gmailSlice?: GmailAnalyzeSlice | null }
   ) => Promise<{ job_id: string; session_id: string } | null>;
   handleBrowserFiles: ComponentProps<typeof QueuePanel>["actions"]["onBrowserFiles"];
   workspaceGmailMailOnlyRunnerRef: MutableRefObject<
-    ((opts?: { signal?: AbortSignal }) => Promise<void>) | null
+    ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
   >;
   workspaceAssistantBridge: WorkspaceAssistantBridge;
   handlePause: ComponentProps<typeof QueuePanel>["actions"]["onPause"];

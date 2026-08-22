@@ -36,10 +36,10 @@ export function useWorkspaceMergePrefsBridge(): {
   handleInfomaniakMergePrefsChange: (prefs: InfomaniakMergePrefs | null) => void;
   handleInfomaniakMailMergePrefsChange: (prefs: InfomaniakMailMergePrefs | null) => void;
   workspaceGmailMailOnlyRunnerRef: MutableRefObject<
-    ((opts?: { signal?: AbortSignal }) => Promise<void>) | null
+    ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
   >;
   registerWorkspaceGmailMailOnlyRunner: (
-    fn: ((opts?: { signal?: AbortSignal }) => Promise<void>) | null
+    fn: ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
   ) => void;
 } {
   const gmailMergePrefsRef = useRef<GmailMergePrefs | null>(null);
@@ -55,7 +55,7 @@ export function useWorkspaceMergePrefsBridge(): {
   const [infomaniakMailMergePrefsSnapshot, setInfomaniakMailMergePrefsSnapshot] =
     useState<InfomaniakMailMergePrefs | null>(null);
   const workspaceGmailMailOnlyRunnerRef = useRef<
-    ((opts?: { signal?: AbortSignal }) => Promise<void>) | null
+    ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
   >(null);
 
   const handleGmailMergePrefsChange = useCallback((prefs: GmailMergePrefs | null) => {
@@ -75,7 +75,7 @@ export function useWorkspaceMergePrefsBridge(): {
   }, []);
 
   const registerWorkspaceGmailMailOnlyRunner = useCallback(
-    (fn: ((opts?: { signal?: AbortSignal }) => Promise<void>) | null) => {
+    (fn: ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null) => {
       workspaceGmailMailOnlyRunnerRef.current = fn;
     },
     []

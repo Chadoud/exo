@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { toast } from "sonner";
-import type { GmailAnalyzeSlice, Job } from "../../api";
+import { api, type GmailAnalyzeSlice, type Job } from "../../api";
 import { hasElectronBridge } from "../../utils/platform";
 import type { GmailMergePrefs } from "../workspace/GmailWorkspaceSortBlock";
 import type { DriveMergePrefs } from "../workspace/DriveWorkspaceSortBlock";
@@ -32,6 +32,7 @@ import {
   type WorkspaceVoiceBatchTrigger,
   type WorkspacePrepStallMessageKey,
 } from "./workspaceBatchLogic";
+import type { SortStartStoppedReason } from "./sortStartChrome";
 import { buildSelectedSourcesSummary } from "./buildSelectedSourcesSummary";
 import {
   executeWorkspaceBatchRun,
@@ -59,7 +60,7 @@ interface UseWorkspaceBatchParams {
     paths: string[],
     gmail: GmailAnalyzeSlice | null,
     opts?: { signal?: AbortSignal; importSources?: string[] },
-  ) => Promise<void>;
+  ) => Promise<string | null>;
   onStartProgressiveDriveSort?: (
     initialFilePaths: string[],
     opts?: {
@@ -69,7 +70,7 @@ interface UseWorkspaceBatchParams {
     },
   ) => Promise<{ job_id: string; session_id: string } | null>;
   workspaceGmailMailOnlyRunnerRef: MutableRefObject<
-    ((opts?: { signal?: AbortSignal }) => Promise<void>) | null
+    ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
   >;
   /** Wired by Queue panel so voice can invoke the same **Run sort** pipeline with optional Drive defaults. */
   workspaceAssistantBridge?: WorkspaceAssistantBridge;
@@ -109,11 +110,21 @@ export function useWorkspaceBatch({
   const [workspacePrepStallMessageKey, setWorkspacePrepStallMessageKey] = useState<WorkspacePrepStallMessageKey>(
     () => WORKSPACE_PREP_STALL_MESSAGE.default,
   );
+  const [sortStartStoppedReason, setSortStartStoppedReason] = useState<SortStartStoppedReason | null>(
+    null,
+  );
+  const [awaitingFirstJob, setAwaitingFirstJob] = useState(false);
+  const [pendingStartJobId, setPendingStartJobId] = useState<string | null>(null);
   const workspaceBatchAbortRef = useRef<AbortController | null>(null);
   const [workspaceSourcesRevealRequested, setWorkspaceSourcesRevealRequested] = useState(false);
 
   useEffect(() => {
-    if (currentJob) setPreviewCount(null);
+    if (currentJob) {
+      setPreviewCount(null);
+      setSortStartStoppedReason(null);
+      setAwaitingFirstJob(false);
+      setPendingStartJobId(null);
+    }
   }, [currentJob]);
 
   useEffect(() => {
@@ -136,8 +147,17 @@ export function useWorkspaceBatch({
     workspaceBatchAbortRef.current = null;
     setWorkspaceBatchStarting(false);
     setPreviewCount(null);
+    setAwaitingFirstJob(false);
+    const jobId = pendingStartJobId;
+    setPendingStartJobId(null);
+    if (jobId) {
+      void api.cancelJob(jobId).catch(() => {
+        /* job may already be gone */
+      });
+    }
+    setSortStartStoppedReason("canceled");
     toast.message(t("queue.workspaceBatchCancelledToast"), { duration: 4000 });
-  }, [t]);
+  }, [t, pendingStartJobId]);
 
   /** Stop listing/import without toast — use when the user cancels from the job card while prep is still running. */
   const abortWorkspaceBatchStartSilently = useCallback(() => {
@@ -147,7 +167,16 @@ export function useWorkspaceBatch({
     setPreviewCount(null);
     setWorkspacePrepGmailInBatch(false);
     setWorkspacePrepStallMessageKey(WORKSPACE_PREP_STALL_MESSAGE.default);
-  }, []);
+    setAwaitingFirstJob(false);
+    const jobId = pendingStartJobId;
+    setPendingStartJobId(null);
+    if (jobId) {
+      void api.cancelJob(jobId).catch(() => {
+        /* job may already be gone */
+      });
+    }
+    setSortStartStoppedReason("canceled");
+  }, [pendingStartJobId]);
 
   const handleRunWorkspaceBatch = useCallback(
     async (voiceTrigger?: WorkspaceVoiceBatchTrigger) => {
@@ -194,6 +223,9 @@ export function useWorkspaceBatch({
 
       const ac = new AbortController();
       workspaceBatchAbortRef.current = ac;
+      setSortStartStoppedReason(null);
+      setAwaitingFirstJob(false);
+      setPendingStartJobId(null);
       setWorkspaceSourcesRevealRequested(false);
       setWorkspacePrepGmailInBatch(Boolean(gmailOn && gmailMax > 0));
       setWorkspacePrepStallMessageKey(
@@ -222,8 +254,9 @@ export function useWorkspaceBatch({
         });
       }
 
+      let startedJobId: string | null = null;
       try {
-        await executeWorkspaceBatchRun({
+        startedJobId = await executeWorkspaceBatchRun({
           signal: ac.signal,
           voiceTrigger,
           t,
@@ -246,10 +279,25 @@ export function useWorkspaceBatch({
           setPreviewCount,
           setStagedPaths,
         });
+      } catch {
+        startedJobId = null;
       } finally {
         setWorkspaceBatchStarting(false);
         setWorkspacePrepGmailInBatch(false);
         setWorkspacePrepStallMessageKey(WORKSPACE_PREP_STALL_MESSAGE.default);
+        if (ac.signal.aborted) {
+          setPreviewCount(null);
+          setAwaitingFirstJob(false);
+          setPendingStartJobId(null);
+        } else if (startedJobId) {
+          setPendingStartJobId(startedJobId);
+          setAwaitingFirstJob(true);
+        } else {
+          setPreviewCount(null);
+          setAwaitingFirstJob(false);
+          setPendingStartJobId(null);
+          setSortStartStoppedReason((prev) => prev ?? "failed");
+        }
         if (workspaceBatchAbortRef.current === ac) {
           workspaceBatchAbortRef.current = null;
         }
@@ -360,6 +408,8 @@ export function useWorkspaceBatch({
     previewCount,
     setPreviewCount,
     workspaceBatchStarting,
+    awaitingFirstJob,
+    sortStartStoppedReason,
     workspacePrepGmailInBatch,
     workspacePrepStallMessageKey,
     workspaceBatchAbortRef,

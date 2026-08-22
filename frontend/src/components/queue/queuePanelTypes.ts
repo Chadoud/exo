@@ -22,7 +22,7 @@ export interface QueueActions {
     paths: string[],
     gmail: GmailAnalyzeSlice | null,
     opts?: { signal?: AbortSignal; importSources?: string[] }
-  ) => Promise<void>;
+  ) => Promise<string | null>;
   /** Desktop progressive Drive: starts ``/analyze/drive-stream`` with optional local paths, then posts chunks. */
   onStartProgressiveDriveSort?: (
     initialFilePaths: string[],

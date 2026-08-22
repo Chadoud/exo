@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import type { Dispatch, SetStateAction } from "react";
+import { api } from "../../api";
 import type { GmailAnalyzeSlice } from "../../api";
 import type { GmailMergePrefs } from "../workspace/GmailWorkspaceSortBlock";
 import type { DriveMergePrefs } from "../workspace/DriveWorkspaceSortBlock";
@@ -47,6 +48,14 @@ import { runProgressiveCloudImportLoop } from "./runProgressiveCloudImportLoop";
 
 type TFunction = (key: string, params?: Record<string, string | number>) => string;
 
+/** User aborted after analyze already returned a job id — cancel that job so Run sort is not a lie. */
+function cancelIfStarted(jobId: string | null | undefined): void {
+  if (!jobId) return;
+  void api.cancelJob(jobId).catch(() => {
+    /* job may already be gone */
+  });
+}
+
 interface ExecuteWorkspaceBatchRunParams {
   signal: AbortSignal;
   voiceTrigger?: WorkspaceVoiceBatchTrigger;
@@ -75,8 +84,8 @@ interface ExecuteWorkspaceBatchRunParams {
     paths: string[],
     gmail: GmailAnalyzeSlice | null,
     opts?: { signal?: AbortSignal; importSources?: SortJobSourceId[] },
-  ) => Promise<void>;
-  workspaceGmailMailOnlyRunnerRef: { current: ((opts?: { signal?: AbortSignal }) => Promise<void>) | null };
+  ) => Promise<string | null>;
+  workspaceGmailMailOnlyRunnerRef: { current: ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null };
   setSortRunStartedAtMs: (ms: number | null) => void;
   setPreviewCount: (count: number | null) => void;
   setStagedPaths: Dispatch<SetStateAction<string[]>>;
@@ -85,7 +94,7 @@ interface ExecuteWorkspaceBatchRunParams {
 /**
  * Run the workspace **Run sort** pipeline: progressive cloud imports, local analyze, Gmail-only.
  */
-export async function executeWorkspaceBatchRun(params: ExecuteWorkspaceBatchRunParams): Promise<void> {
+export async function executeWorkspaceBatchRun(params: ExecuteWorkspaceBatchRunParams): Promise<string | null> {
   const {
     signal: ac,
     voiceTrigger,
@@ -210,7 +219,7 @@ export async function executeWorkspaceBatchRun(params: ExecuteWorkspaceBatchRunP
     if (streamingArms.length > 0) {
       if (!onStartProgressiveDriveSort) {
         setSortRunStartedAtMs(null);
-        return;
+        return null;
       }
       const initial = buildJobFilePaths(wantsLocal, stagedPaths, []);
       const started = await onStartProgressiveDriveSort(initial, {
@@ -218,22 +227,25 @@ export async function executeWorkspaceBatchRun(params: ExecuteWorkspaceBatchRunP
         gmailSlice: gmailOn ? slice : undefined,
         importSources,
       });
-      if (ac.aborted) return;
+      if (ac.aborted) {
+        cancelIfStarted(started?.job_id);
+        return null;
+      }
       if (!started) {
         setSortRunStartedAtMs(null);
-        return;
+        return null;
       }
 
       for (let i = 0; i < streamingArms.length; i++) {
         const outcome = await streamingArms[i](started.job_id, i === streamingArms.length - 1);
         if (outcome === "abort") {
           setSortRunStartedAtMs(null);
-          return;
+          return null;
         }
       }
 
       if (wantsLocal) setStagedPaths([]);
-      return;
+      return started.job_id;
     }
 
     const jobFilePaths = buildJobFilePaths(wantsLocal, stagedPaths, []);
@@ -242,7 +254,7 @@ export async function executeWorkspaceBatchRun(params: ExecuteWorkspaceBatchRunP
     if (!hasFilePaths && !gmailOn) {
       setSortRunStartedAtMs(null);
       toast.message(t("queue.workspaceBatchNothingSelected"));
-      return;
+      return null;
     }
 
     if (hasFilePaths && slice) {
@@ -250,32 +262,47 @@ export async function executeWorkspaceBatchRun(params: ExecuteWorkspaceBatchRunP
       if (isDriveMergeDebugOn()) {
         driveMergeDebug("workspaceAnalyzeStart", { pathCount: jobFilePaths.length, includesGmail: true });
       }
-      await onStartExplicitLocalSort(jobFilePaths, slice, { signal: ac, importSources });
-      if (ac.aborted) return;
-      if (wantsLocal) setStagedPaths([]);
-      return;
+      const jobId = await onStartExplicitLocalSort(jobFilePaths, slice, { signal: ac, importSources });
+      if (ac.aborted) {
+        cancelIfStarted(jobId);
+        return null;
+      }
+      if (wantsLocal && jobId) setStagedPaths([]);
+      return jobId;
     }
     if (hasFilePaths) {
       setPreviewCount(jobFilePaths.length);
       if (isDriveMergeDebugOn()) {
         driveMergeDebug("workspaceAnalyzeStart", { pathCount: jobFilePaths.length, includesGmail: false });
       }
-      await onStartExplicitLocalSort(jobFilePaths, null, { signal: ac, importSources });
-      if (ac.aborted) return;
-      if (wantsLocal) setStagedPaths([]);
-      return;
+      const jobId = await onStartExplicitLocalSort(jobFilePaths, null, { signal: ac, importSources });
+      if (ac.aborted) {
+        cancelIfStarted(jobId);
+        return null;
+      }
+      if (wantsLocal && jobId) setStagedPaths([]);
+      return jobId;
     }
     if (gmailOn && !hasFilePaths) {
       if (isDriveMergeDebugOn()) {
         driveMergeDebug("workspaceGmailOnlyStart", { gmailMax });
       }
       const r = workspaceGmailMailOnlyRunnerRef.current;
-      if (r) await r({ signal: ac });
-      else if (!ac.aborted) {
+      if (r) {
+        const jobId = await r({ signal: ac });
+        if (ac.aborted) {
+          cancelIfStarted(jobId);
+          return null;
+        }
+        return jobId;
+      }
+      if (!ac.aborted) {
         setSortRunStartedAtMs(null);
         toast.message(t("queue.workspaceBatchGmailUnavailable"));
       }
+      return null;
     }
+    return null;
   } catch (err) {
     setSortRunStartedAtMs(null);
     throw err;

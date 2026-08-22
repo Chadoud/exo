@@ -128,9 +128,6 @@ describe("useJobPolling", () => {
     await act(async () => {
       latest?.startPolling("job-1");
     });
-    await act(async () => {
-      vi.advanceTimersByTime(POLL_INTERVAL_MS);
-    });
     expect(onError).toHaveBeenCalledTimes(1);
     await act(async () => {
       vi.advanceTimersByTime(POLL_INTERVAL_MS);

@@ -44,6 +44,7 @@ function wizardAt(step: 1 | 2 | 3) {
         prepStallHint={false}
         prepStallTranslationKey="queue.workspacePrepStallDefault"
         jobMetrics={{} as QueuePanelController["jobMetrics"]}
+        sortStartChrome="idle"
         sortWizard={{
           wizardStep: step,
           setWizardStep: () => {},

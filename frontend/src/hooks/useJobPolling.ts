@@ -61,6 +61,7 @@ export function useJobPolling({ onJob, onTerminal, onError, shouldNotifyError }:
     (jobId: string) => {
       errorNotifiedRef.current = false;
       stopPolling();
+      void pollOnce(jobId);
       pollRef.current = setInterval(() => pollOnce(jobId), POLL_INTERVAL_MS);
 
       // Fire an immediate catch-up poll when the tab becomes visible again

@@ -37,7 +37,7 @@ export interface WorkspaceExternalSourcesSectionProps {
   onOpenExternalSourcesTab?: () => void;
   hideWorkspacePrimaryImportButton?: boolean;
   onRegisterWorkspaceGmailMailOnlyRunner?: (
-    runner: ((opts?: { signal?: AbortSignal }) => Promise<void>) | null
+    runner: ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
   ) => void;
 }
 

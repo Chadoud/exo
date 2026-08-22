@@ -62,7 +62,7 @@ export interface QueuePanelProps {
   infomaniakMailMergePrefsSnapshot: InfomaniakMailMergePrefs | null;
   /** Registered by Gmail workspace block — mail-only import for batch Run (desktop). */
   workspaceGmailMailOnlyRunnerRef: MutableRefObject<
-    ((opts?: { signal?: AbortSignal }) => Promise<void>) | null
+    ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
   >;
   /** Filled by ``useWorkspaceBatch`` so voice tools can invoke **Run sort** (Drive synthesis). */
   workspaceAssistantBridge?: WorkspaceAssistantBridge;

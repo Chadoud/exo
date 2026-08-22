@@ -211,12 +211,12 @@ export function useSortPipelineActions(opts: {
       paths: string[],
       gmailForRun: GmailAnalyzeSlice | null,
       opts?: { signal?: AbortSignal; importSources?: string[] }
-    ) => {
+    ): Promise<string | null> => {
       if (gmailForRun !== null) {
         if (!hasElectronBridge() || !allPathsUsableForLocalBackend(paths)) {
           trackSortBlocked(settings.telemetryOptIn, settings.uiLocale, "local_paths_need_desktop");
           toast.message(translate(uiLocale, "queue.localPathsNeedDesktop"), { duration: 11000 });
-          return;
+          return null;
         }
       }
       try {
@@ -246,14 +246,16 @@ export function useSortPipelineActions(opts: {
         startPolling(job_id);
         setTab("queue");
         emitJobStartedTelemetry(paths, gmailForRun);
+        return job_id;
       } catch (e) {
-        if (isAbortError(e)) return;
+        if (isAbortError(e)) return null;
         if (e instanceof EntitlementBlockedError) {
           toastEntitlementBlocked();
           void refreshEntitlement();
-          return;
+          return null;
         }
         toastUserError("Could not start sort", e);
+        return null;
       }
     },
     [
@@ -366,9 +368,9 @@ export function useSortPipelineActions(opts: {
       paths: string[],
       gmailForRun: GmailAnalyzeSlice | null,
       opts?: { signal?: AbortSignal; importSources?: string[] }
-    ) => {
-      if (!assertLocalAnalyzePreconditions(paths)) return;
-      await enqueueLocalAnalyzeJob(paths, gmailForRun, opts);
+    ): Promise<string | null> => {
+      if (!assertLocalAnalyzePreconditions(paths)) return null;
+      return enqueueLocalAnalyzeJob(paths, gmailForRun, opts);
     },
     [assertLocalAnalyzePreconditions, enqueueLocalAnalyzeJob]
   );

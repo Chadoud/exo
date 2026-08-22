@@ -65,7 +65,7 @@ export interface AppMainWorkspaceProps {
     paths: string[],
     gmail: GmailAnalyzeSlice | null,
     opts?: { signal?: AbortSignal },
-  ) => Promise<void>;
+  ) => Promise<string | null>;
   startProgressiveDriveSort: (
     initialFilePaths: string[],
     opts?: { signal?: AbortSignal; gmailSlice?: GmailAnalyzeSlice | null },
@@ -74,7 +74,7 @@ export interface AppMainWorkspaceProps {
   onVoiceCodegenRequested: (goal: string) => void;
   handleBrowserFiles: ComponentProps<typeof QueuePanel>["actions"]["onBrowserFiles"];
   workspaceGmailMailOnlyRunnerRef: MutableRefObject<
-    ((opts?: { signal?: AbortSignal }) => Promise<void>) | null
+    ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
   >;
   workspaceAssistantBridge: WorkspaceAssistantBridge;
   handlePause: ComponentProps<typeof QueuePanel>["actions"]["onPause"];

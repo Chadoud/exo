@@ -8,6 +8,7 @@ import { QueueDesktopWorkspaceSection } from "./queue/QueueDesktopWorkspaceSecti
 import { QueueWebImportSection } from "./queue/QueueWebImportSection";
 import { QueuePanelJobSection } from "./queue/QueuePanelJobSection";
 import { SortWizard } from "./queue/SortWizard";
+import { QueueSortSendingCluster } from "./queue/QueueSortSendingCluster";
 import { useQueuePanelController } from "./queue/useQueuePanelController";
 import type { QueuePanelProps } from "./queue/queuePanelProps";
 import type { AppSettings } from "../types/settings";
@@ -47,6 +48,11 @@ export default function QueuePanel(props: QueuePanelProps) {
     sortIntroHint,
     showDesktopWorkspaceStrip,
     showSortWizard,
+    sortStartInFlight,
+    t,
+    workspaceBatch,
+    prepStallHint,
+    prepStallTranslationKey,
   } = controller;
 
   const {
@@ -119,6 +125,16 @@ export default function QueuePanel(props: QueuePanelProps) {
           onFiles={onFiles}
           onBrowserFiles={onBrowserFiles}
           {...controller}
+        />
+      ) : null}
+
+      {sortStartInFlight ? (
+        <QueueSortSendingCluster
+          previewCount={workspaceBatch.previewCount}
+          stallVisible={prepStallHint}
+          stallTranslationKey={prepStallTranslationKey}
+          onCancel={workspaceBatch.handleCancelWorkspaceBatchStart}
+          t={t}
         />
       ) : null}
 
