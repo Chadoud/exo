@@ -391,6 +391,25 @@ jobs:
             dist-installer/*.blockmap
           if-no-files-found: warn
 
+      - name: Package Exo Test channel
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: npm run package:win:test
+
+      - name: Build Exo Test installer
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer-test.iss
+
+      - name: Upload Exo Test installer
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EXO-Windows-Test
+          retention-days: 7
+          path: |
+            dist-installer-test/Exo Test Setup.exe
+          if-no-files-found: warn
+
   # ── macOS backend (Intel) — paired with arm64 slice in universal .dmg ─────────
   build-macos-backend-x64:
     needs: quality

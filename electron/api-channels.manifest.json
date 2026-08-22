@@ -5,6 +5,7 @@
     "app:appendRendererDiagnostic",
     "app:getBackendToken",
     "app:getDefaultOutputDir",
+    "app:getDisplayName",
     "app:getInstallLocation",
     "app:getOCRCapabilities",
     "app:getRendererDiagnosticsLogPath",

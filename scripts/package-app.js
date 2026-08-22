@@ -14,6 +14,7 @@ const { execFileSync, execSync } = require("child_process");
 const IS_WIN = process.platform === "win32";
 const ELECTRON_EXE = IS_WIN ? "electron.exe" : "Electron";
 const { stageOnedirDirectory, resolveBackendInSlice } = require("./lib/backend-onedir.cjs");
+const { isTestDesktopChannel, testDesktopChannelPayload } = require("./lib/desktopChannel.cjs");
 
 const ROOT = path.join(__dirname, "..");
 const PKG_PATH = path.join(ROOT, "package.json");
@@ -29,14 +30,19 @@ if (!IS_WIN) {
 const UNLIMITED_BUILD = ["1", "true", "yes", "on"].includes(
   String(process.env.EXO_UNLIMITED_BUILD || "").trim().toLowerCase(),
 );
-const DIST_ROOT = UNLIMITED_BUILD ? "dist-app-unlimited" : "dist-app";
-const INSTALLER_ROOT = UNLIMITED_BUILD ? "dist-installer-unlimited" : "dist-installer";
+const TEST_BUILD = isTestDesktopChannel();
+const DIST_ROOT = UNLIMITED_BUILD ? "dist-app-unlimited" : TEST_BUILD ? "dist-app-test" : "dist-app";
+const INSTALLER_ROOT = UNLIMITED_BUILD
+  ? "dist-installer-unlimited"
+  : TEST_BUILD
+    ? "dist-installer-test"
+    : "dist-installer";
 const APP_EXE = `${PRODUCT_NAME}.exe`;
 const DIST = path.join(ROOT, DIST_ROOT, PRODUCT_NAME);
 const ELECTRON_DIST = path.join(ROOT, "node_modules", "electron", "dist");
 
 console.log(
-  `\n=== ${PRODUCT_NAME} — Manual Packager${UNLIMITED_BUILD ? " (unlimited entitlement)" : ""} ===\n`,
+  `\n=== ${PRODUCT_NAME} — Manual Packager${UNLIMITED_BUILD ? " (unlimited entitlement)" : TEST_BUILD ? " (Exo Test channel)" : ""} ===\n`,
 );
 
 execSync("bash scripts/prepare-release-resources.sh", { cwd: ROOT, stdio: "inherit" });
@@ -135,6 +141,12 @@ if (UNLIMITED_BUILD) {
   console.log("✓ unlimited-entitlement.marker written (no trial day limit in this build)");
 }
 
+if (TEST_BUILD) {
+  const channelPath = path.join(resourcesDir, "desktop-channel.json");
+  fs.writeFileSync(channelPath, `${JSON.stringify(testDesktopChannelPayload(PKG.version), null, 2)}\n`);
+  console.log("✓ desktop-channel.json written (Start Menu / title: Exo Test)");
+}
+
 // ── 6. Verify packaged resources ───────────────────────────────────────────
 const resourcesDirFinal = path.join(DIST, "resources");
 execSync(`node scripts/verify-packaged-app.cjs "${resourcesDirFinal}"`, {
@@ -148,6 +160,9 @@ console.log(`Launch: "${path.join(DIST, APP_EXE)}"`);
 if (UNLIMITED_BUILD) {
   console.log(`\nUnlimited build — export folder: ${path.join(ROOT, DIST_ROOT, PRODUCT_NAME)}`);
   console.log(`Installer output (after Inno Setup): ${path.join(ROOT, INSTALLER_ROOT)}`);
+} else if (TEST_BUILD) {
+  console.log(`\nExo Test channel — export folder: ${path.join(ROOT, DIST_ROOT, PRODUCT_NAME)}`);
+  console.log(`Installer: ISCC installer-test.iss → ${path.join(ROOT, INSTALLER_ROOT)}`);
 } else {
   console.log(`\nTo distribute: zip the entire '${PRODUCT_NAME}' folder.`);
 }

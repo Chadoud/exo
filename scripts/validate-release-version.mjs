@@ -90,16 +90,18 @@ export function validateReleaseVersion(root, expected) {
     errors.push(`frontend/src/appVersion.ts: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  try {
-    const iss = read("installer.iss");
-    const m = iss.match(/#define AppVersion "([^"]+)"/);
-    if (!m) {
-      errors.push('installer.iss: #define AppVersion "..." not found');
-    } else if (m[1] !== version) {
-      errors.push(`installer.iss AppVersion is ${JSON.stringify(m[1])}, expected ${version}`);
+  for (const issRel of ["installer.iss", "installer-test.iss"]) {
+    try {
+      const iss = read(issRel);
+      const m = iss.match(/#define AppVersion "([^"]+)"/);
+      if (!m) {
+        errors.push(`${issRel}: #define AppVersion "..." not found`);
+      } else if (m[1] !== version) {
+        errors.push(`${issRel} AppVersion is ${JSON.stringify(m[1])}, expected ${version}`);
+      }
+    } catch (e) {
+      errors.push(`${issRel}: ${e instanceof Error ? e.message : String(e)}`);
     }
-  } catch (e) {
-    errors.push(`installer.iss: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   try {

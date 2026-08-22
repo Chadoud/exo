@@ -246,6 +246,8 @@ function registerAppHandlers() {
     return getInstallLocationState();
   });
 
+  ipcMain.handle("app:getDisplayName", async () => APP_NAME);
+
   ipcMain.handle("app:openApplicationsFolder", async () => {
     const { openApplicationsFolder } = require("../installLocation");
     const error = await openApplicationsFolder();

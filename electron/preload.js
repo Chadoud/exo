@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   appendRendererDiagnostic: (payload) => ipcRenderer.invoke("app:appendRendererDiagnostic", payload),
   getSystemSpecs: () => ipcRenderer.invoke("app:getSystemSpecs"),
   getInstallLocation: () => ipcRenderer.invoke("app:getInstallLocation"),
+  getDisplayName: () => ipcRenderer.invoke("app:getDisplayName"),
   openApplicationsFolder: () => ipcRenderer.invoke("app:openApplicationsFolder"),
   getOCRCapabilities: () => ipcRenderer.invoke("app:getOCRCapabilities"),
   restartBackend: () => ipcRenderer.invoke("app:restartBackend"),

@@ -98,6 +98,8 @@ export interface ElectronAPI {
   getSystemSpecs: () => Promise<SystemSpecs>;
   /** macOS: true when launched from a mounted .dmg instead of /Applications. */
   getInstallLocation: () => Promise<InstallLocationState>;
+  /** Packaged display name — "Exo Test" on the tester channel, otherwise "Exo". */
+  getDisplayName?: () => Promise<string>;
   openApplicationsFolder: () => Promise<{ ok: boolean; error: string | null }>;
   getOCRCapabilities: () => Promise<OCRCapabilities>;
   /** Kill and respawn the Python API (e.g. after crash or port conflict). */

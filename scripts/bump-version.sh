@@ -34,10 +34,12 @@ let ts = fs.readFileSync(appVersion, "utf8");
 ts = ts.replace(/export const APP_VERSION = "[^"]+";/, `export const APP_VERSION = "${version}";`);
 fs.writeFileSync(appVersion, ts);
 
-const iss = path.join(root, "installer.iss");
-let issText = fs.readFileSync(iss, "utf8");
-issText = issText.replace(/#define AppVersion "[^"]+"/, `#define AppVersion "${version}"`);
-fs.writeFileSync(iss, issText);
+for (const issRel of ["installer.iss", "installer-test.iss"]) {
+  const iss = path.join(root, issRel);
+  let issText = fs.readFileSync(iss, "utf8");
+  issText = issText.replace(/#define AppVersion "[^"]+"/, `#define AppVersion "${version}"`);
+  fs.writeFileSync(iss, issText);
+}
 
 console.log(`Bumped desktop version → ${version}`);
 console.log(`Next: add ## [${version}] to CHANGELOG.md`);

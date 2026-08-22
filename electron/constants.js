@@ -1,9 +1,25 @@
 /** Electron process constants — single source of truth for main process. */
 
+const fs = require("fs");
+const path = require("path");
 const { app } = require("electron");
 
-// Must match `productName` in package.json and `AppName` in installer.iss.
-const APP_NAME = require("../package.json").build?.productName ?? "Exo";
+function readPackagedDisplayName() {
+  try {
+    if (!app?.isPackaged) return null;
+    const raw = JSON.parse(fs.readFileSync(path.join(process.resourcesPath, "desktop-channel.json"), "utf8"));
+    if (raw && raw.channel === "test" && typeof raw.displayName === "string" && raw.displayName.trim()) {
+      return raw.displayName.trim();
+    }
+  } catch {
+    /* production builds have no channel file */
+  }
+  return null;
+}
+
+// Default matches `productName` in package.json and `AppName` in installer.iss.
+// Packaged Exo Test writes desktop-channel.json (separate AppId / Start Menu name).
+const APP_NAME = readPackagedDisplayName() ?? require("../package.json").build?.productName ?? "Exo";
 /** Keep in sync with `frontend/src/constants.ts` `BACKEND_PORT`. */
 const BACKEND_PORT = 7799;
 /** Loopback bridge for Python → Electron screen capture (macOS TCC under the app name). */

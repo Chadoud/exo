@@ -18,6 +18,7 @@ function writeFixture(root, version, { emptyChangelog = false } = {}) {
     `export const APP_VERSION = "${version}";\n`
   );
   fs.writeFileSync(path.join(root, "installer.iss"), `#define AppVersion "${version}"\n`);
+  fs.writeFileSync(path.join(root, "installer-test.iss"), `#define AppVersion "${version}"\n`);
   const body = emptyChangelog ? "" : "\n- note\n";
   fs.writeFileSync(path.join(root, "CHANGELOG.md"), `# Changelog\n\n## [${version}]${body}\n## [0.0.1]\n- old\n`);
 }

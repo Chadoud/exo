@@ -12,6 +12,7 @@ import SelectDropdown, {
 } from "./ui/SelectDropdown";
 import { APP_SHELL_GUTTER_X_CLASS } from "../utils/styles";
 import { APP_LOGO_URL } from "../constants";
+import { useAppDisplayName } from "../hooks/useAppDisplayName";
 import WindowChromeButtons from "./WindowChromeButtons";
 
 type WindowsTitleBrandingPlacement = "titleBar" | "sidebar";
@@ -140,6 +141,7 @@ export default function TitleBar({
   suppressLeadingBranding = false,
 }: TitleBarProps) {
   const { t } = useI18n();
+  const productLabel = useAppDisplayName();
   const [localeMenuOpen, setLocaleMenuOpen] = useState(false);
   const localeTriggerRef = useRef<HTMLButtonElement>(null);
   /** Windows + macOS Electron use the nav-rail corner; browser shows mark + name here. */
@@ -154,7 +156,7 @@ export default function TitleBar({
       {/* Draggable area — logo + name unless suppressed (shown in sidebar on AI Manager / Windows). */}
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {!suppressLeadingBranding && showTitleBarBranding ? (
-          <WindowsTitleBranding productLabel={t("titleBar.appName")} placement="titleBar" />
+          <WindowsTitleBranding productLabel={productLabel} placement="titleBar" />
         ) : null}
         {cloudAccountLabel ? (
           <span

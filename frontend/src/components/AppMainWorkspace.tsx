@@ -26,6 +26,7 @@ import {
   type IntegrationClientActionDetail,
 } from "../assistant/integrationClientActions";
 import { useI18n } from "../i18n/I18nContext";
+import { useAppDisplayName } from "../hooks/useAppDisplayName";
 import { useCodegenErrorToast } from "../features/codegen/useCodegenErrorToast";
 import { APP_SHELL_GUTTER_X_CLASS } from "../utils/styles";
 import WorkspacePanelRouter from "./workspace/WorkspacePanelRouter";
@@ -129,6 +130,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
   } = props;
 
   const { t } = useI18n();
+  const productLabel = useAppDisplayName();
   useCodegenErrorToast();
 
   const {
@@ -278,7 +280,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
         >
           {showSidebarCornerBranding ? (
             <WindowsTitleBranding
-              productLabel={t("titleBar.appName")}
+              productLabel={productLabel}
               placement="sidebar"
               labelSlot={sidebarHeaderClockSlot}
             />
