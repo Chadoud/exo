@@ -6,6 +6,12 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.73] - 2026-08-22
+
+### Fixed
+
+- **Sort:** If a run never creates a job, the sending bar stops and you can Run sort again without leaving the page.
+
 ## [1.1.72] - 2026-08-21
 
 ### Changed
