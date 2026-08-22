@@ -111,6 +111,19 @@ class TestSubscriptionState(unittest.TestCase):
             )
             self.assertFalse(is_subscription_entitled())
 
+    def test_subscription_in_active_profile_when_user_data_is_device_root(self):
+        from subscription_state import is_subscription_entitled
+
+        with _user_data_env() as tmp:
+            profile = tmp / "profiles" / "acctA"
+            profile.mkdir(parents=True)
+            (tmp / "active_profile.json").write_text(
+                json.dumps({"v": 1, "activeId": "acctA"}),
+                encoding="utf-8",
+            )
+            _write_subscription(profile, status="active")
+            self.assertTrue(is_subscription_entitled())
+
     def test_corrupt_file_is_not_entitled(self):
         from subscription_state import is_subscription_entitled
 
@@ -133,6 +146,32 @@ class TestEntitlementGateWithSubscription(unittest.TestCase):
             self.assertTrue(status["canAnalyze"])
             self.assertTrue(status["subscriptionEntitled"])
             self.assertFalse(status["trialActive"])
+
+    def test_profile_subscription_allows_analyze_when_user_data_is_device_root(self):
+        import os
+
+        from entitlement_gate import may_start_analyze
+
+        prev_cloud = os.environ.get("EXOSITES_CLOUD_URL")
+        try:
+            os.environ["EXOSITES_CLOUD_URL"] = "https://api.exosites.ch"
+            with _user_data_env() as tmp:
+                profile = tmp / "profiles" / "acctA"
+                profile.mkdir(parents=True)
+                (tmp / "active_profile.json").write_text(
+                    json.dumps({"v": 1, "activeId": "acctA"}),
+                    encoding="utf-8",
+                )
+                _write_expired_trial(tmp)
+                _write_subscription(profile, status="active")
+                ok, detail = may_start_analyze()
+                self.assertTrue(ok)
+                self.assertIsNone(detail)
+        finally:
+            if prev_cloud is None:
+                os.environ.pop("EXOSITES_CLOUD_URL", None)
+            else:
+                os.environ["EXOSITES_CLOUD_URL"] = prev_cloud
 
     def test_canceled_subscription_and_expired_trial_blocks(self):
         from entitlement_gate import may_start_analyze

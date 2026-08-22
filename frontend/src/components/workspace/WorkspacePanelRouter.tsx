@@ -95,6 +95,10 @@ interface WorkspacePanelRouterProps {
     initialFilePaths: string[],
     opts?: { signal?: AbortSignal; gmailSlice?: GmailAnalyzeSlice | null }
   ) => Promise<{ job_id: string; session_id: string } | null>;
+  startGmailOnlySort: (
+    slice: GmailAnalyzeSlice,
+    opts?: { signal?: AbortSignal }
+  ) => Promise<string | null>;
   handleBrowserFiles: ComponentProps<typeof QueuePanel>["actions"]["onBrowserFiles"];
   workspaceGmailMailOnlyRunnerRef: MutableRefObject<
     ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
@@ -202,6 +206,7 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
     handleFiles,
     startExplicitLocalSort,
     startProgressiveDriveSort,
+    startGmailOnlySort,
     handleBrowserFiles,
     workspaceGmailMailOnlyRunnerRef,
     workspaceAssistantBridge,
@@ -335,6 +340,7 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
             onFiles: handleFiles,
             onStartExplicitLocalSort: startExplicitLocalSort,
             onStartProgressiveDriveSort: startProgressiveDriveSort,
+            onStartGmailOnlySort: startGmailOnlySort,
             onBrowserFiles: handleBrowserFiles,
             onPause: handlePause,
             onResume: handleResume,

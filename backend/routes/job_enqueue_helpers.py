@@ -25,11 +25,26 @@ from job_import_sources import apply_job_import_sources
 from job_model_resolve import resolve_job_classify_model
 from job_models import JobConfig, JobFile, JobRecord
 from job_service import JobService
+from job_start_record import record_job_start
 from output_dir_guard import assert_safe_output_dir
 from path_expand import expand_input_paths
 from upload_staging import save_browser_uploads
 
 logger = logging.getLogger(__name__)
+
+
+def _guard_output_and_entitlement(output_dir: str, route: str) -> None:
+    try:
+        assert_safe_output_dir(output_dir)
+    except ValueError as exc:
+        record_job_start(ok=False, route=route, status=400, code="unsafe_output")
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    try:
+        assert_may_start_analyze()
+    except HTTPException as exc:
+        code = "trial_expired" if exc.status_code == 402 else "error"
+        record_job_start(ok=False, route=route, status=int(exc.status_code), code=code)
+        raise
 
 
 def require_job(jobs: dict[str, dict], job_id: str) -> dict:
@@ -83,12 +98,9 @@ def enqueue_analyze_job_core(
     background_tasks: BackgroundTasks | None = None,
     threadsafe_delivery_loop: asyncio.AbstractEventLoop | None = None,
 ):
-    try:
-        assert_safe_output_dir(req.output_dir)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    assert_may_start_analyze()
+    _guard_output_and_entitlement(req.output_dir, "analyze")
     if not expanded_file_paths:
+        record_job_start(ok=False, route="analyze", status=400, code="no_files")
         raise HTTPException(status_code=400, detail="No files found in selected paths.")
 
     job_id = str(uuid.uuid4())
@@ -143,6 +155,7 @@ def enqueue_analyze_job_core(
             "enqueue_analyze_job_core requires exactly one of "
             "background_tasks or threadsafe_delivery_loop",
         )
+    record_job_start(ok=True, route="analyze", status=200, code="ok")
     return {"job_id": job_id, "session_id": session_id}
 
 
@@ -165,11 +178,7 @@ def enqueue_gmail_streaming_import_sort(
     Start a Gmail import job with **no** pre-fetched files: export runs in a thread while
     ``JobService.run_gmail_import_streaming`` classifies each path as it is queued.
     """
-    try:
-        assert_safe_output_dir(req.output_dir)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    assert_may_start_analyze()
+    _guard_output_and_entitlement(req.output_dir, "gmail_import_sort")
     job_id = str(uuid.uuid4())
     session_id = req.session_id or job_id
 
@@ -248,6 +257,7 @@ def enqueue_gmail_streaming_import_sort(
         import_content=gmail_import_content,
         auto_apply=auto_apply,
     )
+    record_job_start(ok=True, route="gmail_import_sort", status=200, code="ok")
     return {"job_id": job_id, "session_id": session_id}
 
 
@@ -396,8 +406,10 @@ def enqueue_analyze_job(
 ):
     expanded, expand_err = expand_input_paths(req.file_paths, req.output_dir)
     if expand_err:
+        record_job_start(ok=False, route="analyze", status=400, code="error")
         raise HTTPException(status_code=400, detail=expand_err)
     if not expanded:
+        record_job_start(ok=False, route="analyze", status=400, code="no_files")
         raise HTTPException(status_code=400, detail="No files found in selected paths.")
 
     extra_dirs: list[pathlib.Path] = list(browser_staging_dirs or [])

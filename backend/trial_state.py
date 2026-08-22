@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from entitlement_constants import FREE_TRIAL_DAYS
+from entitlement_paths import first_existing_entitlement_file
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +25,15 @@ def _user_data_dir() -> str | None:
 
 
 def trial_path() -> str | None:
+    """Write target: USER_DATA/trial.json. Readers use first existing (profile fallback)."""
     base = _user_data_dir()
     if not base:
         return None
     return os.path.join(base, _FILENAME)
+
+
+def trial_read_path() -> str | None:
+    return first_existing_entitlement_file(_FILENAME) or trial_path()
 
 
 def _utc_now() -> datetime:
@@ -57,7 +63,7 @@ def _format_iso(dt: datetime) -> str:
 
 def read_trial_record() -> dict[str, Any] | None:
     """Return parsed trial.json or None when missing/unreadable."""
-    p = trial_path()
+    p = trial_read_path()
     if not p or not os.path.isfile(p):
         return None
     try:

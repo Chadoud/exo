@@ -5,6 +5,7 @@ import type { UseModelsReturn } from "../../hooks/useModels";
 import { useJobReducer } from "../../hooks/useJobReducer";
 import { useJobPolling } from "../../hooks/useJobPolling";
 import { useSortPipelineActions } from "../../hooks/useSortPipelineActions";
+import { useGmailOnlySortStart } from "../../hooks/useGmailOnlySortStart";
 import { useCloudSortActive } from "../../hooks/useCloudSortActive";
 import { useWorkspaceMergePrefsBridge } from "../../hooks/useWorkspaceMergePrefsBridge";
 import type { MainNavTab } from "../../hooks/useMainNavItems";
@@ -236,6 +237,19 @@ export function useWorkspaceController(opts: {
     gmailMergePrefsRef: mergePrefs.gmailMergePrefsRef,
   });
 
+  const startGmailOnlySort = useGmailOnlySortStart({
+    uiLocale,
+    backendOnline,
+    settings,
+    installedTesseractLangs: modelHook.ocrInfo?.languages,
+    installedOllamaModels: modelHook.models,
+    setTab,
+    setSessionId,
+    startPolling,
+    refreshEntitlement,
+    toastEntitlementBlocked,
+  });
+
   return {
     workspaceBridge,
     reassignFile,
@@ -263,6 +277,7 @@ export function useWorkspaceController(opts: {
     patchFileByEntryId,
     setAllApproved,
     handleStartNewSort,
+    startGmailOnlySort,
     ...sortPipeline,
   };
 }

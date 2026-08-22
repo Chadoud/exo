@@ -31,6 +31,7 @@ from gmail_google_oauth import (
 from gmail_import import canonical_gmail_list_query
 from gmail_setup_checks import build_gmail_developer_setup_steps
 from job_service import JobService
+from job_start_record import record_job_start
 from routes.job_enqueue_helpers import enqueue_gmail_streaming_import_sort
 
 logger = logging.getLogger(__name__)
@@ -175,6 +176,7 @@ def create_gmail_router() -> APIRouter:
         try:
             token = await asyncio.get_running_loop().run_in_executor(None, get_valid_access_token)
         except RuntimeError as exc:
+            record_job_start(ok=False, route="gmail_import_sort", status=401, code="unauthorized")
             raise HTTPException(status_code=401, detail=str(exc)) from exc
 
         staging_root = APP_STATE_DIR / "gmail_imports" / uuid.uuid4().hex

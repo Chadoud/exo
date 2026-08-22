@@ -214,6 +214,7 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
                 handleFiles={workspace.handleFiles}
                 startExplicitLocalSort={workspace.startExplicitLocalSort}
                 startProgressiveDriveSort={workspace.startProgressiveDriveSort}
+                startGmailOnlySort={workspace.startGmailOnlySort}
                 onVoiceLocalSortJobStarted={assistantVoice.onVoiceLocalSortJobStarted}
                 onVoiceCodegenRequested={assistantVoice.onVoiceCodegenRequested}
                 handleBrowserFiles={workspace.handleBrowserFiles}

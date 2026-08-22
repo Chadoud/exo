@@ -79,6 +79,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
     handleFiles,
     startExplicitLocalSort,
     startProgressiveDriveSort,
+    startGmailOnlySort,
     onVoiceLocalSortJobStarted,
     onVoiceCodegenRequested,
     handleBrowserFiles,
@@ -389,6 +390,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
             handleFiles={handleFiles}
             startExplicitLocalSort={startExplicitLocalSort}
             startProgressiveDriveSort={startProgressiveDriveSort}
+            startGmailOnlySort={startGmailOnlySort}
             handleBrowserFiles={handleBrowserFiles}
             workspaceGmailMailOnlyRunnerRef={workspaceGmailMailOnlyRunnerRef}
             workspaceAssistantBridge={workspaceAssistantBridge}

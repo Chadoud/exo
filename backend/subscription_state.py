@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from typing import Any
+
+from entitlement_paths import first_existing_entitlement_file
 
 logger = logging.getLogger(__name__)
 
@@ -22,21 +23,15 @@ OFFLINE_TRUST_DAYS = 7
 _ENTITLED_STATUSES = {"active", "trialing", "past_due"}
 
 
-def _user_data_dir() -> str | None:
-    return os.environ.get("EXOSITES_USER_DATA")
-
-
 def subscription_path() -> str | None:
-    base = _user_data_dir()
-    if not base:
-        return None
-    return os.path.join(base, _FILENAME)
+    """USER_DATA/subscription.json, or the active profile copy when USER_DATA is the device root."""
+    return first_existing_entitlement_file(_FILENAME)
 
 
 def read_subscription_record() -> dict[str, Any] | None:
     """Return parsed subscription.json or None when missing/unreadable."""
     p = subscription_path()
-    if not p or not os.path.isfile(p):
+    if not p:
         return None
     try:
         with open(p, encoding="utf-8") as f:

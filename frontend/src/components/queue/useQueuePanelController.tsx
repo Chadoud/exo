@@ -60,6 +60,7 @@ export function useQueuePanelController(props: QueuePanelProps) {
   const {
     onStartExplicitLocalSort,
     onStartProgressiveDriveSort,
+    onStartGmailOnlySort,
     onCancel,
     onOpenOutputSettings,
   } = actions;
@@ -104,6 +105,7 @@ export function useQueuePanelController(props: QueuePanelProps) {
     infomaniakMailMergePrefsSnapshot,
     onStartExplicitLocalSort: onStartExplicitLocalSort ?? (async () => null),
     onStartProgressiveDriveSort,
+    onStartGmailOnlySort,
     workspaceGmailMailOnlyRunnerRef,
     workspaceAssistantBridge,
   });

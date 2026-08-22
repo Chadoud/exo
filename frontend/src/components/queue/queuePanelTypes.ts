@@ -23,6 +23,11 @@ export interface QueueActions {
     gmail: GmailAnalyzeSlice | null,
     opts?: { signal?: AbortSignal; importSources?: string[] }
   ) => Promise<string | null>;
+  /** Always-mounted Gmail-only start — Review must not depend on the Sources card runner. */
+  onStartGmailOnlySort?: (
+    slice: GmailAnalyzeSlice,
+    opts?: { signal?: AbortSignal }
+  ) => Promise<string | null>;
   /** Desktop progressive Drive: starts ``/analyze/drive-stream`` with optional local paths, then posts chunks. */
   onStartProgressiveDriveSort?: (
     initialFilePaths: string[],

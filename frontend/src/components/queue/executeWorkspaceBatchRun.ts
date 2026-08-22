@@ -85,6 +85,10 @@ interface ExecuteWorkspaceBatchRunParams {
     gmail: GmailAnalyzeSlice | null,
     opts?: { signal?: AbortSignal; importSources?: SortJobSourceId[] },
   ) => Promise<string | null>;
+  onStartGmailOnlySort?: (
+    slice: GmailAnalyzeSlice,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<string | null>;
   workspaceGmailMailOnlyRunnerRef: { current: ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null };
   setSortRunStartedAtMs: (ms: number | null) => void;
   setPreviewCount: (count: number | null) => void;
@@ -112,6 +116,7 @@ export async function executeWorkspaceBatchRun(params: ExecuteWorkspaceBatchRunP
     infomaniakMergePrefsSnapshot,
     infomaniakMailMergePrefsSnapshot,
     onStartProgressiveDriveSort,
+    onStartGmailOnlySort,
     onStartExplicitLocalSort,
     workspaceGmailMailOnlyRunnerRef,
     setSortRunStartedAtMs,
@@ -287,9 +292,11 @@ export async function executeWorkspaceBatchRun(params: ExecuteWorkspaceBatchRunP
       if (isDriveMergeDebugOn()) {
         driveMergeDebug("workspaceGmailOnlyStart", { gmailMax });
       }
-      const r = workspaceGmailMailOnlyRunnerRef.current;
-      if (r) {
-        const jobId = await r({ signal: ac });
+      const startGmail = onStartGmailOnlySort && slice
+        ? (opts?: { signal?: AbortSignal }) => onStartGmailOnlySort(slice, opts)
+        : workspaceGmailMailOnlyRunnerRef.current;
+      if (startGmail) {
+        const jobId = await startGmail({ signal: ac });
         if (ac.aborted) {
           cancelIfStarted(jobId);
           return null;

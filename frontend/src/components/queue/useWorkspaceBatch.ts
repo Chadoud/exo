@@ -69,6 +69,10 @@ interface UseWorkspaceBatchParams {
       importSources?: string[];
     },
   ) => Promise<{ job_id: string; session_id: string } | null>;
+  onStartGmailOnlySort?: (
+    slice: GmailAnalyzeSlice,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<string | null>;
   workspaceGmailMailOnlyRunnerRef: MutableRefObject<
     ((opts?: { signal?: AbortSignal }) => Promise<string | null>) | null
   >;
@@ -95,6 +99,7 @@ export function useWorkspaceBatch({
   infomaniakMergePrefsSnapshot,
   infomaniakMailMergePrefsSnapshot,
   onStartProgressiveDriveSort,
+  onStartGmailOnlySort,
   onStartExplicitLocalSort,
   workspaceGmailMailOnlyRunnerRef,
   workspaceAssistantBridge,
@@ -273,6 +278,7 @@ export function useWorkspaceBatch({
           infomaniakMergePrefsSnapshot,
           infomaniakMailMergePrefsSnapshot,
           onStartProgressiveDriveSort,
+          onStartGmailOnlySort,
           onStartExplicitLocalSort,
           workspaceGmailMailOnlyRunnerRef,
           setSortRunStartedAtMs,
@@ -317,6 +323,7 @@ export function useWorkspaceBatch({
       includeLocalInRun,
       stagedPaths,
       onStartProgressiveDriveSort,
+      onStartGmailOnlySort,
       onStartExplicitLocalSort,
       workspaceGmailMailOnlyRunnerRef,
       t,

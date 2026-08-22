@@ -70,6 +70,10 @@ export interface AppMainWorkspaceProps {
     initialFilePaths: string[],
     opts?: { signal?: AbortSignal; gmailSlice?: GmailAnalyzeSlice | null },
   ) => Promise<{ job_id: string; session_id: string } | null>;
+  startGmailOnlySort: (
+    slice: GmailAnalyzeSlice,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<string | null>;
   onVoiceLocalSortJobStarted: (jobId: string, sessionId: string) => void;
   onVoiceCodegenRequested: (goal: string) => void;
   handleBrowserFiles: ComponentProps<typeof QueuePanel>["actions"]["onBrowserFiles"];
