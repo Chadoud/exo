@@ -910,6 +910,7 @@ export default {
     ready: "App prête",
     offline: "Service indisponible",
     checking: "Vérification…",
+    startingTitleBar: "Démarrage…",
     startingLocalService: "Démarrage du service local…",
     settingsReady: "Service local de l’app prêt",
     settingsOffline: "Service local de l’app injoignable — utilisez Réessayer dans la barre de titre ou redémarrez l’app.",

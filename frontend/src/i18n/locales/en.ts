@@ -1055,6 +1055,7 @@ export default {
     ready: "App ready",
     offline: "Exo isn't ready yet",
     checking: "Checking…",
+    startingTitleBar: "Starting…",
     startingLocalService: "Starting Exo on this computer…",
     settingsReady: "Exo on this computer is ready",
     settingsOffline: "Exo is still starting — wait a moment or tap Retry in the title bar.",

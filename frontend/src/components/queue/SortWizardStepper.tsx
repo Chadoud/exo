@@ -39,7 +39,7 @@ export function SortWizardStepper({ step, hasSourceSelected, onStepClick, t }: S
   };
 
   return (
-    <nav aria-label={t("queue.sortWizardNavLabel")} className="w-full px-1">
+    <nav aria-label={t("queue.sortWizardNavLabel")} className="w-full px-1 mb-8">
       <ol className="flex w-full items-center">
         {WIZARD_STEPS.map((id, index) => {
           const active = step === id;

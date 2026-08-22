@@ -20,6 +20,10 @@ def user_data_dir() -> str | None:
     return raw or None
 
 
+def _is_profile_id(ident: str) -> bool:
+    return ident == "guest" or bool(_PROFILE_ID_RE.fullmatch(ident))
+
+
 def active_profile_dir(base: str) -> str | None:
     """If USER_DATA is the device root, profile files live under profiles/<active>/."""
     marker = os.path.join(base, _ACTIVE_PROFILE_FILE)
@@ -32,13 +36,25 @@ def active_profile_dir(base: str) -> str | None:
         if not isinstance(raw, str):
             return None
         ident = raw.strip()
-        if ident != "guest" and not _PROFILE_ID_RE.fullmatch(ident):
+        if not _is_profile_id(ident):
             return None
         profile = os.path.join(base, _PROFILES_DIR, ident)
         return profile if os.path.isdir(profile) else None
     except Exception as exc:  # noqa: BLE001 — corrupt marker → skip fallback
         logger.warning("Could not read active profile marker %s: %s", marker, exc)
         return None
+
+
+def device_root_if_profile_user_data(base: str) -> str | None:
+    """When USER_DATA is .../profiles/<id>, return the device root (parent of profiles)."""
+    trimmed = base.rstrip("/\\")
+    ident = os.path.basename(trimmed)
+    profiles_dir = os.path.dirname(trimmed)
+    if os.path.basename(profiles_dir) != _PROFILES_DIR:
+        return None
+    if not _is_profile_id(ident):
+        return None
+    return os.path.dirname(profiles_dir)
 
 
 def entitlement_dirs() -> list[str]:
@@ -49,6 +65,14 @@ def entitlement_dirs() -> list[str]:
     profile = active_profile_dir(base)
     if profile and profile not in dirs:
         dirs.append(profile)
+    # Backend can stay on profiles/guest after login while Electron writes
+    # subscription.json to profiles/<account> (active_profile.json at device root).
+    device = device_root_if_profile_user_data(base)
+    if not device:
+        return dirs
+    sibling = active_profile_dir(device)
+    if sibling and sibling not in dirs:
+        dirs.append(sibling)
     return dirs
 
 

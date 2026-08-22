@@ -32,7 +32,6 @@ const cloudSessionPrefs = require("../cloudSessionPrefs");
 const {
   alignProfileWithSession,
   activateGuestProfile,
-  getActiveProfileId,
   getProfileState,
   resolveProfileRoot,
 } = require("../accountProfile");
@@ -76,11 +75,11 @@ async function remountProfileRuntime(deviceRoot, opts = {}) {
  * @param {string} deviceRoot
  */
 async function applySessionProfile(deviceRoot) {
-  const prevId = getActiveProfileId(deviceRoot);
   const session = cloudAuth.readSession(deviceRoot);
   const aligned = alignProfileWithSession(deviceRoot, session);
-  const nextId = aligned.activeId || getActiveProfileId(deviceRoot);
-  await remountProfileRuntime(deviceRoot, { restartBackend: prevId !== nextId });
+  // Always restart Python. Skipping when the active id was already the
+  // account left a guest-spawned backend running (402 trial_expired).
+  await remountProfileRuntime(deviceRoot, { restartBackend: true });
   return aligned;
 }
 

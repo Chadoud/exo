@@ -906,6 +906,7 @@ export default {
     ready: "App bereit",
     offline: "Dienst nicht verfügbar",
     checking: "Prüfung…",
+    startingTitleBar: "Startet…",
     startingLocalService: "Lokaler Dienst startet…",
     settingsReady: "Lokaler App-Dienst bereit",
     settingsOffline: "Lokaler App-Dienst nicht erreichbar — \"Erneut\" in der Titelleiste oder App neu starten.",

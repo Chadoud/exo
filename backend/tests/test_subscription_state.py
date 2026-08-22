@@ -147,6 +147,57 @@ class TestEntitlementGateWithSubscription(unittest.TestCase):
             self.assertTrue(status["subscriptionEntitled"])
             self.assertFalse(status["trialActive"])
 
+    def test_profile_subscription_allows_analyze_when_backend_stuck_on_guest(self):
+        """Windows: Python USER_DATA=profiles/guest, Pro cache is on the active account."""
+        import os
+
+        from entitlement_gate import may_start_analyze
+
+        prev_cloud = os.environ.get("EXOSITES_CLOUD_URL")
+        try:
+            os.environ["EXOSITES_CLOUD_URL"] = "https://api.exosites.ch"
+            with _user_data_env() as tmp:
+                account = tmp / "profiles" / "acctA"
+                guest = tmp / "profiles" / "guest"
+                account.mkdir(parents=True)
+                guest.mkdir(parents=True)
+                (tmp / "active_profile.json").write_text(
+                    json.dumps({"v": 1, "activeId": "acctA"}),
+                    encoding="utf-8",
+                )
+                _write_expired_trial(guest)
+                _write_subscription(account, status="active")
+                os.environ["EXOSITES_USER_DATA"] = str(guest)
+                ok, detail = may_start_analyze()
+                self.assertTrue(ok)
+                self.assertIsNone(detail)
+        finally:
+            if prev_cloud is None:
+                os.environ.pop("EXOSITES_CLOUD_URL", None)
+            else:
+                os.environ["EXOSITES_CLOUD_URL"] = prev_cloud
+
+    def test_does_not_use_sibling_subscription_when_active_is_guest(self):
+        import os
+
+        from entitlement_gate import may_start_analyze
+
+        with _user_data_env() as tmp:
+            other = tmp / "profiles" / "acctB"
+            guest = tmp / "profiles" / "guest"
+            other.mkdir(parents=True)
+            guest.mkdir(parents=True)
+            (tmp / "active_profile.json").write_text(
+                json.dumps({"v": 1, "activeId": "guest"}),
+                encoding="utf-8",
+            )
+            _write_expired_trial(guest)
+            _write_subscription(other, status="active")
+            os.environ["EXOSITES_USER_DATA"] = str(guest)
+            ok, detail = may_start_analyze()
+            self.assertFalse(ok)
+            self.assertEqual(detail, "trial_expired")
+
     def test_profile_subscription_allows_analyze_when_user_data_is_device_root(self):
         import os
 
