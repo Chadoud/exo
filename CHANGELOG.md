@@ -6,6 +6,13 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.74] - 2026-08-23
+
+### Fixed
+
+- **Sort:** Run sort starts for subscribed accounts when the local service was still on the guest vault.
+- **Account:** Stay signed in after closing the app on Windows.
+
 ## [1.1.73] - 2026-08-22
 
 ### Fixed
