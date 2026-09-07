@@ -8,7 +8,10 @@ import '../../sync/user_messages.dart';
 import '../../telemetry/mobile_crash_reporter.dart';
 import '../auth/mobile_auth_service.dart';
 import '../../app/mobile_sync_config.dart';
+import '../../notifications/due_reminder_scope.dart';
 import 'pairing_screen.dart';
+import 'reminder_settings_section.dart';
+import 'sync_debug_section.dart';
 
 /// Account, pairing, privacy — post-setup hub (no Profile tab).
 class SettingsScreen extends StatefulWidget {
@@ -76,7 +79,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (ok != true || !mounted) return;
+    final reminders = DueReminderScope.maybeOf(context);
     await widget.config.clearSession();
+    await reminders?.host.cancelAll();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text(SyncUserMessages.signedOutSnack)),
@@ -141,6 +146,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: _pair,
                 ),
                 const SizedBox(height: ExoSpacing.xl),
+                ReminderSettingsSection(config: cfg),
+                const SizedBox(height: ExoSpacing.xl),
+                SyncDebugSection(config: cfg),
                 const ExoSectionLabel('Privacy'),
                 const SizedBox(height: ExoSpacing.sm),
                 ExoSurface(

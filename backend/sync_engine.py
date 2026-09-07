@@ -244,7 +244,7 @@ def pull_and_apply_changes(
             except Exception:
                 undecryptable += 1
                 continue
-            outcome = sync_apply.apply_remote_task_completion(record, own_device_id=device_id)
+            outcome = sync_apply.apply_remote_record(record, own_device_id=device_id)
             if outcome == sync_apply.APPLIED:
                 applied += 1
             else:

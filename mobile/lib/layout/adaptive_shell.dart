@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:app_links/app_links.dart';
+
 import '../app/mobile_sync_config.dart';
 import '../design/exo_colors.dart';
 import '../features/auth/mobile_auth_service.dart';
@@ -8,6 +10,9 @@ import '../features/memory/memory_screen.dart';
 import '../features/settings/pairing_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/tasks/tasks_screen.dart';
+import '../notifications/due_reminder_binder.dart';
+import '../notifications/due_reminder_host.dart';
+import '../notifications/due_reminder_scope.dart';
 import '../sync/user_messages.dart';
 import 'window_size.dart';
 
@@ -37,11 +42,15 @@ class AdaptiveShell extends StatefulWidget {
     required this.config,
     this.auth,
     this.initialTab = ShellTab.memory,
+    this.reminderHost,
+    this.appLinks,
   });
 
   final MobileSyncConfig config;
   final MobileAuthService? auth;
   final ShellTab initialTab;
+  final DueReminderHost? reminderHost;
+  final AppLinks? appLinks;
 
   static const _tabs = <_TabSpec>[
     _TabSpec(
@@ -70,6 +79,7 @@ class AdaptiveShell extends StatefulWidget {
 class _AdaptiveShellState extends State<AdaptiveShell> {
   late ShellTab _tab = widget.initialTab;
   bool _didAutoPull = false;
+  String? _focusTaskId;
 
   int get _tabIndex {
     final i = AdaptiveShell._tabs.indexWhere((t) => t.id == _tab);
@@ -104,9 +114,14 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   }
 
   void _openSettings() {
+    final reminders = DueReminderScope.maybeOf(context);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => SettingsScreen(config: widget.config, auth: widget.auth),
+        builder: (_) {
+          final settings = SettingsScreen(config: widget.config, auth: widget.auth);
+          if (reminders == null) return settings;
+          return DueReminderScope(controller: reminders, child: settings);
+        },
       ),
     );
   }
@@ -160,6 +175,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
           config: widget.config,
           onSignInAgain: _signInAgain,
           onPairAgain: _pairAgain,
+          focusRecordId: _focusTaskId,
         );
     }
   }
@@ -191,13 +207,25 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     setState(() => _tab = AdaptiveShell._tabs[i].id);
   }
 
+  void _openTask(String recordId) {
+    setState(() {
+      _tab = ShellTab.tasks;
+      _focusTaskId = recordId.isEmpty ? null : recordId;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final useRail = exoUseNavigationRail(context);
     final body = _bodyFor(_tab);
     const tabs = AdaptiveShell._tabs;
 
-    return Scaffold(
+    return DueReminderBinder(
+      config: widget.config,
+      host: widget.reminderHost,
+      appLinks: widget.appLinks,
+      onOpenTask: _openTask,
+      child: Scaffold(
       appBar: AppBar(
         title: Text(_current.title),
         actions: _appBarActions(),
@@ -246,6 +274,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                 ),
               ],
             ),
+      ),
     );
   }
 }

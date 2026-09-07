@@ -7,8 +7,11 @@ import '../../design/exo_spacing.dart';
 import '../../sync/sync_collection_scaffold.dart';
 import '../../sync/sync_list_empty.dart';
 import '../../sync/local_store.dart';
+import '../../sync/pending_action_payload.dart';
 import '../../sync/task_payload.dart';
+import '../../notifications/due_reminder_copy.dart';
 import '../../sync/user_messages.dart';
+import 'pending_actions_section.dart';
 import 'task_filter.dart';
 import 'task_list_tile.dart';
 import 'task_select_bar.dart';
@@ -20,11 +23,13 @@ class TasksScreen extends StatefulWidget {
     required this.config,
     this.onSignInAgain,
     this.onPairAgain,
+    this.focusRecordId,
   });
 
   final MobileSyncConfig config;
   final VoidCallback? onSignInAgain;
   final VoidCallback? onPairAgain;
+  final String? focusRecordId;
 
   @override
   State<TasksScreen> createState() => _TasksScreenState();
@@ -32,11 +37,14 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   List<Map<String, dynamic>> _items = [];
+  List<Map<String, dynamic>> _pendingRows = [];
   TaskListFilter _filter = TaskListFilter.open;
   final Set<String> _selectedIds = {};
   bool _selecting = false;
   int _seenEpoch = -1;
   int _loadToken = 0;
+  final _scroll = ScrollController();
+  String? _missingFocus;
 
   @override
   void initState() {
@@ -48,6 +56,7 @@ class _TasksScreenState extends State<TasksScreen> {
   @override
   void dispose() {
     widget.config.removeListener(_onConfig);
+    _scroll.dispose();
     _loadToken++;
     super.dispose();
   }
@@ -67,7 +76,55 @@ class _TasksScreenState extends State<TasksScreen> {
     ).where((row) => !LocalBrainStore.rowIsPendingDelete(row)).toList();
     if (!mounted || token != _loadToken) return;
     rows.sort(_compareTaskRows);
-    setState(() => _items = rows);
+    final focus = widget.focusRecordId;
+    var missing = _missingFocus;
+    if (focus != null &&
+        focus.isNotEmpty &&
+        !rows.any((row) => _recordIdOf(row) == focus)) {
+      missing = focus;
+    } else if (focus != null) {
+      missing = null;
+      _revealFocus(rows, focus);
+    }
+    setState(() {
+      _items = rows;
+      _missingFocus = missing;
+    });
+    if (!widget.config.isPaired) return;
+    final pending = List<Map<String, dynamic>>.from(
+      await widget.config.localStore.listByCollection(pendingActionsCollection),
+    ).where((row) => !LocalBrainStore.rowIsPendingDelete(row)).toList();
+    if (!mounted || token != _loadToken) return;
+    setState(() => _pendingRows = pending);
+    if (focus != null && missing == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFocus(focus));
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant TasksScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusRecordId != widget.focusRecordId) {
+      _reload();
+    }
+  }
+
+  void _revealFocus(List<Map<String, dynamic>> rows, String focus) {
+    final match = rows.where((row) => _recordIdOf(row) == focus);
+    if (match.isEmpty) return;
+    final done = taskPayloadIsCompleted(_payloadOf(match.first));
+    _filter = done ? TaskListFilter.done : TaskListFilter.open;
+  }
+
+  void _scrollToFocus(String focus) {
+    if (!_scroll.hasClients) return;
+    final index = _visible.indexWhere((row) => _recordIdOf(row) == focus);
+    if (index < 0) return;
+    _scroll.animateTo(
+      index * 88.0,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOut,
+    );
   }
 
   /// Incomplete first, then due date, then newest updated.
@@ -242,6 +299,24 @@ class _TasksScreenState extends State<TasksScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (_missingFocus != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              ExoSpacing.lg,
+              ExoSpacing.sm,
+              ExoSpacing.lg,
+              0,
+            ),
+            child: Text(
+              DueReminderCopy.of(context).taskGone,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        PendingActionsSection(
+          config: widget.config,
+          rows: _pendingRows,
+          onChanged: _reload,
+        ),
         TaskFilterChips(value: _filter, onChanged: _setFilter),
         if (_selecting)
           TaskSelectBar(
@@ -316,6 +391,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
 
     return ListView.separated(
+      controller: _scroll,
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: visible.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
@@ -327,6 +403,7 @@ class _TasksScreenState extends State<TasksScreen> {
           updatedAt: row['updated_at']?.toString(),
           selecting: _selecting,
           selected: _selectedIds.contains(recordId),
+          highlighted: recordId.isNotEmpty && recordId == widget.focusRecordId,
           onTap: () => _onRowTap(row),
           onLongPress: recordId.isEmpty ? null : () => _enterSelect(recordId),
           onToggleCompleted: () => _toggleCompleted(row),

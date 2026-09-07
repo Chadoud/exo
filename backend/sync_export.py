@@ -12,7 +12,7 @@ from typing import Any
 
 # Keep in lockstep with cloud-node ALLOWED_COLLECTIONS + blob-envelope.json.
 SYNC_COLLECTIONS = frozenset(
-    {"memory_entries", "conversations", "tasks", "activity_entries"}
+    {"memory_entries", "conversations", "tasks", "activity_entries", "pending_actions"}
 )
 
 
@@ -118,7 +118,20 @@ def export_all(*, since_updated_at: str | None = None) -> list[dict[str, Any]]:
     items.extend(export_conversations(since_updated_at=since_updated_at))
     items.extend(export_tasks(since_updated_at=since_updated_at))
     items.extend(export_activity_entries(since_updated_at=since_updated_at))
+    items.extend(export_pending_actions(since_updated_at=since_updated_at))
     return items
+
+
+def export_pending_actions(*, since_updated_at: str | None = None) -> list[dict[str, Any]]:
+    from mail_initiative.pending_sync import export_pending_actions as export_mail_actions
+
+    out: list[dict[str, Any]] = []
+    for row in export_mail_actions():
+        updated = str(row.get("updated_at") or "")
+        if since_updated_at and updated <= since_updated_at:
+            continue
+        out.append(row)
+    return out
 
 
 def serialize_payload(record: dict[str, Any]) -> bytes:

@@ -5,12 +5,18 @@ abstract final class ExoConfig {
   /// Keep in sync with `pubspec.yaml` version (name part before +build).
   static const appVersion = String.fromEnvironment(
     'APP_VERSION',
-    defaultValue: '0.2.0',
+    defaultValue: '0.2.2',
   );
 
   static const cloudUrl = String.fromEnvironment(
     'EXOSITES_CLOUD_URL',
     defaultValue: 'https://api.exosites.ch',
+  );
+
+  /// Optional debug FCM/APNs stand-in. Never a production secret.
+  static const debugPushToken = String.fromEnvironment(
+    'EXOSITES_DEBUG_PUSH_TOKEN',
+    defaultValue: '',
   );
 
   static const flavor = String.fromEnvironment('FLAVOR', defaultValue: 'production');

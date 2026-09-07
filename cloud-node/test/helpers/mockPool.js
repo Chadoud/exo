@@ -177,6 +177,24 @@ function createSyncMockPool() {
       return [[{ total }]];
     }
 
+    if (
+      normalized.includes("from sync_devices") &&
+      normalized.includes("push_token is not null")
+    ) {
+      const [accountId] = params;
+      const rows = [...devices.values()]
+        .filter((d) => d.accountId === accountId && d.pushToken)
+        .map((d) => ({ id: d.id, platform: d.platform, push_token: d.pushToken }));
+      return [rows];
+    }
+
+    if (normalized.startsWith("update sync_devices set push_token = null")) {
+      const [id] = params;
+      const row = devices.get(id);
+      if (row) row.pushToken = null;
+      return [{ affectedRows: row ? 1 : 0 }];
+    }
+
     if (normalized.startsWith("insert into sync_pairing_grants")) {
       const [id, accountId, tokenHash, keyFingerprint, expiresAt] = params;
       grants.set(tokenHash, {

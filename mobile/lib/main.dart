@@ -7,6 +7,7 @@ import 'features/auth/mobile_auth_service.dart';
 import 'app/mobile_sync_config.dart';
 import 'features/setup/setup_gate.dart';
 import 'layout/adaptive_shell.dart';
+import 'notifications/local_due_reminder_host.dart';
 import 'telemetry/mobile_crash_reporter.dart';
 
 final _crashReporter = MobileCrashReporter();
@@ -27,6 +28,7 @@ class ExositesMobileApp extends StatefulWidget {
 class _ExositesMobileAppState extends State<ExositesMobileApp> {
   final _config = MobileSyncConfig();
   late final MobileAuthService _auth = MobileAuthService(config: _config);
+  final _reminderHost = LocalDueReminderHost();
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   bool _hydrated = false;
   bool _introDone = false;
@@ -90,7 +92,11 @@ class _ExositesMobileAppState extends State<ExositesMobileApp> {
                 if (_config.needsOnboarding) {
                   return SetupGate(config: _config, auth: _auth);
                 }
-                return AdaptiveShell(config: _config, auth: _auth);
+                return AdaptiveShell(
+                  config: _config,
+                  auth: _auth,
+                  reminderHost: _reminderHost,
+                );
               },
             ),
     );

@@ -12,7 +12,7 @@ Clients and relay must agree on envelope shape; schema evolves over time.
 
 - Every blob carries `schema_version` (integer, currently `1`)
 - Major version mismatch → client rejects pull chunk with actionable UI ("Update app")
-- Collections v1 (exported + relay allowlist): `memory_entries`, `conversations`, `tasks`, `activity_entries`
+- Collections (exported + relay allowlist): `memory_entries`, `conversations`, `tasks`, `activity_entries`, `pending_actions`
 - Canonical schema: `sync/schemas/blob-envelope.json`
 
 ## Consequences

@@ -36,6 +36,14 @@ else
     echo "FAIL: AndroidManifest missing oauth host"
     fail=1
   fi
+  if ! grep -q 'android:host="tasks"' "$MANIFEST"; then
+    echo "FAIL: AndroidManifest missing tasks deep-link host"
+    fail=1
+  fi
+  if ! grep -q 'android.permission.POST_NOTIFICATIONS' "$MANIFEST"; then
+    echo "FAIL: AndroidManifest missing POST_NOTIFICATIONS"
+    fail=1
+  fi
   if grep -q RECORD_AUDIO "$MANIFEST"; then
     echo "FAIL: AndroidManifest still declares RECORD_AUDIO (Capture deferred)"
     fail=1
@@ -45,4 +53,4 @@ fi
 if [[ "$fail" -ne 0 ]]; then
   exit 1
 fi
-echo "OK: mobile manifests (OAuth deep link + camera; no mic until Capture)"
+echo "OK: mobile manifests (OAuth + tasks deep link + camera + local notifs; no mic)"

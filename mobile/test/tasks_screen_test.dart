@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:exosites_mobile/app/mobile_sync_config.dart';
 import 'package:exosites_mobile/design/exo_theme.dart';
@@ -10,6 +11,11 @@ import 'package:exosites_mobile/sync/user_messages.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+int _dbSerial = 0;
+
+String _tempDb() =>
+    '${Directory.systemTemp.path}/tasks_ui_${++_dbSerial}.db';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +36,7 @@ void main() {
   });
 
   test('local store round-trips tasks collection', () async {
-    final store = LocalBrainStore(databasePath: ':memory:');
+    final store = LocalBrainStore(databasePath: _tempDb());
     await store.upsertRecord(
       collection: 'tasks',
       recordId: '1',
@@ -46,8 +52,7 @@ void main() {
   });
 
   test('pending push queue: clock guard keeps re-edited rows flagged', () async {
-    // ':memory:' is a shared singleton per test file — start clean.
-    final store = LocalBrainStore(databasePath: ':memory:');
+    final store = LocalBrainStore(databasePath: _tempDb());
     await store.clearAll();
     await store.applyLocalEdit(
       collection: 'tasks',
@@ -87,7 +92,7 @@ void main() {
   });
 
   test('setTaskCompleted rewrites cached payload and queues a push', () async {
-    final store = LocalBrainStore(databasePath: ':memory:');
+    final store = LocalBrainStore(databasePath: _tempDb());
     await store.clearAll();
     await store.upsertRecord(
       collection: 'tasks',
@@ -133,7 +138,7 @@ void main() {
   });
 
   test('setTasksCompleted skips unknown and already-correct ids', () async {
-    final store = LocalBrainStore(databasePath: ':memory:');
+    final store = LocalBrainStore(databasePath: _tempDb());
     await store.clearAll();
     await store.upsertRecord(
       collection: 'tasks',
@@ -197,7 +202,7 @@ void main() {
   });
 
   testWidgets('tapping the title selects; circle marks done and leaves Open', (tester) async {
-    final store = LocalBrainStore(databasePath: ':memory:');
+    final store = LocalBrainStore(databasePath: _tempDb());
     await tester.runAsync(() async {
       await store.clearAll();
       await store.upsertRecord(
@@ -243,7 +248,7 @@ void main() {
   });
 
   testWidgets('long-press select marks two tasks done and exits select', (tester) async {
-    final store = LocalBrainStore(databasePath: ':memory:');
+    final store = LocalBrainStore(databasePath: _tempDb());
     await tester.runAsync(() async {
       await store.clearAll();
       await store.upsertRecord(
@@ -299,7 +304,7 @@ void main() {
   });
 
   testWidgets('Remove asks once then hides the task', (tester) async {
-    final store = LocalBrainStore(databasePath: ':memory:');
+    final store = LocalBrainStore(databasePath: _tempDb());
     await tester.runAsync(() async {
       await store.clearAll();
       await store.upsertRecord(
@@ -327,7 +332,7 @@ void main() {
   });
 
   test('deleteTasks flags a tombstone and hides the row from Open', () async {
-    final store = LocalBrainStore(databasePath: ':memory:');
+    final store = LocalBrainStore(databasePath: _tempDb());
     await store.clearAll();
     await store.upsertRecord(
       collection: 'tasks',
@@ -351,10 +356,38 @@ void main() {
     expect(LocalBrainStore.rowIsPendingDelete(row), isTrue);
     expect(await store.listPendingPush(), hasLength(1));
   });
+
+  testWidgets('ready mail action shows review card and honest send copy', (tester) async {
+    final store = LocalBrainStore(databasePath: _tempDb());
+    await tester.runAsync(() async {
+      await store.clearAll();
+      await store.upsertRecord(
+        collection: 'pending_actions',
+        recordId: 'mail_reply:9',
+        payloadJson: jsonEncode({
+          'type': 'mail_reply',
+          'status': 'ready',
+          'to_email': 'ada@example.com',
+          'subject': 'Re: Lunch',
+          'body': 'See you at noon',
+        }),
+        updatedAt: '2026-09-07T00:00:00Z',
+      );
+    });
+    await _pumpedTasks(tester, store, paired: true);
+    expect(find.text('Ready to review'), findsOneWidget);
+    expect(find.text('Re: Lunch'), findsWidgets);
+    await tester.tap(find.text('Send this draft?'));
+    await tester.pump();
+    expect(
+      find.text('It will send when Exo is open on your computer. Nothing sends itself.'),
+      findsOneWidget,
+    );
+  });
 }
 
 Future<LocalBrainStore> _seedTwoTasks(WidgetTester tester) async {
-  final store = LocalBrainStore(databasePath: ':memory:');
+  final store = LocalBrainStore(databasePath: _tempDb());
   await tester.runAsync(() async {
     await store.clearAll();
     await store.upsertRecord(
@@ -382,9 +415,18 @@ Future<LocalBrainStore> _seedTwoTasks(WidgetTester tester) async {
   return store;
 }
 
-Future<MobileSyncConfig> _pumpedTasks(WidgetTester tester, LocalBrainStore store) async {
+Future<MobileSyncConfig> _pumpedTasks(
+  WidgetTester tester,
+  LocalBrainStore store, {
+  bool paired = false,
+}) async {
+  final storage = MemoryKeyValueStore();
+  if (paired) {
+    await storage.write('access_token', 'tok');
+    await storage.write('sync_paired', '1');
+  }
   final config = MobileSyncConfig(
-    storage: MemoryKeyValueStore(),
+    storage: storage,
     localStore: store,
   );
   await tester.runAsync(config.hydrate);
@@ -395,9 +437,15 @@ Future<MobileSyncConfig> _pumpedTasks(WidgetTester tester, LocalBrainStore store
     ),
   );
   await tester.runAsync(() async {
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await Future<void>.delayed(const Duration(milliseconds: 250));
   });
   await tester.pump();
+  if (paired) {
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    });
+    await tester.pump();
+  }
   return config;
 }
 

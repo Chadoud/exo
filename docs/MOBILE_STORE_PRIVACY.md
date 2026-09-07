@@ -14,6 +14,8 @@ Use when submitting **Exo** (`com.exosites.exosites_mobile`) to App Store Connec
 | Crash reports (optional) | Bug fixes | Cloud API when user opts in | No PII by design |
 | Camera | Scan desktop pairing QR | Not stored / not uploaded | No |
 | Microphone | Voice Capture (not in beta) | N/A until Capture ships | No |
+| Local notifications | Remind when a synced task is due | On-device OS scheduler only | Optional lock-screen title (off by default) |
+| Optional push token | Generic wake when desktop syncs a due task or ready action | Cloud `sync_devices.push_token` | Yes (device id). Never in GDPR export. Wake payload is `{type}` only — no mail/task text |
 
 Relay is **zero-knowledge**: cloud stores ciphertext only.
 
@@ -22,14 +24,14 @@ Relay is **zero-knowledge**: cloud stores ciphertext only.
 ## App Store (Apple)
 
 - **Privacy Nutrition Labels:** Data Linked to You → User Content (encrypted sync), Identifiers (device id), Contact Info (email if OAuth).
-- **Permission strings (beta):** `NSCameraUsageDescription` for QR pairing only. Do **not** declare `NSMicrophoneUsageDescription` until Capture ships.
+- **Permission strings (beta):** `NSCameraUsageDescription` for QR pairing only. Local due reminders use the system notification prompt (no extra Info.plist string). Do **not** declare `NSMicrophoneUsageDescription` until Capture ships. Do **not** declare `UIBackgroundModes: remote-notification` until remote push ships.
 - **Encryption export:** App uses standard HTTPS + on-device crypto — declare exempt category in App Store Connect questionnaire unless legal advises otherwise.
 - **Screenshots:** iPhone 6.7", 6.1", iPad 12.9" — dark Exo theme, Memory + Tasks tabs.
 
 ## Google Play
 
 - **Data Safety form:** align with table above; mark encryption in transit and at rest (client-side).
-- **Permissions (beta):** no `RECORD_AUDIO` until Capture ships. Camera used for pairing QR via `mobile_scanner`.
+- **Permissions (beta):** `POST_NOTIFICATIONS` + `SCHEDULE_EXACT_ALARM` for due-task reminders. No `RECORD_AUDIO` until Capture ships. Camera used for pairing QR via `mobile_scanner`. No FCM / remote-notification until push wake ships.
 - **Target API:** follow Flutter default from generated `android/` (review each release).
 
 ## Beta program (GTM)

@@ -104,6 +104,23 @@ class TestApplyRemoteTaskCompletion(unittest.TestCase):
         self.assertEqual(self._apply(rec), "skipped_stale")
         self.assertFalse(self.tasks_store.get_task(int(self.tid))["completed"])
 
+    def test_apply_remote_record_routes_pending_actions(self) -> None:
+        with patch(
+            "mail_initiative.pending_sync.apply_remote_pending_action",
+            return_value="applied",
+        ) as apply_pending:
+            out = self.sync_apply.apply_remote_record(
+                {
+                    "collection": "pending_actions",
+                    "record_id": "mail_reply:1",
+                    "device_id": "phone-1",
+                    "payload": {"status": "confirmed", "body": "Hi"},
+                },
+                own_device_id="desktop-1",
+            )
+        self.assertEqual(out, "applied")
+        apply_pending.assert_called_once()
+
 
 class TestPullAndApplyChanges(unittest.TestCase):
     def setUp(self) -> None:

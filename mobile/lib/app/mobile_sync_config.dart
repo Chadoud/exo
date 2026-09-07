@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -298,6 +299,7 @@ class MobileSyncConfig extends ChangeNotifier {
       deviceId: _deviceIdSync,
       name: Platform.isIOS ? 'iPhone' : 'Android',
       platform: platform,
+      pushToken: ExoConfig.debugPushToken.isEmpty ? null : ExoConfig.debugPushToken,
     );
   }
 
@@ -310,6 +312,12 @@ class MobileSyncConfig extends ChangeNotifier {
   void clearLastError() {
     if (_lastError == null) return;
     _lastError = null;
+    notifyListeners();
+  }
+
+  /// Local confirm / edit that other surfaces (reminders) must see.
+  void markLocalDataChanged() {
+    _dataEpoch++;
     notifyListeners();
   }
 
@@ -442,11 +450,10 @@ class MobileSyncConfig extends ChangeNotifier {
     if (changed == 0) return 0;
     _dataEpoch++;
     notifyListeners();
-    try {
-      await engine.pushPendingEdits();
-    } catch (_) {
-      // Stays queued; next syncNow retries and surfaces failures via banner.
-    }
+    // Don't block the snack / list refresh on the relay — keep the edit queued.
+    unawaited(
+      engine.pushPendingEdits().catchError((_) => 0),
+    );
     return changed;
   }
 

@@ -21,7 +21,8 @@
         "memory_entries",
         "conversations",
         "tasks",
-        "activity_entries"
+        "activity_entries",
+        "pending_actions"
       ]
     },
     "record_id": { "type": "string", "minLength": 1, "maxLength": 128 },

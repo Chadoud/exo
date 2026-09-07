@@ -55,7 +55,17 @@ CREATE TABLE IF NOT EXISTS harvest_meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS action_acks (
+    record_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    error_class TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL
+);
 """
+
+
+def db_path() -> Path:
+    return _db_path()
 
 
 def _db_path() -> Path:
@@ -459,7 +469,14 @@ def clear_all() -> int:
     """Wipe every mail-reply table (privacy wipe / Gmail disconnect)."""
     removed = 0
     with _conn() as conn:
-        for table in ("candidates", "dismissals", "draft_tokens", "harvest_meta", "settings"):
+        for table in (
+            "candidates",
+            "dismissals",
+            "draft_tokens",
+            "harvest_meta",
+            "settings",
+            "action_acks",
+        ):
             cur = conn.execute(f"DELETE FROM {table}")
             removed += cur.rowcount
         conn.commit()

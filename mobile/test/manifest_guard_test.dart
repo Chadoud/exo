@@ -15,6 +15,9 @@ void main() {
     final manifest = File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
     expect(manifest.contains('android:scheme="exosites"'), isTrue);
     expect(manifest.contains('android:host="oauth"'), isTrue);
+    expect(manifest.contains('android:host="tasks"'), isTrue);
+    expect(manifest.contains('android:host="actions"'), isTrue);
+    expect(manifest.contains('android.permission.POST_NOTIFICATIONS'), isTrue);
     expect(manifest.contains('RECORD_AUDIO'), isFalse);
   });
 }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:exosites_mobile/app/mobile_sync_config.dart';
 import 'package:exosites_mobile/design/exo_status_banner.dart';
 import 'package:exosites_mobile/design/exo_theme.dart';
@@ -26,16 +28,25 @@ Widget _app(Widget child, {Size size = const Size(390, 844)}) {
 }
 
 Future<void> _settleStore(WidgetTester tester) async {
+  await tester.pump();
   await tester.runAsync(() async {
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+  });
+  await tester.pump();
+  await tester.runAsync(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 250));
   });
   await tester.pump();
 }
 
+int _dbSerial = 0;
+
 Future<MobileSyncConfig> _hydratedConfig(WidgetTester tester) async {
   final config = MobileSyncConfig(
     storage: MemoryKeyValueStore(),
-    localStore: LocalBrainStore(databasePath: ':memory:'),
+    localStore: LocalBrainStore(
+      databasePath: '${Directory.systemTemp.path}/shell_${++_dbSerial}.db',
+    ),
   );
   await tester.runAsync(config.hydrate);
   return config;

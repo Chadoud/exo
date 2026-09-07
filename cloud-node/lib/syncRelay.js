@@ -8,6 +8,7 @@ const ALLOWED_COLLECTIONS = new Set([
   "conversations",
   "tasks",
   "activity_entries",
+  "pending_actions",
 ]);
 const MAX_CIPHERTEXT_CHARS = 2_000_000;
 const PAIRING_GRANT_TTL_MS = 30 * 60 * 1000;
@@ -95,6 +96,7 @@ async function pushBlobs(accountId, blobs) {
   const pool = getPool();
   let accepted = 0;
   let rejected = 0;
+  const acceptedCollections = [];
   for (const blob of blobs) {
     const checked = validateBlob(blob);
     if (!checked.ok) {
@@ -162,6 +164,7 @@ async function pushBlobs(accountId, blobs) {
       );
       await conn.commit();
       accepted += 1;
+      acceptedCollections.push(env.collection);
       void changeResult;
     } catch (err) {
       try {
@@ -187,7 +190,7 @@ async function pushBlobs(accountId, blobs) {
   if (accepted > 0) {
     await compactSyncChanges(accountId).catch(() => {});
   }
-  return { accepted, rejected, cursor, feed_version: FEED_VERSION };
+  return { accepted, rejected, acceptedCollections, cursor, feed_version: FEED_VERSION };
 }
 
 /**

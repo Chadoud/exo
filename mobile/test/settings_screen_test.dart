@@ -33,6 +33,12 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
+        supportedLocales: const [Locale('en')],
+        localizationsDelegates: const [
+          DefaultMaterialLocalizations.delegate,
+          DefaultWidgetsLocalizations.delegate,
+        ],
         theme: ExoTheme.dark(),
         home: SettingsScreen(config: config),
       ),
@@ -41,5 +47,6 @@ void main() {
 
     expect(find.text('chady@example.com'), findsOneWidget);
     expect(find.text(SyncUserMessages.settingsAccountSignedIn), findsNothing);
+    expect(find.text('Remind me when due'), findsOneWidget);
   });
 }

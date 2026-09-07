@@ -17,6 +17,14 @@ TASKS_COLLECTION = "tasks"
 APPLIED = "applied"
 
 
+def apply_remote_record(record: dict[str, Any], *, own_device_id: str) -> str:
+    if record.get("collection") == "pending_actions":
+        from mail_initiative.pending_sync import apply_remote_pending_action
+
+        return apply_remote_pending_action(record, own_device_id=own_device_id)
+    return apply_remote_task_completion(record, own_device_id=own_device_id)
+
+
 def _parse_task_id(record_id: str) -> int | None:
     try:
         return int(record_id.strip())

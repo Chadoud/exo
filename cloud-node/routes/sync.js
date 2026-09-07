@@ -8,6 +8,7 @@ const {
   createPairingGrant,
   redeemPairingGrant,
 } = require("../lib/syncRelay");
+const { wakeAccount, wakeTypesFromBlobs } = require("../lib/pushWake");
 
 const router = express.Router();
 
@@ -41,6 +42,12 @@ router.post("/sync/blobs/push", requireAuth, async (req, res) => {
     // Strict boundary when the whole batch is invalid; mixed batches stay 200 + rejected count.
     if (out.rejected > 0 && out.accepted === 0 && blobs.length > 0) {
       return res.status(422).json(out);
+    }
+    if (out.accepted > 0) {
+      const accepted = (out.acceptedCollections || []).map((collection) => ({ collection }));
+      for (const type of wakeTypesFromBlobs(accepted)) {
+        void wakeAccount(req.accountId, type).catch(() => {});
+      }
     }
     return res.json(out);
   } catch (e) {

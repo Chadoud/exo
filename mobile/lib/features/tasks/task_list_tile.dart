@@ -16,6 +16,7 @@ class TaskListTile extends StatelessWidget {
     this.onToggleCompleted,
     this.selecting = false,
     this.selected = false,
+    this.highlighted = false,
   });
 
   final Map<String, dynamic> payload;
@@ -25,6 +26,7 @@ class TaskListTile extends StatelessWidget {
   final VoidCallback? onToggleCompleted;
   final bool selecting;
   final bool selected;
+  final bool highlighted;
 
   static String titleOf(Map<String, dynamic> payload) {
     final desc = payload['description']?.toString().trim();
@@ -69,7 +71,7 @@ class TaskListTile extends StatelessWidget {
     final leadingAction = selecting ? onTap : onToggleCompleted;
 
     return Material(
-      color: selected ? ExoColors.accentLight : Colors.transparent,
+      color: (selected || highlighted) ? ExoColors.accentLight : Colors.transparent,
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
