@@ -29,6 +29,8 @@ _MAX_PER_WINDOW = 5
 _WINDOW_HOURS = 24
 # Don't re-create an identical (kind,title) nudge within this cooldown.
 _DEDUPE_HOURS = 6
+# Inbox already lists real agent failures. This pointer must not pile up.
+FAILED_TASKS_NUDGE_TITLE = "Review recent failed tasks"
 
 
 def _db_path() -> Path:
@@ -46,7 +48,8 @@ CREATE TABLE IF NOT EXISTS nudges (
     body        TEXT NOT NULL DEFAULT '',
     meta_json   TEXT NOT NULL DEFAULT '{}',
     dismissed   INTEGER NOT NULL DEFAULT 0,
-    created_at  TEXT NOT NULL
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_nudges_created ON nudges (created_at);
 CREATE INDEX IF NOT EXISTS idx_nudges_dismissed ON nudges (dismissed);
@@ -60,6 +63,7 @@ def _conn() -> Generator[sqlite3.Connection, None, None]:
     conn = sqlite3.connect(str(path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(_DDL)
+    _ensure_updated_at(conn)
     conn.commit()
     try:
         yield conn
@@ -68,6 +72,9 @@ def _conn() -> Generator[sqlite3.Connection, None, None]:
 
 
 def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    created = str(row["created_at"])
+    keys = set(row.keys())
+    updated = str(row["updated_at"]) if "updated_at" in keys and row["updated_at"] else created
     return {
         "id": int(row["id"]),
         "kind": str(row["kind"]),
@@ -75,8 +82,17 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         "body": str(row["body"]),
         "meta": json.loads(row["meta_json"]) if row["meta_json"] else {},
         "dismissed": bool(row["dismissed"]),
-        "created_at": str(row["created_at"]),
+        "created_at": created,
+        "updated_at": updated,
     }
+
+
+def _ensure_updated_at(conn: sqlite3.Connection) -> None:
+    cols = {str(r[1]) for r in conn.execute("PRAGMA table_info(nudges)").fetchall()}
+    if "updated_at" not in cols:
+        conn.execute("ALTER TABLE nudges ADD COLUMN updated_at TEXT")
+        conn.execute("UPDATE nudges SET updated_at = created_at WHERE updated_at IS NULL")
+        conn.commit()
 
 
 def _recent_count(conn: sqlite3.Connection) -> int:
@@ -107,9 +123,9 @@ def _add(
         return None
     now = datetime.now(UTC).isoformat()
     cur = conn.execute(
-        "INSERT INTO nudges (kind, title, body, meta_json, created_at) "
-        "VALUES (?, ?, ?, ?, ?) RETURNING *",
-        (kind, title[:200], body[:600], json.dumps(meta, ensure_ascii=False), now),
+        "INSERT INTO nudges (kind, title, body, meta_json, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?) RETURNING *",
+        (kind, title[:200], body[:600], json.dumps(meta, ensure_ascii=False), now, now),
     )
     return _row_to_dict(cur.fetchone())
 
@@ -131,18 +147,35 @@ def _due_task_candidates() -> list[tuple[str, str, str, dict[str, Any]]]:
     return out
 
 
+def is_failed_tasks_nudge_title(title: str) -> bool:
+    return (title or "").strip().casefold() == FAILED_TASKS_NUDGE_TITLE.casefold()
+
+
+def collapse_failed_tasks_nudges() -> int:
+    """Dismiss the pointer cards so GO SYNC can tombstone them on the phone."""
+    now = datetime.now(UTC).isoformat()
+    with _conn() as conn:
+        cur = conn.execute(
+            "UPDATE nudges SET dismissed=1, updated_at=? "
+            "WHERE dismissed=0 AND LOWER(TRIM(title))=?",
+            (now, FAILED_TASKS_NUDGE_TITLE.casefold()),
+        )
+        conn.commit()
+        return int(cur.rowcount)
+
+
 def _suggestion_candidates() -> list[tuple[str, str, str, dict[str, Any]]]:
     try:
         from orchestrator.initiative import suggest
 
         out = []
         for s in suggest(max_suggestions=3):
+            if is_failed_tasks_nudge_title(s.title):
+                continue
             meta: dict[str, Any] = {
                 "tool": s.tool,
                 "requires_confirmation": s.requires_confirmation,
             }
-            if "failed" in s.title.lower():
-                meta["suggestion_kind"] = "orchestrator_failure"
             out.append((
                 "suggestion",
                 s.title,
@@ -157,6 +190,7 @@ def _suggestion_candidates() -> list[tuple[str, str, str, dict[str, Any]]]:
 
 def generate_nudges() -> list[dict[str, Any]]:
     """Generate new nudges within the rate budget; returns the ones created now."""
+    collapse_failed_tasks_nudges()
     created: list[dict[str, Any]] = []
     candidates = _due_task_candidates() + _suggestion_candidates()
     if not candidates:
@@ -166,6 +200,8 @@ def generate_nudges() -> list[dict[str, Any]]:
         if budget <= 0:
             return []
         for kind, title, body, meta in candidates:
+            if is_failed_tasks_nudge_title(title):
+                continue
             if len(created) >= budget:
                 break
             added = _add(conn, kind, title, body, meta)
@@ -186,24 +222,36 @@ def list_nudges(*, include_dismissed: bool = False, limit: int = 50) -> list[dic
 
 
 def dismiss_nudge(nudge_id: int) -> bool:
+    now = datetime.now(UTC).isoformat()
     with _conn() as conn:
-        cur = conn.execute("UPDATE nudges SET dismissed=1 WHERE id=?", (nudge_id,))
+        cur = conn.execute(
+            "UPDATE nudges SET dismissed=1, updated_at=? WHERE id=?",
+            (now, nudge_id),
+        )
         conn.commit()
         return cur.rowcount > 0
 
 
 def restore_nudge(nudge_id: int) -> bool:
+    now = datetime.now(UTC).isoformat()
     with _conn() as conn:
-        cur = conn.execute("UPDATE nudges SET dismissed=0 WHERE id=?", (nudge_id,))
+        cur = conn.execute(
+            "UPDATE nudges SET dismissed=0, updated_at=? WHERE id=?",
+            (now, nudge_id),
+        )
         conn.commit()
         return cur.rowcount > 0
 
 
 def dismiss_all() -> list[int]:
+    now = datetime.now(UTC).isoformat()
     with _conn() as conn:
         rows = conn.execute("SELECT id FROM nudges WHERE dismissed=0").fetchall()
         ids = [int(r["id"]) for r in rows]
         if ids:
-            conn.execute("UPDATE nudges SET dismissed=1 WHERE dismissed=0")
+            conn.execute(
+                "UPDATE nudges SET dismissed=1, updated_at=? WHERE dismissed=0",
+                (now,),
+            )
             conn.commit()
         return ids

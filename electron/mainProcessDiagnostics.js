@@ -38,6 +38,8 @@ const BENIGN_BACKGROUND_PATTERNS = [
   /^write EPIPE$/i,
   /^write ECONNRESET$/i,
   /\bEPIPE\b/,
+  // Expected Sync Keychain miss — Settings shows lastError; not a crash.
+  /sync_master_key_unreadable/i,
 ];
 
 /**

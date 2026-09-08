@@ -4,25 +4,26 @@ import 'package:flutter/services.dart';
 import 'exo_colors.dart';
 import 'exo_spacing.dart';
 
-/// Flat dark theme — quiet chrome, clear type, solid fills.
+/// Flat light theme — white canvas, navy type and CTAs.
 abstract final class ExoTheme {
   static const double radius = 10;
 
-  static ThemeData dark() {
-    const scheme = ColorScheme.dark(
+  static ThemeData light() {
+    const scheme = ColorScheme.light(
       primary: ExoColors.brandPrimary,
-      onPrimary: ExoColors.textPrimary,
+      onPrimary: ExoColors.onButton,
       secondary: ExoColors.brandSecondary,
+      onSecondary: ExoColors.onButton,
       surface: ExoColors.bgElevated,
       onSurface: ExoColors.textPrimary,
       error: ExoColors.error,
-      onError: ExoColors.textPrimary,
+      onError: ExoColors.onButton,
       outline: ExoColors.border,
     );
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: Brightness.light,
       colorScheme: scheme,
       scaffoldBackgroundColor: ExoColors.bgPrimary,
       dividerColor: ExoColors.border,
@@ -43,7 +44,7 @@ abstract final class ExoTheme {
           letterSpacing: -0.2,
           color: ExoColors.textPrimary,
         ),
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: ExoColors.bgPrimary,
@@ -56,7 +57,7 @@ abstract final class ExoTheme {
             fontSize: 11,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
             letterSpacing: 0.1,
-            color: selected ? ExoColors.textPrimary : ExoColors.textMuted,
+            color: selected ? ExoColors.brandPrimary : ExoColors.textMuted,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -75,7 +76,7 @@ abstract final class ExoTheme {
         selectedLabelTextStyle: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: ExoColors.textPrimary,
+          color: ExoColors.brandPrimary,
         ),
         unselectedLabelTextStyle: const TextStyle(
           fontSize: 12,
@@ -96,7 +97,7 @@ abstract final class ExoTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: ExoColors.buttonPrimary,
-          foregroundColor: ExoColors.textPrimary,
+          foregroundColor: ExoColors.onButton,
           disabledBackgroundColor: ExoColors.border,
           minimumSize: const Size(48, 48),
           padding: const EdgeInsets.symmetric(horizontal: ExoSpacing.lg, vertical: ExoSpacing.md),
@@ -106,17 +107,17 @@ abstract final class ExoTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: ExoColors.textPrimary,
+          foregroundColor: ExoColors.brandPrimary,
           minimumSize: const Size(48, 48),
           side: const BorderSide(color: ExoColors.borderStrong),
-          backgroundColor: ExoColors.bgElevated,
+          backgroundColor: ExoColors.bgPrimary,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: -0.1),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: ExoColors.brandSecondary,
+          foregroundColor: ExoColors.brandPrimary,
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
@@ -144,12 +145,11 @@ abstract final class ExoTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: ExoSpacing.lg),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: ExoColors.bgElevated,
-        contentTextStyle: const TextStyle(color: ExoColors.textPrimary, fontSize: 14),
+        backgroundColor: ExoColors.brandPrimary,
+        contentTextStyle: const TextStyle(color: ExoColors.onButton, fontSize: 14),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
-          side: const BorderSide(color: ExoColors.border),
         ),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
@@ -208,4 +208,7 @@ abstract final class ExoTheme {
       ),
     );
   }
+
+  /// Alias for existing tests and call sites.
+  static ThemeData dark() => light();
 }

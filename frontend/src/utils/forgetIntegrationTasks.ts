@@ -1,6 +1,7 @@
 import { refreshMailReplies } from "../api/mailReplies";
 import {
   forgetIntegrationTasks,
+  resumeIntegrationSource,
   syncTasksFromIntegrations,
   type ForgettableTaskSource,
 } from "../api/tasks";
@@ -16,6 +17,21 @@ export async function forgetIntegrationSourcesBestEffort(
       /* backend offline — identity check on the next To Do sync drops leftovers */
     }
   }
+}
+
+/** Unpause harvest after the user connects that account again on this computer. */
+export function resumeIntegrationSourcesBestEffort(
+  sources: readonly ForgettableTaskSource[],
+): void {
+  void (async () => {
+    for (const source of sources) {
+      try {
+        await resumeIntegrationSource(source);
+      } catch {
+        /* backend offline — next successful connect retries */
+      }
+    }
+  })();
 }
 
 /** Harvest after a new mailbox so leftover rows from the previous account drop immediately. */

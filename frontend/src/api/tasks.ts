@@ -72,6 +72,19 @@ export async function forgetIntegrationTasks(
   });
 }
 
+const ResumeSourceResultSchema = z.object({
+  ok: z.boolean(),
+});
+
+export async function resumeIntegrationSource(
+  source: ForgettableTaskSource,
+): Promise<z.infer<typeof ResumeSourceResultSchema>> {
+  return requestValidated("/tasks/resume-source", ResumeSourceResultSchema, {
+    method: "POST",
+    body: JSON.stringify({ source }),
+  });
+}
+
 export async function setTaskCompleted(id: number, completed: boolean): Promise<Task> {
   return requestValidated(`/tasks/${id}/done`, TaskSchema, {
     method: "PATCH",

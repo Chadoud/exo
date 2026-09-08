@@ -5,18 +5,18 @@
    */
   :root {
     /* Canonical brand layer */
-    --color-brand-primary: #6366f1;
-    --color-brand-secondary: #4f46e5;
-    --color-brand-tertiary: #3730a3;
+    --color-brand-primary: #0f0b2e;
+    --color-brand-secondary: #2a2554;
+    --color-brand-tertiary: #0f0b2e;
     --color-primary-bg: #0f0b2e;
     --color-secondary-bg: #0a0619;
     --color-accent-bg: #0a0619;
     --color-primary-text: #eef2ff;
     --color-secondary-text: var(--color-primary-bg);
-    --color-accent-text: #6366f1;
+    --color-accent-text: #0f0b2e;
     --color-button-text: #0f0b2e;
-    --color-button-primary: #3730a3;
-    --color-button-primary-hover: #312e81;
+    --color-button-primary: #0f0b2e;
+    --color-button-primary-hover: #2a2554;
 
     /* Semantic surfaces (dark) */
     --bg-primary: var(--color-primary-bg);
@@ -25,7 +25,8 @@
     --text-primary: var(--color-primary-text);
     --text-muted: color-mix(in srgb, var(--color-primary-text) 55%, var(--color-brand-secondary) 45%);
     --border: color-mix(in srgb, var(--color-brand-tertiary) 70%, var(--color-primary-bg) 30%);
-    --accent: var(--color-brand-primary);
+    /* Lifted navy so links/focus stay visible on the #0f0b2e canvas. */
+    --accent: color-mix(in srgb, #ffffff 62%, var(--color-brand-primary) 38%);
     --accent-hover: var(--color-button-primary-hover);
     --accent-light: color-mix(in srgb, var(--color-brand-primary) 15%, transparent);
     --button-primary: var(--color-button-primary);
@@ -98,7 +99,7 @@
     --bg-primary: #f0f2f8;
     --bg-secondary: #ffffff;
     --bg-card: #ffffff;
-    --accent: var(--color-brand-tertiary);
+    --accent: var(--color-brand-primary);
     --accent-hover: var(--color-button-primary-hover);
     --accent-light: color-mix(in srgb, var(--color-brand-primary) 10%, transparent);
     --button-primary: var(--color-button-primary);

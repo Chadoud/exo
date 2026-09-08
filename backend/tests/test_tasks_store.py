@@ -186,9 +186,9 @@ def test_clear_tasks_by_sources_keeps_manual(store):
     typed = store.create_task("Buy milk", source="manual")
     dropped = store.clear_tasks_by_sources({"gmail", "google-calendar"})
     assert dropped == 2
-    assert store.get_task(harvested["id"]) is None
-    assert store.get_task(calendar["id"]) is None
-    assert store.get_task(typed["id"]) is not None
+    assert store.get_task(harvested["id"])["dismissed"] is True
+    assert store.get_task(calendar["id"])["dismissed"] is True
+    assert store.get_task(typed["id"])["dismissed"] is False
 
 
 def test_clear_tasks_by_sources_refuses_manual(store):

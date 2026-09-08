@@ -48,7 +48,7 @@ export function GoogleDriveBrandIcon({ compact = false }: { compact?: boolean })
 }
 
 /** Google Calendar mark (distinct from generic Google / Gmail / Drive tiles). */
-function GoogleCalendarBrandIcon({ compact = false }: { compact?: boolean }) {
+export function GoogleCalendarBrandIcon({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? TILE_SM : TILE_MD} aria-hidden>
       <BrandLogoImg src="brands/google-calendar.png" className={compact ? "p-0.5" : "p-1"} />

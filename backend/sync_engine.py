@@ -307,6 +307,7 @@ def run_sync_cycle(
             since_updated_at=since_updated_at,
         )
         result = push_blobs(cloud_url=cloud_url, access_token=access_token, blobs=blobs)
+        sync_export.mark_inbox_backfill_done()
         return {
             "ok": True,
             "sync_run_id": sync_run_id,

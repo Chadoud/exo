@@ -42,9 +42,11 @@ class TestApplyRemoteTaskCompletion(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.mkdtemp(prefix="sync-apply-")
         os.environ["EXOSITES_DATA_DIR"] = self.tmp
+        import tasks_source_forget
         import tasks_store
 
         self.tasks_store = importlib.reload(tasks_store)
+        importlib.reload(tasks_source_forget)
         import sync_apply
 
         self.sync_apply = importlib.reload(sync_apply)
@@ -88,6 +90,27 @@ class TestApplyRemoteTaskCompletion(unittest.TestCase):
     def test_skips_unknown_and_invalid_ids(self) -> None:
         self.assertEqual(self._apply(_record("999999")), "skipped_unknown")
         self.assertEqual(self._apply(_record("not-an-int")), "skipped_invalid")
+        self.assertEqual(self._apply(_record("source_forget:gmail", deleted=True)), "skipped_invalid")
+        self.assertFalse(self.tasks_store.get_task(int(self.tid))["dismissed"])
+
+    def test_applies_source_forget_without_evicting_tokens(self) -> None:
+        import tasks_source_forget
+
+        gmail = self.tasks_store.create_task("Starred mail", source="gmail")
+        rec = {
+            "collection": "tasks",
+            "record_id": "source_forget:gmail",
+            "device_id": "phone-1",
+            "deleted": True,
+            "logical_clock": _future_clock("source_forget:gmail"),
+            "payload": {"forget_source": "gmail"},
+        }
+        with patch("connector_credentials.clear_token") as clear_token:
+            self.assertEqual(self._apply(rec), "applied")
+            clear_token.assert_not_called()
+        self.assertTrue(self.tasks_store.get_task(gmail["id"])["dismissed"])
+        self.assertTrue(tasks_source_forget.harvest_paused("gmail"))
+        self.assertEqual(self._apply(rec), "skipped_noop")
 
     def test_skips_non_bool_completed(self) -> None:
         self.assertEqual(
@@ -120,6 +143,36 @@ class TestApplyRemoteTaskCompletion(unittest.TestCase):
             )
         self.assertEqual(out, "applied")
         apply_pending.assert_called_once()
+
+    def test_apply_remote_record_routes_nudges(self) -> None:
+        with patch("inbox_sync.apply_remote_nudge", return_value="applied") as apply_nudge:
+            out = self.sync_apply.apply_remote_record(
+                {
+                    "collection": "nudges",
+                    "record_id": "1",
+                    "device_id": "phone-1",
+                    "deleted": True,
+                    "payload": {},
+                },
+                own_device_id="desktop-1",
+            )
+        self.assertEqual(out, "applied")
+        apply_nudge.assert_called_once()
+
+    def test_apply_remote_record_routes_agent_failures(self) -> None:
+        with patch("inbox_sync.apply_remote_failure", return_value="applied") as apply_fail:
+            out = self.sync_apply.apply_remote_record(
+                {
+                    "collection": "agent_failures",
+                    "record_id": "9",
+                    "device_id": "phone-1",
+                    "deleted": True,
+                    "payload": {},
+                },
+                own_device_id="desktop-1",
+            )
+        self.assertEqual(out, "applied")
+        apply_fail.assert_called_once()
 
 
 class TestPullAndApplyChanges(unittest.TestCase):

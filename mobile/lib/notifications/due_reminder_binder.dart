@@ -19,6 +19,7 @@ class DueReminderBinder extends StatefulWidget {
     this.host,
     this.appLinks,
     this.onOpenTask,
+    this.onOpenInbox,
   });
 
   final MobileSyncConfig config;
@@ -26,6 +27,7 @@ class DueReminderBinder extends StatefulWidget {
   final DueReminderHost? host;
   final AppLinks? appLinks;
   final ValueChanged<String>? onOpenTask;
+  final ValueChanged<String>? onOpenInbox;
 
   @override
   State<DueReminderBinder> createState() => _DueReminderBinderState();
@@ -77,11 +79,15 @@ class _DueReminderBinderState extends State<DueReminderBinder> {
       _emitTask(taskId);
       return;
     }
+    if (opensInboxFromUri(uri)) {
+      widget.onOpenInbox?.call(inboxActionIdFromUri(uri) ?? '');
+      return;
+    }
     if (opensTasksFromUri(uri)) widget.onOpenTask?.call('');
   }
 
   void _onController() {
-    if (_controller.consumeOpenTasks()) widget.onOpenTask?.call('');
+    if (_controller.consumeOpenTasks()) widget.onOpenInbox?.call('');
     final opened = _controller.consumeOpenedTaskId();
     if (opened != null) _emitTask(opened);
     if (_controller.needsPrompt) unawaited(_showPrompt());
@@ -101,13 +107,14 @@ class _DueReminderBinderState extends State<DueReminderBinder> {
       allow = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text(copy.permissionTitle),
+          title: Text(copy.permissionAskTitle),
+          content: Text(copy.permissionAskBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: Text(copy.permissionLater),
             ),
-            TextButton(
+            FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: Text(copy.permissionAllow),
             ),

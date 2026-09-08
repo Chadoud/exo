@@ -5,8 +5,17 @@ import 'package:flutter/material.dart';
 
 import 'exo_colors.dart';
 
-/// Brand cube stroke — matches `assets/exo_cube.svg` / PNG (`#6366F1`).
-const Color kExoCubeStroke = Color(0xFF6366F1);
+/// Brand cube stroke — matches `assets/exo_cube.svg` / PNG (`#0F0B2E`).
+const Color kExoCubeStroke = Color(0xFF0F0B2E);
+
+/// First-install brand stroke only. A signed-in, paired, or finished session skips it.
+bool shouldPlayBootIntro({
+  required bool signedIn,
+  required bool paired,
+  required bool onboardingComplete,
+}) {
+  return !signedIn && !paired && !onboardingComplete;
+}
 
 /// Self-drawing wireframe cube (boot + tests). Path from `exo_cube.svg` `#cube-draw-path`.
 class ExoCubeDraw extends StatelessWidget {
@@ -52,12 +61,15 @@ class ExoCubeIntro extends StatefulWidget {
     this.size = 168,
     this.duration = const Duration(milliseconds: 1400),
     this.settleDuration = const Duration(milliseconds: 280),
+    this.skipAnimation = false,
     this.onComplete,
   });
 
   final double size;
   final Duration duration;
   final Duration settleDuration;
+  /// Returning session: show the finished stroke and complete on the next frame.
+  final bool skipAnimation;
   final VoidCallback? onComplete;
 
   @override
@@ -74,15 +86,24 @@ class _ExoCubeIntroState extends State<ExoCubeIntro> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
+    if (widget.skipAnimation) {
+      _drawController.value = 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _notifyComplete());
+      return;
+    }
     unawaited(_runIntro());
+  }
+
+  void _notifyComplete() {
+    if (!mounted || _notifiedComplete) return;
+    _notifiedComplete = true;
+    widget.onComplete?.call();
   }
 
   Future<void> _runIntro() async {
     await _drawController.forward();
     await Future<void>.delayed(widget.settleDuration);
-    if (!mounted || _notifiedComplete) return;
-    _notifiedComplete = true;
-    widget.onComplete?.call();
+    _notifyComplete();
   }
 
   @override
@@ -128,6 +149,16 @@ class ExoBootScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Same boot canvas with no stroke draw — used while session storage hydrates.
+class ExoBootHold extends StatelessWidget {
+  const ExoBootHold({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(backgroundColor: ExoColors.bgPrimary);
   }
 }
 

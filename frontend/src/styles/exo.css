@@ -154,6 +154,9 @@
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
+  .app-shell--sidebar-compact .sidebar-nav-chevron {
+    display: none;
+  }
   .app-shell--sidebar-compact .sidebar-profile-detail {
     display: none;
   }

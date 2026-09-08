@@ -5,6 +5,7 @@ GET    /tasks            — list (filterable by status)
 POST   /tasks            — create {description, due_at?, priority?}
 POST   /tasks/sync       — harvest from connected mail/calendar
 POST   /tasks/forget-source — drop harvested rows after disconnect
+POST   /tasks/resume-source — unpause harvest after desktop reconnect
 PUT    /tasks/{id}       — patch description/due_at/priority
 PATCH  /tasks/{id}/done  — mark complete / reopen
 DELETE /tasks/{id}       — dismiss (stays gone on next account sync)
@@ -105,6 +106,15 @@ def forget_integration_source(body: ForgetSourceBody) -> dict[str, Any]:
     return {"ok": True, "dropped": dropped}
 
 
+@router.post("/resume-source")
+def resume_integration_source(body: ForgetSourceBody) -> dict[str, Any]:
+    """Unpause harvest after the user connects that account again on desktop."""
+    from tasks_source_forget import clear_source_forgets
+
+    clear_source_forgets({body.source})
+    return {"ok": True}
+
+
 @router.post("")
 def create_task_entry(body: TaskCreateBody) -> dict[str, Any]:
     try:
@@ -162,6 +172,9 @@ def complete_task_entry(task_id: int, body: TaskDoneBody) -> dict[str, Any]:
 
 @router.delete("/{task_id}")
 def delete_task_entry(task_id: int) -> dict[str, Any]:
+    from mail_initiative.pending_sync import dismiss_pending_for_task
+
+    dismiss_pending_for_task(task_id)
     removed = tasks_store.delete_task(task_id)
     if not removed:
         raise HTTPException(status_code=404, detail="task_not_found")

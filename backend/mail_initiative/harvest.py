@@ -135,6 +135,10 @@ def run_harvest(
     """Scan recent inbox threads, then compose replies. Zero Gmail/LLM when gated."""
     from mail_initiative import gmail_api
     from mail_initiative.pre_draft import fill_drafts
+    from tasks_source_forget import harvest_paused
+
+    if harvest_paused("gmail"):
+        return _harvest_result(0, "paused")
 
     profile_fn = profile or gmail_api.profile_email
     if store.drop_stale_mailbox(_safe_profile(profile_fn)):

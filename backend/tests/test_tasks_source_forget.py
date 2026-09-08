@@ -29,8 +29,8 @@ def test_identity_change_drops_gmail_keeps_manual(forget_mod):
     typed = tasks_store.create_task("Buy milk", source="manual")
     dropped = forget_mod.remember_or_drop_if_identity_changed("gmail", "new@example.com")
     assert dropped == 1
-    assert tasks_store.get_task(old["id"]) is None
-    assert tasks_store.get_task(typed["id"]) is not None
+    assert tasks_store.get_task(old["id"])["dismissed"] is True
+    assert tasks_store.get_task(typed["id"])["dismissed"] is False
 
 
 def test_first_seen_mailbox_drops_existing_harvested_rows(forget_mod):
@@ -45,8 +45,8 @@ def test_first_seen_mailbox_drops_existing_harvested_rows(forget_mod):
     typed = tasks_store.create_task("Buy milk", source="manual")
     dropped = forget_mod.remember_or_drop_if_identity_changed("gmail", "new@example.com")
     assert dropped == 1
-    assert tasks_store.get_task(old["id"]) is None
-    assert tasks_store.get_task(typed["id"]) is not None
+    assert tasks_store.get_task(old["id"])["dismissed"] is True
+    assert tasks_store.get_task(typed["id"])["dismissed"] is False
 
 
 def test_same_mailbox_does_not_drop(forget_mod):
@@ -78,8 +78,8 @@ def test_microsoft_identity_change_drops_outlook_and_calendar(forget_mod):
     )
     dropped = forget_mod.remember_or_drop_if_identity_changed("outlook", "chady@contoso.com")
     assert dropped == 2
-    assert tasks_store.get_task(mail["id"]) is None
-    assert tasks_store.get_task(cal["id"]) is None
+    assert tasks_store.get_task(mail["id"])["dismissed"] is True
+    assert tasks_store.get_task(cal["id"])["dismissed"] is True
 
 
 def test_forget_disconnect_clears_identity_and_token(forget_mod, monkeypatch):
@@ -140,9 +140,76 @@ def test_forget_calendar_drops_auto_prep_memory(forget_mod, tmp_path, monkeypatc
         skip_signal_check=True,
     )
     forget_mod.forget_tasks_for_sources({"google-calendar"})
-    assert tasks_store.get_task(task["id"]) is None
+    assert tasks_store.get_task(task["id"])["dismissed"] is True
     assert assistant_memory.get_memory_entry_by_id(row_id) is None
     assert assistant_memory.get_memory_entry_by_id(keep_id) is not None
+
+
+def test_forget_writes_source_marker_even_when_desktop_already_empty(forget_mod):
+    import tasks_store
+
+    markers = forget_mod.export_source_forget_markers()
+    assert markers == []
+    dropped = forget_mod.forget_tasks_for_sources({"gmail"})
+    assert dropped == 0
+    markers = forget_mod.export_source_forget_markers()
+    assert len(markers) == 1
+    assert markers[0]["record_id"] == "source_forget:gmail"
+    assert markers[0]["payload"]["forget_source"] == "gmail"
+    assert markers[0]["deleted"] is True
+    assert tasks_store.list_tasks() == []
+
+
+def test_fresh_profile_does_not_invent_forget_markers(forget_mod):
+    forget_mod.ensure_disconnected_source_forgets()
+    assert forget_mod.export_source_forget_markers() == []
+
+
+def test_disconnected_source_backfills_forget_marker(forget_mod, tmp_path):
+    """Upgrade path: mailbox already forgotten, rows already gone, phone still has leftovers."""
+    forget_mod.remember_or_drop_if_identity_changed("gmail", "old@example.com")
+    forget_mod.forget_tasks_for_sources({"gmail"})
+    (tmp_path / "task_source_forgets.json").unlink(missing_ok=True)
+    forget_mod.ensure_disconnected_source_forgets()
+    first = {row["record_id"]: row["updated_at"] for row in forget_mod.export_source_forget_markers()}
+    assert "source_forget:gmail" in first
+    assert "source_forget:outlook" not in first
+    forget_mod.ensure_disconnected_source_forgets()
+    again = {row["record_id"]: row["updated_at"] for row in forget_mod.export_source_forget_markers()}
+    assert again == first
+
+
+def test_harvest_paused_until_explicit_resume(forget_mod):
+    assert forget_mod.harvest_paused("gmail") is False
+    forget_mod.record_source_forgets({"gmail"})
+    assert forget_mod.harvest_paused("gmail") is True
+    forget_mod.clear_source_forgets({"gmail"})
+    assert forget_mod.harvest_paused("gmail") is False
+
+
+def test_parse_source_forget_record_requires_matching_payload(forget_mod):
+    assert (
+        forget_mod.parse_source_forget_record(
+            {
+                "collection": "tasks",
+                "record_id": "source_forget:gmail",
+                "deleted": True,
+                "payload": {"forget_source": "gmail"},
+            }
+        )
+        == "gmail"
+    )
+    assert (
+        forget_mod.parse_source_forget_record(
+            {
+                "collection": "tasks",
+                "record_id": "source_forget:gmail",
+                "deleted": True,
+                "payload": {"completed": True},
+            }
+        )
+        is None
+    )
 
 
 def test_fingerprint_is_not_the_raw_email(forget_mod, tmp_path):

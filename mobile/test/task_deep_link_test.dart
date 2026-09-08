@@ -9,9 +9,14 @@ void main() {
     expect(taskRecordIdFromUri(Uri.parse('https://exosites.ch/tasks/1')), isNull);
   });
 
-  test('actions deep link opens Tasks without a task id', () {
-    expect(opensTasksFromUri(Uri.parse('exosites://actions/mail_reply:9')), isTrue);
+  test('actions deep link opens Inbox without a task id', () {
+    expect(opensInboxFromUri(Uri.parse('exosites://actions/mail_reply:9')), isTrue);
+    expect(opensTasksFromUri(Uri.parse('exosites://actions/mail_reply:9')), isFalse);
     expect(taskRecordIdFromUri(Uri.parse('exosites://actions/mail_reply:9')), isNull);
+    expect(inboxActionIdFromUri(Uri.parse('exosites://actions/mail_reply:9')), 'mail_reply:9');
+    expect(inboxActionIdFromUri(Uri.parse('exosites://actions/')), isNull);
+    expect(inboxActionIdFromUri(Uri.parse('exosites://tasks/42')), isNull);
+    expect(opensTasksFromUri(Uri.parse('exosites://tasks')), isTrue);
     expect(opensTasksFromUri(Uri.parse('exosites://oauth')), isFalse);
   });
 }

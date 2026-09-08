@@ -17,6 +17,10 @@ RECORD_PREFIX = "mail_reply:"
 ALLOWED_CONFIRM_FIELDS = frozenset(
     {"status", "subject", "body", "updated_at", "type", "source_id", "to_name", "to_email", "error_class"}
 )
+# Echoed on confirm; never used to send. Do not treat as unknown keys.
+READONLY_WIRE_FIELDS = frozenset(
+    {"inbound_subject", "inbound_snippet", "task_record_id"}
+)
 
 STATUS_READY = "ready"
 STATUS_CONFIRMED = "confirmed"
@@ -47,6 +51,8 @@ def _payload_from_candidate(row: dict[str, Any], status: str, *, error_class: st
         "source_id": record_id_for(int(row["id"])),
         "to_name": str(row.get("from_name") or ""),
         "to_email": str(row.get("from_email") or ""),
+        "inbound_subject": str(row.get("subject") or "")[:200],
+        "inbound_snippet": str(row.get("inbound_snippet") or "")[:1500],
         "subject": subject[:200],
         "body": str(row.get("draft_body") or "")[:8000],
         "error_class": error_class,
@@ -56,6 +62,9 @@ def _payload_from_candidate(row: dict[str, Any], status: str, *, error_class: st
 
 def export_pending_actions() -> list[dict[str, Any]]:
     """Ready drafts + acks. Never includes draft_token."""
+    from mail_initiative.task_join import task_record_ids_by_reply_id
+
+    task_ids = task_record_ids_by_reply_id()
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
     for row in store.list_candidates(limit=20, drafted_only=True):
@@ -76,6 +85,9 @@ def export_pending_actions() -> list[dict[str, Any]]:
             continue
         payload = _payload_from_candidate(row, status, error_class=(ack or {}).get("error_class") or "")
         payload["updated_at"] = (ack or {}).get("updated_at") or payload["updated_at"]
+        task_rid = task_ids.get(int(row["id"]))
+        if task_rid:
+            payload["task_record_id"] = task_rid
         out.append(
             {
                 "collection": COLLECTION,
@@ -100,6 +112,39 @@ def export_pending_actions() -> list[dict[str, Any]]:
                 }
             )
     return out
+
+
+def dismiss_pending_action(record_id: str) -> str:
+    """Drop a draft the user no longer wants. Does not send. Next export is a tombstone."""
+    rid = str(record_id or "")
+    candidate_id = parse_candidate_id(rid)
+    if candidate_id is None:
+        return "skipped_invalid"
+    existing = action_acks.get_ack(rid)
+    row = store.get_candidate(candidate_id)
+    if existing and existing.get("status") == STATUS_SENT:
+        store.delete_candidate(candidate_id)
+        return "skipped_noop"
+    action_acks.upsert_ack(rid, STATUS_SENT)
+    thread_id = str((row or {}).get("thread_id") or "")
+    if thread_id:
+        store.dismiss_thread(thread_id)
+    store.delete_candidate(candidate_id)
+    return "applied"
+
+
+def dismiss_pending_for_task(task_id: int) -> str:
+    """Clear the Inbox draft joined to this task, if any."""
+    import tasks_store
+    from mail_initiative.task_join import reply_id_for_external_id
+
+    task = tasks_store.get_task(int(task_id))
+    if task is None:
+        return "skipped_unknown"
+    reply_id = reply_id_for_external_id(str(task.get("external_id") or "") or None)
+    if reply_id is None:
+        return "skipped_noop"
+    return dismiss_pending_action(record_id_for(reply_id))
 
 
 def apply_confirmed(*, record_id: str, subject: str, body: str) -> str:
@@ -146,10 +191,12 @@ def apply_remote_pending_action(record: dict[str, Any], *, own_device_id: str) -
         return "skipped_collection"
     if str(record.get("device_id") or "") == own_device_id:
         return "skipped_own_device"
+    if record.get("deleted"):
+        return dismiss_pending_action(str(record.get("record_id") or ""))
     payload = record.get("payload") or {}
     if not isinstance(payload, dict):
         return "skipped_invalid"
-    extra = set(payload) - ALLOWED_CONFIRM_FIELDS
+    extra = set(payload) - ALLOWED_CONFIRM_FIELDS - READONLY_WIRE_FIELDS
     if extra:
         logger.warning("pending_actions rejected extra payload keys")
         return "skipped_invalid"

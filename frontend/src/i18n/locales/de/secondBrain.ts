@@ -381,11 +381,17 @@ export const deSecondBrainLocaleSlice = {
     titlePlaceholder: "Meeting-Titel (optional)",
     start: "Meeting starten",
     starting: "Wird gestartet…",
-    transcribeToggle: "Mein Mikrofon transkribieren (Notizen erscheinen automatisch beim Sprechen)",
+    transcribeToggle: "Gesprochenes in Notizen umwandeln",
     micDenied:
-      "Mikrofonzugriff ist aus — tippe Notizen unten oder aktiviere den Zugriff und starte das Meeting neu.",
+      "Mikrofonzugriff ist aus — tippe Notizen unten, oder aktiviere das Mikrofon und versuche erneut zuzuhören.",
     transcribeUnavailable:
-      "Audio-Transkription nicht verfügbar ({error}). Du kannst Notizen unten eintippen.",
+      "Sprache konnte nicht in Notizen umgewandelt werden. Du kannst unten tippen.",
+    notesOnly: "Nur Notizen",
+    notesEmptyListening: "Sprich — Notizen erscheinen hier.",
+    retryListening: "Erneut zuhören",
+    closeConfirm: "Meeting beenden und Notizen speichern?",
+    closeConfirmBody: "Beenden stoppt das Mikrofon und speichert deine Notizen.",
+    keepListening: "Weiter zuhören",
     notePlaceholder: "Tippe, was gesagt wurde, oder einen Kernpunkt…",
     add: "Hinzufügen",
     end: "Beenden & zusammenfassen",
@@ -395,13 +401,14 @@ export const deSecondBrainLocaleSlice = {
     defaultTitle: "Meeting",
     actionItemsSavedOne: "{n} Aufgabe gespeichert",
     actionItemsSavedOther: "{n} Aufgaben gespeichert",
-    toastRecordingStarted: "Meeting-Aufnahme gestartet",
+    toastRecordingStarted: "Hört zu — Notizen erscheinen, während du sprichst.",
     toastStarted: "Meeting gestartet",
-    toastStartFailed: "Meeting konnte nicht gestartet werden",
+    toastStartFailed: "Meeting konnte nicht gestartet werden. Versuche es erneut.",
     toastAddFailed: "Notiz konnte nicht hinzugefügt werden",
     toastTooShort: "Meeting war zu kurz für eine Zusammenfassung",
     toastSaved: "Meeting gespeichert",
-    toastEndFailed: "Meeting konnte nicht beendet werden",
+    toastEndFailed:
+      "Zusammenfassung konnte nicht gespeichert werden. Deine Notizen sind noch da — versuche Beenden erneut.",
   },
   briefing: {
     title: "Briefing",
@@ -617,7 +624,7 @@ export const deSecondBrainLocaleSlice = {
     pairSessionExpired:
       "Ihre Exo-Anmeldung ist abgelaufen. Melden Sie sich erneut an (Profilmenü), tippen Sie auf QR erneut und kopieren Sie einen neuen Code.",
     pairKeyUnreadable:
-      "Sync-Schlüssel im Schlüsselbund nicht lesbar. Schlüsselbund entsperren oder Sync nach Datenreset aus- und wieder einschalten — dann neuen Code kopieren.",
+      "Sync-Schlüssel im Schlüsselbund nicht lesbar. Schlüsselbund entsperren oder eine signierte Exo-Version installieren (gleiche Developer ID). Lokale Daten nicht löschen.",
     pairRetry: "QR erneut laden",
   },
 } as const;

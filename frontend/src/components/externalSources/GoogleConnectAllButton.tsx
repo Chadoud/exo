@@ -9,6 +9,7 @@ import { describeIntegrationConnectFailure } from "../../utils/externalSourceCon
 import {
   refreshIntegrationTasksBestEffort,
   refreshMailRepliesBestEffort,
+  resumeIntegrationSourcesBestEffort,
 } from "../../utils/forgetIntegrationTasks";
 import { useI18n } from "../../i18n/I18nContext";
 
@@ -70,6 +71,7 @@ export default function GoogleConnectAllButton() {
         toast.message(t("sources.googleConnectAllSuccess"));
         await relayConnectorTokens();
         window.dispatchEvent(new CustomEvent(EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT));
+        resumeIntegrationSourcesBestEffort(["gmail", "google-calendar"]);
         refreshIntegrationTasksBestEffort();
         refreshMailRepliesBestEffort();
       } else {

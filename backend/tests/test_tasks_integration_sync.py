@@ -104,5 +104,32 @@ def test_sync_drops_gmail_tasks_when_mailbox_changes(sync_mod, monkeypatch):
     monkeypatch.setattr(sync_mod, "_sync_outlook_calendar", lambda: (0, "not_connected"))
 
     sync_mod.sync_integration_tasks()
-    assert tasks_store.get_task(old["id"]) is None
-    assert tasks_store.get_task(typed["id"]) is not None
+    assert tasks_store.get_task(old["id"])["dismissed"] is True
+    assert tasks_store.get_task(typed["id"])["dismissed"] is False
+
+
+def test_sync_skips_harvest_while_source_is_paused(sync_mod, monkeypatch):
+    import importlib
+
+    import tasks_source_forget
+
+    tasks_source_forget = importlib.reload(tasks_source_forget)
+    tasks_source_forget.record_source_forgets({"gmail"})
+    called = {"gmail": False}
+
+    def harvest():
+        called["gmail"] = True
+        return 3, "ok"
+
+    monkeypatch.setattr(sync_mod, "_sync_gmail", harvest)
+    monkeypatch.setattr(sync_mod, "_sync_outlook", lambda: (0, "not_connected"))
+    monkeypatch.setattr(sync_mod, "_sync_google_calendar", lambda: (0, "not_connected"))
+    monkeypatch.setattr(sync_mod, "_sync_outlook_calendar", lambda: (0, "not_connected"))
+    monkeypatch.setattr(tasks_source_forget, "peek_gmail_identity", lambda: "")
+    monkeypatch.setattr(tasks_source_forget, "peek_outlook_identity", lambda: "")
+    monkeypatch.setattr(tasks_source_forget, "peek_google_calendar_identity", lambda: "")
+
+    result = sync_mod.sync_integration_tasks()
+    assert called["gmail"] is False
+    assert result["created"]["gmail"] == 0
+    assert result["statuses"]["gmail"] == "ok"

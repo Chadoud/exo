@@ -50,6 +50,37 @@ function normalizeMacSignIdentity(identity) {
   return identity.replace(/^Developer ID Application:\s*/, "").trim();
 }
 
+/**
+ * Honor an explicit CSC_IDENTITY_AUTO_DISCOVERY (release gate uses false).
+ * Do not force unsigned when unset — Keychain Developer ID can still sign.
+ */
+function applyMacSigningEnv(builderEnv) {
+  const explicit = String(process.env.CSC_IDENTITY_AUTO_DISCOVERY || "").trim();
+  const hasSigningIdentity = Boolean(
+    process.env.MAC_SIGN_IDENTITY || process.env.CSC_LINK || process.env.CSC_NAME,
+  );
+  if (explicit) {
+    builderEnv.CSC_IDENTITY_AUTO_DISCOVERY = explicit;
+  } else if (hasSigningIdentity) {
+    builderEnv.CSC_IDENTITY_AUTO_DISCOVERY = "true";
+  } else {
+    delete builderEnv.CSC_IDENTITY_AUTO_DISCOVERY;
+  }
+  if (process.env.MAC_SIGN_IDENTITY) {
+    builderEnv.CSC_NAME = normalizeMacSignIdentity(process.env.MAC_SIGN_IDENTITY);
+  }
+  const discoveryOff = ["false", "0", "no"].includes(
+    String(builderEnv.CSC_IDENTITY_AUTO_DISCOVERY || "").toLowerCase(),
+  );
+  if (discoveryOff) {
+    console.log("Unsigned build — a signed Exo's Keychain sync key will not open.");
+  } else if (builderEnv.CSC_NAME) {
+    console.log(`Signing with ${builderEnv.CSC_NAME}`);
+  } else {
+    console.log("Signing: auto-discover Developer ID from Keychain.");
+  }
+}
+
 execSync("bash scripts/prepare-release-resources.sh", { cwd: ROOT, stdio: "inherit" });
 stageBackendSlices(RESOURCES);
 
@@ -79,7 +110,6 @@ if (!fs.existsSync(dmgBgPath)) {
 const universal = isUniversalBuild();
 const nativeArch = hostNativeArch();
 const mode = packagingMode();
-const hasSigningIdentity = Boolean(process.env.MAC_SIGN_IDENTITY || process.env.CSC_LINK || process.env.CSC_NAME);
 
 console.log("\n=== Exo — macOS Packager ===\n");
 
@@ -87,11 +117,8 @@ const builderEnv = {
   ...process.env,
   EXO_MAC_UNIVERSAL: universal ? "1" : "0",
   PATH: `${pythonShimDir()}${path.delimiter}${process.env.PATH || ""}`,
-  CSC_IDENTITY_AUTO_DISCOVERY: hasSigningIdentity ? "true" : "false",
 };
-if (process.env.MAC_SIGN_IDENTITY) {
-  builderEnv.CSC_NAME = normalizeMacSignIdentity(process.env.MAC_SIGN_IDENTITY);
-}
+applyMacSigningEnv(builderEnv);
 
 const builderArgs = ["--config electron-builder.mac.cjs", "--mac", "dmg", "zip", "--publish", "never"];
 if (universal) {

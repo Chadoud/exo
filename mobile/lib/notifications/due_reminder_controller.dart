@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../app/mobile_sync_config.dart';
 import '../sync/local_store.dart';
+import '../sync/task_source_forget.dart';
 import '../sync/pending_action_payload.dart';
 import 'due_reminder_copy.dart';
 import 'due_reminder_host.dart';
@@ -39,6 +40,7 @@ class DueReminderController extends ChangeNotifier {
   final Set<String> _notifiedReadyIds = {};
   int _seenEpoch = -1;
   bool _reconcileAgain = false;
+  bool _alive = true;
   Future<void>? _reconcileFuture;
   DueReminderCopy _copy = DueReminderCopy(const Locale('en'));
 
@@ -55,6 +57,10 @@ class DueReminderController extends ChangeNotifier {
     final open = _openTasks;
     _openTasks = false;
     return open;
+  }
+
+  void _emit() {
+    if (_alive) notifyListeners();
   }
 
   /// Debug / future FCM: `{type}` only. Syncs then asks the shell for Tasks.
@@ -103,20 +109,21 @@ class DueReminderController extends ChangeNotifier {
   }
 
   Future<void> _drainReconcile() async {
-    while (_reconcileAgain) {
+    while (_alive && _reconcileAgain) {
       _reconcileAgain = false;
       await _reconcileBody(_copy);
     }
   }
 
   Future<void> _reconcileBody(DueReminderCopy copy) async {
+    if (!_alive) return;
     _seenEpoch = _config.dataEpoch;
     if (!_config.isSignedIn || !_config.isPaired) {
       _needsPrompt = false;
       _notifiedReadyIds.clear();
       await _prefs.reset();
       await _host.cancelAll();
-      notifyListeners();
+      _emit();
       return;
     }
     final rows = await _dueCandidateRows();
@@ -129,7 +136,7 @@ class DueReminderController extends ChangeNotifier {
     );
     if (!await _prefs.asked) {
       _needsPrompt = preview.isNotEmpty || await _hasReadyActions();
-      notifyListeners();
+      _emit();
       return;
     }
     _needsPrompt = false;
@@ -157,7 +164,7 @@ class DueReminderController extends ChangeNotifier {
       _notifiedReadyIds.clear();
       SyncDebugLog.lastReadyActions = 0;
     }
-    notifyListeners();
+    _emit();
   }
 
   Future<bool> _hasReadyActions() async {
@@ -201,7 +208,11 @@ class DueReminderController extends ChangeNotifier {
 
   Future<List<Map<String, dynamic>>> _dueCandidateRows() async {
     final rows = await _config.localStore.listByCollection('tasks');
-    return rows.where((row) => !LocalBrainStore.rowIsPendingDelete(row)).toList();
+    return rows.where((row) {
+      final id = row['record_id']?.toString() ?? '';
+      if (id.isEmpty || isSyncControlTaskRecord(id)) return false;
+      return !LocalBrainStore.rowIsPendingDelete(row);
+    }).toList();
   }
 
   Future<void> acceptPrompt(DueReminderCopy copy) async {
@@ -236,6 +247,7 @@ class DueReminderController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _alive = false;
     _config.removeListener(_onConfig);
     unawaited(_tapSub?.cancel());
     super.dispose();

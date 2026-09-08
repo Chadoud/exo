@@ -19,17 +19,26 @@ class DueReminderCopy {
   String get enableTitle => _fr ? 'Prévenir à l’échéance' : 'Remind me when due';
 
   String get enableSubtitle => _fr
-      ? 'Exo peut te prévenir quand une tâche arrive.'
-      : 'Exo can remind you when a task is due.';
+      ? 'Une alerte sur ce téléphone.'
+      : 'A notification on this phone.';
 
   String get lockScreenTitle =>
-      _fr ? 'Détail sur l’écran verrouillé' : 'Show task on lock screen';
+      _fr ? 'Montrer le nom de la tâche' : 'Show the task name';
 
   String get lockScreenSubtitle => _fr
-      ? 'Par défaut, la notif dit seulement qu’une tâche arrive.'
-      : 'Off by default. The notification only says a task is due.';
+      ? 'Sinon la notif dit seulement qu’une tâche arrive (plus discret).'
+      : 'Otherwise the notification only says a task is due (more private).';
 
-  String get permissionTitle => enableSubtitle;
+  String get lockScreenNeedsReminders => _fr
+      ? 'Active d’abord les rappels.'
+      : 'Turn on reminders first.';
+
+  String get permissionAskTitle =>
+      _fr ? 'Te prévenir à l’échéance ?' : 'Remind you when something is due?';
+
+  String get permissionAskBody => _fr
+      ? 'Exo te prévient sur ce téléphone. Tu restes maître.'
+      : 'Exo can remind you on this phone. You stay in control.';
 
   String get permissionAllow => _fr ? 'Autoriser' : 'Allow';
 
@@ -52,20 +61,62 @@ class DueReminderCopy {
       _fr ? 'Prêt à revoir' : 'Ready to review';
 
   String get actionReadyBody => _fr
-      ? 'Ouvre Tasks — rien ne part tout seul.'
-      : 'Open Tasks. Nothing sends itself.';
+      ? 'Ouvre Inbox — rien ne part tout seul.'
+      : 'Open Inbox. Nothing sends itself.';
 
-  String get actionConfirmTitle => _fr ? 'Envoyer ce brouillon ?' : 'Send this draft?';
+  String get actionSection => _fr ? 'À envoyer' : 'Ready to send';
+
+  String get actionCardTitle => _fr ? 'Réponse prête' : 'Reply ready';
+
+  String get actionCardWaitingTitle =>
+      _fr ? 'En attente du Mac' : 'Waiting on your computer';
+
+  String get actionCardStaleTitle =>
+      _fr ? 'Brouillon périmé' : 'Draft out of date';
+
+  String actionCardTitleFor({
+    required bool ready,
+    required bool waiting,
+    required bool stale,
+  }) {
+    if (stale) return actionCardStaleTitle;
+    if (waiting) return actionCardWaitingTitle;
+    return actionCardTitle;
+  }
+
+  String get actionCardHint => _fr
+      ? 'Relis leur message, puis ta réponse. Ça part du Mac, pas tout seul.'
+      : 'Read their message, then your reply. It sends from your computer, not by itself.';
+
+  String get actionContext => _fr ? 'Leur message' : 'Their message';
+
+  String get actionReply => _fr ? 'Ta réponse' : 'Your reply';
+
+  String get actionSubject => _fr ? 'Sujet' : 'Subject';
+
+  String get actionBody => _fr ? 'Message' : 'Message';
+
+  String get actionSend => _fr ? 'Envoyer' : 'Send';
+
+  String get actionConfirmTitle =>
+      _fr ? 'Envoyer ce brouillon ?' : 'Send this draft?';
 
   String get actionConfirmBody => _fr
       ? 'Ça partira dès que ton ordinateur Exo est ouvert. Rien ne part tout seul.'
       : 'It will send when Exo is open on your computer. Nothing sends itself.';
 
   String get actionWaitingDesktop => _fr
-      ? 'Confirmé. Ça partira quand Exo sera ouvert sur l’ordinateur.'
-      : 'Confirmed. It will send when Exo is open on your computer.';
+      ? 'C’est noté — ça partira dès qu’Exo est ouvert sur le Mac.'
+      : 'Noted. It will send when Exo is open on your computer.';
 
   String get actionStale => _fr
       ? 'Ce brouillon n’est plus à jour. Rouvre-le sur l’ordinateur.'
       : 'This draft is out of date. Open it on the computer.';
+
+  String actionsToSend(int count) {
+    if (_fr) {
+      return count == 1 ? '1 à envoyer' : '$count à envoyer';
+    }
+    return count == 1 ? '1 to send' : '$count to send';
+  }
 }

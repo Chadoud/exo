@@ -22,7 +22,9 @@
         "conversations",
         "tasks",
         "activity_entries",
-        "pending_actions"
+        "pending_actions",
+        "nudges",
+        "agent_failures"
       ]
     },
     "record_id": { "type": "string", "minLength": 1, "maxLength": 128 },

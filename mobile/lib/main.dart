@@ -38,7 +38,16 @@ class _ExositesMobileAppState extends State<ExositesMobileApp> {
     super.initState();
     _config.hydrate().then((_) {
       _crashReporter.install(optIn: _config.crashReportsOptIn);
-      if (mounted) setState(() => _hydrated = true);
+      if (!mounted) return;
+      final playIntro = shouldPlayBootIntro(
+        signedIn: _config.isSignedIn,
+        paired: _config.isPaired,
+        onboardingComplete: _config.onboardingComplete,
+      );
+      setState(() {
+        _hydrated = true;
+        if (!playIntro) _introDone = true;
+      });
     });
     _config.addListener(_onConfigChanged);
     _auth.lastError.addListener(_onAuthError);
@@ -78,10 +87,12 @@ class _ExositesMobileAppState extends State<ExositesMobileApp> {
 
     return MaterialApp(
       title: title,
-      theme: ExoTheme.dark(),
+      theme: ExoTheme.light(),
       scaffoldMessengerKey: _scaffoldMessengerKey,
-      // One stable boot tree: purple stroke draws once and holds — never swap to PNG.
-      home: !ready
+      // Hold a blank canvas until hydrate; play the stroke only on first install.
+      home: !_hydrated
+          ? const ExoBootHold()
+          : !ready
           ? ExoBootScreen(
               key: const ValueKey('exo-boot'),
               onIntroComplete: _onIntroComplete,

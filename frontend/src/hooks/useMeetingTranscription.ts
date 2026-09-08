@@ -8,42 +8,52 @@
  * appends each completed utterance to the meeting's notes, which the panel polls.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BACKEND_HOST, BACKEND_PORT, VOICE_CAPTURE_WORKLET_URL } from "../constants";
+import {
+  issueFromGetUserMediaFailure,
+  type MeetingTranscriptionIssue,
+} from "../utils/meetingTranscriptionIssue";
 import { sendVoiceWsAppAuth } from "../voice/voiceWsAuth";
 
 const WS_URL = `ws://${BACKEND_HOST}:${BACKEND_PORT}/ws/voice`;
 
+export interface MeetingTranscriptionStartResult {
+  listening: boolean;
+}
+
 interface UseMeetingTranscriptionReturn {
   recording: boolean;
-  error: string | null;
-  /** True once the browser denies mic access (vs a transient failure). */
-  micDenied: boolean;
-  start: (meetingId: string) => Promise<void>;
+  issue: MeetingTranscriptionIssue | null;
+  start: (meetingId: string) => Promise<MeetingTranscriptionStartResult>;
   stop: () => void;
 }
 
 export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
   const [recording, setRecording] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [micDenied, setMicDenied] = useState(false);
+  const [issue, setIssue] = useState<MeetingTranscriptionIssue | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const workletRef = useRef<AudioWorkletNode | null>(null);
   const srcRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const generationRef = useRef(0);
+  const stoppingRef = useRef(false);
+  const authReadyRef = useRef(false);
 
-  const stop = useCallback(() => {
+  const tearDown = useCallback(() => {
     const ws = wsRef.current;
+    wsRef.current = null;
     if (ws) {
       try {
-        if (ws.readyState === WebSocket.OPEN) ws.send(new ArrayBuffer(0));
+        if (authReadyRef.current && ws.readyState === WebSocket.OPEN) {
+          ws.send(new ArrayBuffer(0));
+        }
         ws.close();
       } catch {
         /* already closing */
       }
-      wsRef.current = null;
     }
     workletRef.current?.port.close();
     workletRef.current?.disconnect();
@@ -56,24 +66,50 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
       void audioCtxRef.current.close();
     }
     audioCtxRef.current = null;
+    authReadyRef.current = false;
     setRecording(false);
   }, []);
 
+  const stop = useCallback(() => {
+    stoppingRef.current = true;
+    generationRef.current += 1;
+    tearDown();
+  }, [tearDown]);
+
+  useEffect(() => () => stop(), [stop]);
+
   const start = useCallback(
-    async (meetingId: string) => {
-      setError(null);
-      setMicDenied(false);
+    async (meetingId: string): Promise<MeetingTranscriptionStartResult> => {
+      stop();
+      stoppingRef.current = false;
+      const generation = generationRef.current;
+      setIssue(null);
+
+      const stale = () => generationRef.current !== generation || stoppingRef.current;
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
           video: false,
         });
+        if (stale()) {
+          stream.getTracks().forEach((t) => t.stop());
+          return { listening: false };
+        }
         streamRef.current = stream;
 
         const audioCtx = new AudioContext({ sampleRate: 16_000 });
         audioCtxRef.current = audioCtx;
         if (audioCtx.state === "suspended") await audioCtx.resume();
+        if (stale()) {
+          tearDown();
+          return { listening: false };
+        }
         await audioCtx.audioWorklet.addModule(VOICE_CAPTURE_WORKLET_URL);
+        if (stale()) {
+          tearDown();
+          return { listening: false };
+        }
 
         const ws = new WebSocket(
           `${WS_URL}?mode=transcribe&meeting_id=${encodeURIComponent(meetingId)}`,
@@ -81,21 +117,24 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
         ws.binaryType = "arraybuffer";
         wsRef.current = ws;
 
-        ws.onopen = () => {
-          void sendVoiceWsAppAuth(ws);
-        };
+        const opened = new Promise<boolean>((resolve) => {
+          ws.onopen = () => resolve(true);
+          ws.onerror = () => resolve(false);
+        });
 
-        ws.onerror = () => {
-          setError("Transcription connection failed");
-        };
         ws.onclose = () => {
-          if (wsRef.current === ws) setRecording(false);
+          if (wsRef.current !== ws) return;
+          setRecording(false);
+          if (!stoppingRef.current) setIssue("unavailable");
         };
         ws.onmessage = (event) => {
           if (typeof event.data !== "string") return;
           try {
-            const frame = JSON.parse(event.data) as { type?: string; message?: string };
-            if (frame.type === "error" && frame.message) setError(frame.message);
+            const frame = JSON.parse(event.data) as { type?: string };
+            if (frame.type === "error") {
+              setIssue("unavailable");
+              stop();
+            }
           } catch {
             /* non-JSON frame — ignore */
           }
@@ -108,23 +147,45 @@ export function useMeetingTranscription(): UseMeetingTranscriptionReturn {
         srcNode.connect(workletNode);
 
         workletNode.port.onmessage = (e: MessageEvent<{ pcm: ArrayBuffer }>) => {
+          if (!authReadyRef.current) return;
           if (ws.readyState === WebSocket.OPEN) ws.send(e.data.pcm);
         };
 
-        setRecording(true);
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Couldn't start transcription";
-        if (e instanceof DOMException && (e.name === "NotAllowedError" || e.name === "SecurityError")) {
-          setMicDenied(true);
-          setError("Microphone access denied");
-        } else {
-          setError(message);
+        const didOpen = await opened;
+        if (stale()) {
+          tearDown();
+          return { listening: false };
         }
-        stop();
+        if (!didOpen || wsRef.current !== ws) {
+          setIssue("unavailable");
+          tearDown();
+          return { listening: false };
+        }
+
+        const auth = await sendVoiceWsAppAuth(ws);
+        if (stale() || wsRef.current !== ws) {
+          tearDown();
+          return { listening: false };
+        }
+        if (!auth.ok) {
+          setIssue("unavailable");
+          tearDown();
+          return { listening: false };
+        }
+
+        authReadyRef.current = true;
+        setRecording(true);
+        return { listening: true };
+      } catch (e) {
+        if (!stale()) {
+          setIssue(issueFromGetUserMediaFailure(e));
+          tearDown();
+        }
+        return { listening: false };
       }
     },
-    [stop],
+    [stop, tearDown],
   );
 
-  return { recording, error, micDenied, start, stop };
+  return { recording, issue, start, stop };
 }

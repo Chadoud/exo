@@ -256,6 +256,15 @@ def _sync_outlook_calendar() -> tuple[int, SyncStatus]:
     )
 
 
+def _sync_or_skip(source: str, sync_fn: Callable[[], tuple[int, str]]) -> tuple[int, str]:
+    """Skip harvest while a list-stop is active. Tokens stay; reconnect unpauses."""
+    from tasks_source_forget import harvest_paused
+
+    if harvest_paused(source):
+        return 0, "ok"
+    return sync_fn()
+
+
 def _drop_stale_account_tasks() -> int:
     """Wipe harvested rows when the connected mailbox/calendar is a different account."""
     from tasks_source_forget import (
@@ -282,10 +291,10 @@ def sync_integration_tasks() -> dict[str, Any]:
     """Best-effort harvest from all connected integrations. Never raises."""
     dismissed_placeholders = dismiss_placeholder_calendar_tasks()
     _drop_stale_account_tasks()
-    gmail_count, gmail_status = _sync_gmail()
-    outlook_count, outlook_status = _sync_outlook()
-    gcal_count, gcal_status = _sync_google_calendar()
-    ocal_count, ocal_status = _sync_outlook_calendar()
+    gmail_count, gmail_status = _sync_or_skip("gmail", _sync_gmail)
+    outlook_count, outlook_status = _sync_or_skip("outlook", _sync_outlook)
+    gcal_count, gcal_status = _sync_or_skip("google-calendar", _sync_google_calendar)
+    ocal_count, ocal_status = _sync_or_skip("outlook-calendar", _sync_outlook_calendar)
 
     counts = {
         "gmail": gmail_count,

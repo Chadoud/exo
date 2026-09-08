@@ -349,33 +349,37 @@ def clear_all_tasks() -> int:
         return cur.rowcount
 
 
-def count_tasks_for_sources(sources: set[str]) -> int:
-    """Count harvested rows for sources, including completed and dismissed."""
+def count_tasks_for_sources(
+    sources: set[str], *, include_dismissed: bool = True
+) -> int:
+    """Count harvested rows for sources. Open lists omit dismissed."""
     wanted = {str(s).strip() for s in sources if str(s).strip()}
     if not wanted:
         return 0
     placeholders = ",".join("?" * len(wanted))
+    sql = f"SELECT COUNT(*) AS n FROM tasks WHERE source IN ({placeholders})"
+    if not include_dismissed:
+        sql += " AND dismissed=0"
     with _conn() as conn:
-        row = conn.execute(
-            f"SELECT COUNT(*) AS n FROM tasks WHERE source IN ({placeholders})",
-            tuple(wanted),
-        ).fetchone()
+        row = conn.execute(sql, tuple(wanted)).fetchone()
     return int(row["n"]) if row else 0
 
 
 def clear_tasks_by_sources(sources: set[str]) -> int:
-    """Hard-delete harvested rows for the given sources. Refuses typed tasks."""
+    """Dismiss harvested rows so GO SYNC can push tombstones. Refuses typed tasks."""
     wanted = {str(s).strip() for s in sources if str(s).strip()}
     if not wanted:
         return 0
     blocked = wanted & _PROTECTED_SOURCES
     if blocked:
         raise ValueError("refusing to clear protected task sources")
+    now = datetime.now(UTC).isoformat()
     placeholders = ",".join("?" * len(wanted))
     with _conn() as conn:
         cur = conn.execute(
-            f"DELETE FROM tasks WHERE source IN ({placeholders})",
-            tuple(wanted),
+            f"UPDATE tasks SET dismissed=1, dismissed_at=?, updated_at=? "
+            f"WHERE source IN ({placeholders}) AND dismissed=0",
+            (now, now, *wanted),
         )
         conn.commit()
         return int(cur.rowcount)

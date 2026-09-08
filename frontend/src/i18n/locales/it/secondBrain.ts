@@ -380,12 +380,17 @@ export const itSecondBrainLocaleSlice = {
     titlePlaceholder: "Titolo riunione (facoltativo)",
     start: "Avvia riunione",
     starting: "Avvio…",
-    transcribeToggle:
-      "Trascrivi il mio microfono (le note compaiono automaticamente mentre parli)",
+    transcribeToggle: "Trasforma ciò che dico in note",
     micDenied:
-      "L'accesso al microfono è disattivato — scrivi le note sotto, oppure abilita l'accesso e riavvia la riunione.",
+      "L'accesso al microfono è disattivato — scrivi le note sotto, oppure abilita il microfono e riprova ad ascoltare.",
     transcribeUnavailable:
-      "Trascrizione audio non disponibile ({error}). Puoi scrivere le note sotto.",
+      "Impossibile trasformare il parlato in note. Puoi comunque scrivere sotto.",
+    notesOnly: "Solo note",
+    notesEmptyListening: "Parla — le note compariranno qui.",
+    retryListening: "Riprova ad ascoltare",
+    closeConfirm: "Terminare la riunione e salvare le note?",
+    closeConfirmBody: "Terminare spegne il microfono e salva le note.",
+    keepListening: "Continua ad ascoltare",
     notePlaceholder: "Scrivi ciò che è stato detto o un punto chiave…",
     add: "Aggiungi",
     end: "Termina e riassumi",
@@ -395,13 +400,14 @@ export const itSecondBrainLocaleSlice = {
     defaultTitle: "Riunione",
     actionItemsSavedOne: "{n} azione salvata",
     actionItemsSavedOther: "{n} azioni salvate",
-    toastRecordingStarted: "Registrazione riunione avviata",
+    toastRecordingStarted: "In ascolto — le note compariranno mentre parli.",
     toastStarted: "Riunione avviata",
-    toastStartFailed: "Impossibile avviare la riunione",
+    toastStartFailed: "Impossibile avviare la riunione. Riprova.",
     toastAddFailed: "Impossibile aggiungere la nota",
     toastTooShort: "Riunione troppo breve per essere riassunta",
     toastSaved: "Riunione salvata",
-    toastEndFailed: "Impossibile terminare la riunione",
+    toastEndFailed:
+      "Impossibile salvare il riepilogo. Le note sono ancora qui — riprova Termina.",
   },
   briefing: {
     title: "Briefing",
@@ -617,7 +623,7 @@ export const itSecondBrainLocaleSlice = {
     pairSessionExpired:
       "Accesso Exo scaduto. Accedi di nuovo (menu profilo), poi tocca Riprova QR e copia un codice nuovo.",
     pairKeyUnreadable:
-      "Impossibile leggere la chiave sync dal Portachiavi. Sblocca il Portachiavi macOS, oppure disattiva e riattiva Sync dopo un reset dati — poi copia un codice nuovo.",
+      "Impossibile leggere la chiave sync dal Portachiavi. Sblocca il Portachiavi macOS, oppure installa un Exo firmato (stesso Developer ID). Non cancellare i dati locali.",
     pairRetry: "Riprova QR",
   },
 } as const;

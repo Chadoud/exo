@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS candidates (
     subject TEXT NOT NULL DEFAULT '',
     draft_subject TEXT NOT NULL DEFAULT '',
     draft_body TEXT NOT NULL DEFAULT '',
+    inbound_snippet TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
     UNIQUE(account_id, thread_id)
 );
@@ -93,6 +94,7 @@ def _conn() -> Generator[sqlite3.Connection, None, None]:
 _DRAFT_COLS = (
     ("draft_subject", "TEXT NOT NULL DEFAULT ''"),
     ("draft_body", "TEXT NOT NULL DEFAULT ''"),
+    ("inbound_snippet", "TEXT NOT NULL DEFAULT ''"),
 )
 
 
@@ -242,6 +244,7 @@ def _candidate_from_row(row: sqlite3.Row) -> dict[str, Any]:
         "subject": str(row["subject"] or ""),
         "draft_subject": str(row["draft_subject"] or "") if "draft_subject" in row.keys() else "",
         "draft_body": str(row["draft_body"] or "") if "draft_body" in row.keys() else "",
+        "inbound_snippet": str(row["inbound_snippet"] or "") if "inbound_snippet" in row.keys() else "",
         "created_at": str(row["created_at"]),
     }
 
@@ -290,6 +293,7 @@ def upsert_candidate(
     subject: str,
     draft_subject: str = "",
     draft_body: str = "",
+    inbound_snippet: str = "",
 ) -> dict[str, Any]:
     now = _now().isoformat()
     payload = json.dumps(message_ids, ensure_ascii=False)
@@ -297,8 +301,9 @@ def upsert_candidate(
         conn.execute(
             "INSERT INTO candidates "
             "(account_id, thread_id, message_ids_json, last_message_id, "
-            "from_name, from_email, subject, draft_subject, draft_body, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "from_name, from_email, subject, draft_subject, draft_body, "
+            "inbound_snippet, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(account_id, thread_id) DO UPDATE SET "
             "message_ids_json=excluded.message_ids_json, "
             "last_message_id=excluded.last_message_id, "
@@ -312,7 +317,10 @@ def upsert_candidate(
             "draft_body=CASE "
             "WHEN excluded.last_message_id = candidates.last_message_id "
             "AND excluded.draft_body = '' THEN candidates.draft_body "
-            "ELSE excluded.draft_body END",
+            "ELSE excluded.draft_body END, "
+            "inbound_snippet=CASE "
+            "WHEN excluded.inbound_snippet = '' THEN candidates.inbound_snippet "
+            "ELSE excluded.inbound_snippet END",
             (
                 _ACCOUNT,
                 thread_id,
@@ -323,6 +331,7 @@ def upsert_candidate(
                 subject[:200],
                 draft_subject[:200],
                 draft_body[:8000],
+                inbound_snippet[:1500],
                 now,
             ),
         )
@@ -370,6 +379,7 @@ def replace_candidates(keep: list[dict[str, Any]]) -> None:
             subject=str(item.get("subject") or ""),
             draft_subject=str(item.get("draft_subject") or ""),
             draft_body=str(item.get("draft_body") or ""),
+            inbound_snippet=str(item.get("inbound_snippet") or ""),
         )
 
 

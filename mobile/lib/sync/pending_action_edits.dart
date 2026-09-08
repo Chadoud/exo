@@ -37,3 +37,33 @@ Future<bool> applyPendingActionConfirm({
   );
   return true;
 }
+
+/// Tombstone Inbox drafts joined to these tasks so they leave with the task.
+Future<int> applyJoinedPendingDeletes({
+  required LocalBrainStore store,
+  required Iterable<String> taskRecordIds,
+  required String now,
+  required String deviceId,
+}) async {
+  final want = {for (final id in taskRecordIds) id.trim()}.difference({''});
+  if (want.isEmpty) return 0;
+  final rows = await store.listByCollection(pendingActionsCollection);
+  var changed = 0;
+  for (final row in rows) {
+    if (LocalBrainStore.rowIsPendingDelete(row)) continue;
+    final payload = pendingActionPayloadOf(row);
+    if (!want.contains(pendingActionTaskRecordId(payload))) continue;
+    final recordId = row['record_id']?.toString().trim() ?? '';
+    if (recordId.isEmpty) continue;
+    await store.applyLocalDelete(
+      collection: pendingActionsCollection,
+      recordId: recordId,
+      payloadJson: row['payload_json'] as String? ?? '{}',
+      updatedAt: now,
+      logicalClock: SyncCrypto.logicalClock(now, recordId),
+      deviceId: deviceId,
+    );
+    changed++;
+  }
+  return changed;
+}

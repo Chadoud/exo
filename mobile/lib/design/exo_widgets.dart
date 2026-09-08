@@ -121,7 +121,7 @@ class ExoPrimaryButton extends StatelessWidget {
                 const SizedBox(
                   height: 16,
                   width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: ExoColors.textPrimary),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: ExoColors.onButton),
                 ),
                 const SizedBox(width: ExoSpacing.sm),
                 Text(label),

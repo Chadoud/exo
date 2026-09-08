@@ -41,11 +41,11 @@ function migrateLegacyPrefs(userData) {
   }
 }
 
-/** Default true: keep refresh token after closing the app. */
+/** Default false: clear the cloud session on quit unless the user opts in. */
 function getRememberDevice(userData) {
   migrateLegacyPrefs(userData);
-  const d = readJsonSafe(prefsPath(userData), { rememberDevice: true });
-  return d.rememberDevice !== false;
+  const d = readJsonSafe(prefsPath(userData), { rememberDevice: false });
+  return d.rememberDevice === true;
 }
 
 function setRememberDevice(userData, value) {

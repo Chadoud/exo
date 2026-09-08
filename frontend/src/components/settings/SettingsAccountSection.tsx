@@ -47,6 +47,7 @@ export default function SettingsAccountSection({
   const run = async (mode: "register" | "login") => {
     setBusy(true);
     try {
+      await setRememberDevice(rememberDevice);
       const result = await performCloudAuth(
         mode,
         email,

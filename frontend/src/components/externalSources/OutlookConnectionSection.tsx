@@ -9,6 +9,7 @@ import { useDesktopOAuthCardState } from "../../hooks/useDesktopOAuthCardState";
 import {
   forgetIntegrationSourcesBestEffort,
   refreshIntegrationTasksBestEffort,
+  resumeIntegrationSourcesBestEffort,
 } from "../../utils/forgetIntegrationTasks";
 import SourceAccountLine from "./SourceAccountLine";
 
@@ -37,7 +38,10 @@ export default function OutlookConnectionSection({
       providerId: PROVIDER_ID,
       integrationChangedEvent: MICROSOFT_INTEGRATION_CHANGED_EVENT,
       onConnected: () => {
-        if (backendOnline) refreshIntegrationTasksBestEffort();
+        if (backendOnline) {
+          resumeIntegrationSourcesBestEffort(["outlook", "outlook-calendar"]);
+          refreshIntegrationTasksBestEffort();
+        }
       },
       onDisconnected: () => {
         if (backendOnline) {

@@ -531,7 +531,11 @@ function registerAppHandlers() {
   });
   ipcMain.handle("sync:runNow", async () => {
     const userData = app.getPath("userData");
-    return syncWorker.runSyncOnce(userData);
+    try {
+      return await syncWorker.runSyncOnce(userData);
+    } catch (err) {
+      return { ok: false, error: String(err?.message ?? err) };
+    }
   });
   ipcMain.handle("sync:getPairingQr", async (event) => {
     const denied = rejectUntrustedSender(event);

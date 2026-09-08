@@ -76,6 +76,7 @@ export default function CloudAuthScreen({ onSignedIn }: CloudAuthScreenProps) {
   const runEmail = async (mode: EmailMode) => {
     setBusy(true);
     try {
+      await setRememberDevice(rememberDevice);
       const result = await performCloudAuth(
         mode,
         email,
@@ -105,6 +106,7 @@ export default function CloudAuthScreen({ onSignedIn }: CloudAuthScreenProps) {
     setBusy(true);
     setPendingSocialProvider(provider);
     try {
+      await setRememberDevice(rememberDevice);
       const result = await performSocialLogin(provider);
       if (result.ok) {
         trackAccountSignedIn();

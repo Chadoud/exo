@@ -66,6 +66,53 @@ def test_nudges_rate_limited(env, monkeypatch):
     assert nudges.generate_nudges() == []
 
 
+def test_collapse_failed_tasks_nudges_and_skip_create(env, monkeypatch):
+    nudges = env[4]
+    with nudges._conn() as conn:
+        nudges._add(conn, "suggestion", nudges.FAILED_TASKS_NUDGE_TITLE, "1 failed.", {})
+        nudges._add(
+            conn,
+            "suggestion",
+            "Try a recap",
+            "You asked.",
+            {},
+        )
+        conn.commit()
+    from datetime import UTC, datetime
+
+    now = datetime.now(UTC).isoformat()
+    with nudges._conn() as conn:
+        conn.execute(
+            "INSERT INTO nudges (kind, title, body, meta_json, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "suggestion",
+                nudges.FAILED_TASKS_NUDGE_TITLE,
+                "1 failed.",
+                "{}",
+                now,
+                now,
+            ),
+        )
+        conn.commit()
+    assert nudges.collapse_failed_tasks_nudges() == 2
+    open_titles = [n["title"] for n in nudges.list_nudges()]
+    assert open_titles == ["Try a recap"]
+    monkeypatch.setattr(
+        nudges,
+        "_suggestion_candidates",
+        lambda: [
+            ("suggestion", nudges.FAILED_TASKS_NUDGE_TITLE, "1 failed.", {}),
+            ("suggestion", "Fresh idea", "because", {}),
+        ],
+    )
+    # Bypass the skip inside _suggestion_candidates by calling generate after collapse.
+    monkeypatch.setattr(nudges, "_due_task_candidates", lambda: [])
+    created = nudges.generate_nudges()
+    titles = {c["title"] for c in created}
+    assert nudges.FAILED_TASKS_NUDGE_TITLE not in titles
+
+
 def test_nudge_dismiss(env, monkeypatch):
     nudges = env[4]
     monkeypatch.setattr(nudges, "_suggestion_candidates", lambda: [("suggestion", "One", "r", {})])

@@ -381,12 +381,17 @@ export const frSecondBrainLocaleSlice = {
     titlePlaceholder: "Titre de la réunion (facultatif)",
     start: "Démarrer la réunion",
     starting: "Démarrage…",
-    transcribeToggle:
-      "Transcrire mon microphone (les notes apparaissent automatiquement quand vous parlez)",
+    transcribeToggle: "Transformer ce que je dis en notes",
     micDenied:
-      "L'accès au micro est désactivé — saisissez des notes ci-dessous, ou activez l'accès et redémarrez la réunion.",
+      "L'accès au micro est désactivé — saisissez des notes ci-dessous, ou activez le micro et réessayez l'écoute.",
     transcribeUnavailable:
-      "Transcription audio indisponible ({error}). Vous pouvez saisir des notes ci-dessous.",
+      "Impossible de transformer la parole en notes. Vous pouvez encore écrire ci-dessous.",
+    notesOnly: "Notes uniquement",
+    notesEmptyListening: "Parlez — les notes apparaîtront ici.",
+    retryListening: "Réessayer l'écoute",
+    closeConfirm: "Terminer cette réunion et enregistrer les notes ?",
+    closeConfirmBody: "Terminer coupe le micro et enregistre vos notes.",
+    keepListening: "Continuer l'écoute",
     notePlaceholder: "Saisissez ce qui a été dit ou un point clé…",
     add: "Ajouter",
     end: "Terminer & résumer",
@@ -396,13 +401,14 @@ export const frSecondBrainLocaleSlice = {
     defaultTitle: "Réunion",
     actionItemsSavedOne: "{n} action enregistrée",
     actionItemsSavedOther: "{n} actions enregistrées",
-    toastRecordingStarted: "Enregistrement de la réunion démarré",
+    toastRecordingStarted: "À l'écoute — les notes apparaîtront pendant que vous parlez.",
     toastStarted: "Réunion démarrée",
-    toastStartFailed: "Impossible de démarrer la réunion",
+    toastStartFailed: "Impossible de démarrer la réunion. Réessayez.",
     toastAddFailed: "Impossible d'ajouter la note",
     toastTooShort: "Réunion trop courte pour être résumée",
     toastSaved: "Réunion enregistrée",
-    toastEndFailed: "Impossible de terminer la réunion",
+    toastEndFailed:
+      "Impossible d'enregistrer le résumé. Vos notes sont toujours là — réessayez Terminer.",
   },
   briefing: {
     title: "Briefing",
@@ -618,7 +624,7 @@ export const frSecondBrainLocaleSlice = {
     pairSessionExpired:
       "Votre connexion Exo a expiré. Reconnectez-vous (menu profil), puis appuyez sur Réessayer le QR et copiez un nouveau code.",
     pairKeyUnreadable:
-      "Impossible de lire la clé de sync dans le trousseau. Déverrouillez le trousseau macOS, ou désactivez puis réactivez Sync après une réinitialisation — puis copiez un nouveau code.",
+      "Impossible de lire la clé de sync dans le trousseau. Déverrouillez le trousseau macOS, ou installez un Exo signé (le même Developer ID). N'effacez pas les données locales.",
     pairRetry: "Réessayer le QR",
   },
 } as const;

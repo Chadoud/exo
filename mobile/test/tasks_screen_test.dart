@@ -3,10 +3,13 @@ import 'dart:io';
 
 import 'package:exosites_mobile/app/mobile_sync_config.dart';
 import 'package:exosites_mobile/design/exo_theme.dart';
+import 'package:exosites_mobile/features/tasks/task_detail_sheet.dart';
+import 'package:exosites_mobile/features/tasks/task_due_label.dart';
 import 'package:exosites_mobile/features/tasks/task_list_tile.dart';
 import 'package:exosites_mobile/features/tasks/tasks_screen.dart';
 import 'package:exosites_mobile/sync/key_value_store.dart';
 import 'package:exosites_mobile/sync/local_store.dart';
+import 'package:exosites_mobile/sync/task_source_forget.dart';
 import 'package:exosites_mobile/sync/user_messages.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,6 +36,38 @@ void main() {
     expect(TaskListTile.isCompleted({'completed': true}), isTrue);
     expect(TaskListTile.isCompleted({'completed': 0}), isFalse);
     expect(TaskListTile.metaLine({'completed': true}), SyncUserMessages.taskCompletedLabel);
+    expect(
+      TaskListTile.metaLine(
+        {'due_at': '2026-09-07T09:00:00'},
+        now: DateTime(2026, 9, 7, 12),
+        locale: const Locale('en'),
+      ),
+      'Today',
+    );
+  });
+
+  test('relative due labels', () {
+    final now = DateTime(2026, 9, 7, 15);
+    expect(
+      formatTaskDue(DateTime(2026, 9, 7, 9), now: now, french: false),
+      'Today',
+    );
+    expect(
+      formatTaskDue(DateTime(2026, 9, 8, 9), now: now, french: false),
+      'Tomorrow',
+    );
+    expect(
+      formatTaskDue(DateTime(2026, 9, 6, 9), now: now, french: false),
+      'Overdue · Sep 6',
+    );
+    expect(
+      formatTaskDue(DateTime(2026, 9, 6, 9), now: now, french: true),
+      'En retard · 6 sept.',
+    );
+    expect(
+      taskDueIsOverdue({'due_at': '2026-09-06T09:00:00'}, now: now),
+      isTrue,
+    );
   });
 
   test('local store round-trips tasks collection', () async {
@@ -201,7 +236,7 @@ void main() {
     expect(find.text('Done already'), findsOneWidget);
   });
 
-  testWidgets('tapping the title selects; circle marks done and leaves Open', (tester) async {
+  testWidgets('tapping the title opens the sheet; circle marks done and leaves Open', (tester) async {
     final store = LocalBrainStore(databasePath: _tempDb());
     await tester.runAsync(() async {
       await store.clearAll();
@@ -220,16 +255,16 @@ void main() {
     expect(find.text('Buy stamps'), findsOneWidget);
 
     await tester.tap(find.text('Buy stamps'));
-    await tester.pump();
-    expect(find.text(SyncUserMessages.taskSelectAll), findsOneWidget);
-    expect(find.text('Buy stamps'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byType(TaskDetailSheet), findsOneWidget);
+    expect(find.text(SyncUserMessages.taskSelectAll), findsNothing);
     var row = (await tester.runAsync(() => store.listByCollection('tasks')))!.single;
     var payload = jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
     expect(payload['completed'], isFalse);
 
-    await tester.tap(find.text(SyncUserMessages.cancel));
-    await tester.pump();
-    expect(find.text(SyncUserMessages.taskSelectAll), findsNothing);
+    await tester.tapAt(const Offset(12, 12));
+    await tester.pumpAndSettle();
+    expect(find.byType(TaskDetailSheet), findsNothing);
 
     await tester.tap(find.bySemanticsLabel(SyncUserMessages.taskMarkDone));
     await _waitUntil(tester, () => find.text('Buy stamps').evaluate().isEmpty);
@@ -319,7 +354,7 @@ void main() {
     });
     await _pumpedTasks(tester, store);
 
-    await tester.tap(find.text('Prepare for: Team standup'));
+    await tester.longPress(find.text('Prepare for: Team standup'));
     await tester.pump();
     await tester.tap(find.text(SyncUserMessages.taskRemove));
     await tester.pump();
@@ -357,32 +392,129 @@ void main() {
     expect(await store.listPendingPush(), hasLength(1));
   });
 
-  testWidgets('ready mail action shows review card and honest send copy', (tester) async {
+  test('deleteTasks also tombstones the joined Inbox draft', () async {
+    final store = LocalBrainStore(databasePath: _tempDb());
+    await store.clearAll();
+    await store.upsertRecord(
+      collection: 'tasks',
+      recordId: '5',
+      payloadJson: jsonEncode({
+        'description': 'Reply to Ada',
+        'completed': false,
+      }),
+      updatedAt: '2026-08-01T00:00:00Z',
+      logicalClock: 10,
+      deviceId: 'desktop-1',
+    );
+    await store.upsertRecord(
+      collection: 'pending_actions',
+      recordId: 'mail_reply:9',
+      payloadJson: jsonEncode({
+        'type': 'mail_reply',
+        'status': 'ready',
+        'task_record_id': '5',
+        'subject': 'Re: Lunch',
+      }),
+      updatedAt: '2026-09-07T00:00:00Z',
+      logicalClock: 4,
+      deviceId: 'desktop-1',
+    );
+    final config = MobileSyncConfig(
+      storage: MemoryKeyValueStore(),
+      localStore: store,
+    );
+    await config.hydrate();
+
+    expect(await config.deleteTasks(recordIds: ['5']), 1);
+    final inbox = (await store.listByCollection('pending_actions')).single;
+    expect(LocalBrainStore.rowIsPendingDelete(inbox), isTrue);
+    final pending = await store.listPendingPush();
+    expect(pending, hasLength(2));
+  });
+
+  testWidgets('gmail task offers Stop when desktop advertised capability', (tester) async {
     final store = LocalBrainStore(databasePath: _tempDb());
     await tester.runAsync(() async {
       await store.clearAll();
+      await store.upsertRecord(
+        collection: 'tasks',
+        recordId: sourceForgetCapabilityId,
+        payloadJson: '{"capability":"source_forget_v1"}',
+      );
+      await store.upsertRecord(
+        collection: 'tasks',
+        recordId: '8',
+        payloadJson: jsonEncode({
+          'description': 'Starred mail',
+          'source': 'gmail',
+          'completed': false,
+        }),
+        updatedAt: '2026-09-01T00:00:00Z',
+      );
+    });
+    await _pumpedTasks(tester, store, paired: true);
+    await tester.tap(find.text('Starred mail'));
+    await tester.pumpAndSettle();
+    expect(find.text('From Gmail'), findsOneWidget);
+    expect(find.text('Stop adding from Gmail'), findsOneWidget);
+  });
+
+  testWidgets('tapping a joined mail task opens Inbox instead of the sheet', (tester) async {
+    final store = LocalBrainStore(databasePath: _tempDb());
+    await tester.runAsync(() async {
+      await store.clearAll();
+      await store.upsertRecord(
+        collection: 'tasks',
+        recordId: '5',
+        payloadJson: jsonEncode({
+          'description': 'Reply to Ada',
+          'completed': false,
+        }),
+        updatedAt: '2026-08-01T00:00:00Z',
+      );
       await store.upsertRecord(
         collection: 'pending_actions',
         recordId: 'mail_reply:9',
         payloadJson: jsonEncode({
           'type': 'mail_reply',
           'status': 'ready',
-          'to_email': 'ada@example.com',
+          'task_record_id': '5',
           'subject': 'Re: Lunch',
           'body': 'See you at noon',
         }),
         updatedAt: '2026-09-07T00:00:00Z',
       );
     });
-    await _pumpedTasks(tester, store, paired: true);
-    expect(find.text('Ready to review'), findsOneWidget);
-    expect(find.text('Re: Lunch'), findsWidgets);
-    await tester.tap(find.text('Send this draft?'));
-    await tester.pump();
-    expect(
-      find.text('It will send when Exo is open on your computer. Nothing sends itself.'),
-      findsOneWidget,
+    String? opened;
+    final storage = MemoryKeyValueStore();
+    await storage.write('access_token', 'tok');
+    await storage.write('sync_paired', '1');
+    final config = MobileSyncConfig(storage: storage, localStore: store);
+    await tester.runAsync(config.hydrate);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ExoTheme.dark(),
+        home: Scaffold(
+          body: TasksScreen(
+            config: config,
+            onOpenInbox: (id) => opened = id,
+          ),
+        ),
+      ),
     );
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    });
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    });
+    await tester.pump();
+
+    await tester.tap(find.text('Reply to Ada'));
+    await tester.pump();
+    expect(opened, 'mail_reply:9');
+    expect(find.byType(TaskDetailSheet), findsNothing);
   });
 }
 

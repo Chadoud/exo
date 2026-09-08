@@ -26,6 +26,7 @@ import { relayConnectorTokens } from "../../assistant/connectorContext";
 import {
   forgetIntegrationSourcesBestEffort,
   refreshIntegrationTasksBestEffort,
+  resumeIntegrationSourcesBestEffort,
   refreshMailRepliesBestEffort,
 } from "../../utils/forgetIntegrationTasks";
 import { useI18n } from "../../i18n/I18nContext";
@@ -108,6 +109,7 @@ export default function GmailConnectionSection({
           await relayConnectorTokens();
           toast.message(t("sources.gmailConnectSuccess"));
           notifyGoogleIntegrationChanged();
+          resumeIntegrationSourcesBestEffort(["gmail"]);
           refreshIntegrationTasksBestEffort();
           refreshMailRepliesBestEffort();
         } else {
@@ -165,6 +167,7 @@ export default function GmailConnectionSection({
       }
       if (finalStatus.connected) {
         toast.message(t("sources.gmailConnectSuccess"));
+        resumeIntegrationSourcesBestEffort(["gmail"]);
         refreshIntegrationTasksBestEffort();
         refreshMailRepliesBestEffort();
       } else if (finalStatus.oauth_flow_error) {

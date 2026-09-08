@@ -1,4 +1,4 @@
-"""Background compose after metadata harvest. No send token. No inbound body at rest."""
+"""Background compose after metadata harvest. No send token. Inbound snippet capped at rest."""
 
 from __future__ import annotations
 
@@ -95,6 +95,7 @@ def fill_drafts(
             and str(prior.get("last_message_id") or "") == last_id
             and str(prior.get("draft_body") or "").strip()
         ):
+            snippet = ""
             meta = cand.get("_meta")
             if isinstance(meta, dict):
                 last = _last_message(meta)
@@ -103,7 +104,12 @@ def fill_drafts(
                 if reason:
                     drops[reason] = drops.get(reason, 0) + 1
                     continue
-            ready.append(_public_cand(cand, prior))
+            ready.append(
+                _public_cand(
+                    {**cand, "inbound_snippet": snippet[:1500]},
+                    prior,
+                )
+            )
             continue
         try:
             thread = get_full(thread_id)
@@ -127,7 +133,16 @@ def fill_drafts(
         if not body.strip():
             drops["empty_body"] = drops.get("empty_body", 0) + 1
             continue
-        ready.append(_public_cand({**cand, "draft_subject": subject, "draft_body": body}))
+        ready.append(
+            _public_cand(
+                {
+                    **cand,
+                    "draft_subject": subject,
+                    "draft_body": body,
+                    "inbound_snippet": last_text[:1500],
+                }
+            )
+        )
     return ready, drops
 
 
@@ -136,4 +151,6 @@ def _public_cand(cand: dict[str, Any], prior: dict[str, Any] | None = None) -> d
     if prior:
         out["draft_subject"] = str(prior.get("draft_subject") or "")
         out["draft_body"] = str(prior.get("draft_body") or "")
+        if not str(out.get("inbound_snippet") or "").strip():
+            out["inbound_snippet"] = str(prior.get("inbound_snippet") or "")
     return out

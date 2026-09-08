@@ -25,4 +25,10 @@ test("isBenignBackgroundError matches updater / noble packaging noise", () => {
   assert.equal(isBenignBackgroundError("latest.json signature rejected: missing_sig"), true);
   assert.equal(isBenignBackgroundError("write EPIPE"), true);
   assert.equal(isBenignBackgroundError("Something unrelated exploded"), false);
+  assert.equal(
+    isBenignBackgroundError(
+      "sync_master_key_unreadable: Error while decrypting the ciphertext provided to safeStorage.decryptString",
+    ),
+    true,
+  );
 });

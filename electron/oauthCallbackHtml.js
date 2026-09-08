@@ -36,12 +36,12 @@ function brandedShell({ variant, headline, bodyHtml }) {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #0f0b2e;
-      --surface: color-mix(in srgb, #0f0b2e 88%, #4f46e5 12%);
-      --accent: #6366f1;
-      --accent-hover: #312e81;
+      --surface: color-mix(in srgb, #0f0b2e 88%, #2a2554 12%);
+      --accent: color-mix(in srgb, #ffffff 62%, #0f0b2e 38%);
+      --accent-hover: #2a2554;
       --text: #eef2ff;
-      --muted: color-mix(in srgb, #eef2ff 55%, #4f46e5 45%);
-      --border: color-mix(in srgb, #3730a3 70%, #0f0b2e 30%);
+      --muted: color-mix(in srgb, #eef2ff 55%, #2a2554 45%);
+      --border: color-mix(in srgb, #2a2554 70%, #0f0b2e 30%);
       --success: #4caf7d;
       --error: #ef5350;
     }

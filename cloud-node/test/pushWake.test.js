@@ -90,7 +90,7 @@ test("wakeAccount rate-limits and invalidates dead tokens", async () => {
   assert.equal(limited.length, 10);
 });
 
-test("pushBlobs still rejects unknown collections except pending_actions", async () => {
+test("pushBlobs accepts inbox collections and rejects unknown ones", async () => {
   delete require.cache[require.resolve("../lib/syncRelay")];
   delete require.cache[require.resolve("../lib/db")];
   const mock = createSyncMockPool();
@@ -98,7 +98,7 @@ test("pushBlobs still rejects unknown collections except pending_actions", async
   const syncRelay = require("../lib/syncRelay");
   const bad = await syncRelay.pushBlobs("acc", [
     {
-      collection: "nudges",
+      collection: "calendar_events",
       record_id: "1",
       device_id: "d",
       logical_clock: 1,
@@ -122,6 +122,28 @@ test("pushBlobs still rejects unknown collections except pending_actions", async
       ciphertext: "x",
       content_hash: "b".repeat(64),
     },
+    {
+      collection: "nudges",
+      record_id: "1",
+      device_id: "d",
+      logical_clock: 1,
+      updated_at: "2026-09-07T00:00:00Z",
+      deleted: false,
+      schema_version: 2,
+      ciphertext: "y",
+      content_hash: "c".repeat(64),
+    },
+    {
+      collection: "agent_failures",
+      record_id: "9",
+      device_id: "d",
+      logical_clock: 1,
+      updated_at: "2026-09-07T00:00:00Z",
+      deleted: false,
+      schema_version: 2,
+      ciphertext: "z",
+      content_hash: "d".repeat(64),
+    },
   ]);
-  assert.equal(ok.accepted, 1);
+  assert.equal(ok.accepted, 3);
 });

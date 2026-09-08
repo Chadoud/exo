@@ -9,6 +9,8 @@ const ALLOWED_COLLECTIONS = new Set([
   "tasks",
   "activity_entries",
   "pending_actions",
+  "nudges",
+  "agent_failures",
 ]);
 const MAX_CIPHERTEXT_CHARS = 2_000_000;
 const PAIRING_GRANT_TTL_MS = 30 * 60 * 1000;

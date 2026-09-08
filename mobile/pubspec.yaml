@@ -1,7 +1,7 @@
 name: exosites_mobile
 description: Exo second brain — mobile capture + GO SYNC client
 publish_to: none
-version: 0.2.2+5
+version: 0.2.5+10
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -40,9 +40,9 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   # Solid canvas only — cube draws itself in Flutter (ExoBootScreen).
-  color: "#0C0B14"
+  color: "#FFFFFF"
   android_12:
-    color: "#0C0B14"
+    color: "#FFFFFF"
 
 flutter:
   # iOS 18 LLDB attach SIGKILLs debug launches on this device.

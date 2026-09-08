@@ -75,4 +75,24 @@ void main() {
       isFalse,
     );
   });
+
+  test('countReadyPendingActions counts ready rows only', () {
+    expect(
+      countReadyPendingActions([
+        {
+          'record_id': 'a',
+          'payload_json': jsonEncode({'status': 'ready'}),
+        },
+        {
+          'record_id': 'b',
+          'payload_json': jsonEncode({'status': 'confirmed'}),
+        },
+        {
+          'record_id': 'c',
+          'payload_json': jsonEncode({'status': 'ready'}),
+        },
+      ]),
+      2,
+    );
+  });
 }

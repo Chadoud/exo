@@ -140,6 +140,12 @@ abstract final class SyncUserMessages {
   static String searchNoMatchesSubtitle(String query) =>
       'Nothing matched “$query”.';
 
+  // Inbox tab — drafts / nudges / failures to review
+  static const inboxTitle = 'Inbox';
+  static const inboxEmptyTitle = 'Nothing to review';
+  static const inboxEmptySubtitle =
+      'When EXO drafts a reply or needs a look, it shows up here.';
+
   // Tasks tab — synced desktop tasks; AI draft/review execute is later
   static const actionsTitle = 'Tasks';
   static const tasksTitle = 'Tasks';

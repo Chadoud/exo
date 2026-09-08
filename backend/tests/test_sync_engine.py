@@ -80,6 +80,7 @@ class TestSyncEngine(unittest.TestCase):
         self.assertGreaterEqual(result.get("blob_count", 0), 1)
         self.assertEqual(result["next_pull_cursor"], 7)
         self.assertEqual(result["pull"]["applied"], 0)
+        self.assertFalse(sync_export.inbox_backfill_pending())
 
     @patch("sync_engine.httpx.Client")
     def test_run_sync_cycle_pull_failure_degrades_to_push(
@@ -112,3 +113,30 @@ class TestSyncEngine(unittest.TestCase):
         resp = httpx.Response(401, request=req)
         exc = httpx.HTTPStatusError("401", request=req, response=resp)
         self.assertEqual(self.sync_engine.pull_failure_info(exc)["error"], "session_expired")
+
+    @patch("sync_engine.httpx.Client")
+    def test_run_sync_cycle_push_failure_leaves_inbox_backfill_pending(
+        self, client_cls: MagicMock
+    ) -> None:
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.get.return_value.json.return_value = {
+            "blobs": [],
+            "cursor": 0,
+            "has_more": False,
+        }
+        mock_client.get.return_value.raise_for_status = MagicMock()
+        mock_client.post.side_effect = RuntimeError("push boom")
+        client_cls.return_value = mock_client
+
+        assistant_memory.update_memory("notes", "push-fail", "x", conversation_id=None)
+        result = self.sync_engine.run_sync_cycle(
+            cloud_url="https://relay.example.com",
+            access_token="tok",
+            master_key_b64=base64.b64encode(self.master_key).decode("ascii"),
+            device_id="dev-1",
+            account_id="550e8400-e29b-41d4-a716-446655440000",
+        )
+        self.assertFalse(result["ok"])
+        self.assertTrue(sync_export.inbox_backfill_pending())

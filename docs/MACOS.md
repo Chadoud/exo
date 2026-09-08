@@ -18,6 +18,8 @@ npm run build:mac                    # native Exo-{arm64|x64}.dmg (smaller)
 EXO_MAC_UNIVERSAL=1 npm run build:mac  # universal Exo-universal.dmg (like CI)
 ```
 
+Testers who already run a Developer ID Exo need a **signed** DMG (Keychain auto-discovery, or `MAC_SIGN_IDENTITY`). `CSC_IDENTITY_AUTO_DISCOVERY=false` is the unsigned smoke path only — it cannot open that install’s sync key.
+
 ## Install
 
 1. Open the `.dmg`.

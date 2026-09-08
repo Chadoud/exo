@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 /** Loads and persists “stay signed in on this device” (Electron cloud auth prefs). */
 export function useRememberDevicePreference() {
-  const [rememberDevice, setRememberState] = useState(true);
+  const [rememberDevice, setRememberState] = useState(false);
 
   useEffect(() => {
     void (async () => {

@@ -5,7 +5,11 @@ import type { MemorySubTab } from "../utils/memoryUi";
 import type { TodoSubTab } from "../utils/todoUi";
 import type { SettingsNavTab } from "../utils/settingsNav";
 import type { MainNavGroup, MainNavItem, MainNavTab } from "../hooks/useMainNavItems";
+import { useSidebarNavExpand } from "../hooks/useSidebarNavExpand";
+import { hasSidebarDropdown } from "../utils/sidebarNavExpand";
 import { SIDEBAR_SUBNAV_ACTIVE_CLASS } from "../utils/styles";
+
+const CHEVRON_DOWN_PATH = "M19.5 8.25 12 15.75 4.5 8.25";
 
 type SidebarNavProps = {
   items: MainNavItem[];
@@ -49,6 +53,8 @@ type NavButtonProps = {
   installingModel: boolean;
   /** Nested items render smaller and indented to read as children. */
   isChild?: boolean;
+  hasDropdown?: boolean;
+  dropdownOpen?: boolean;
 };
 
 function isNavItemActive(
@@ -112,10 +118,12 @@ function NavButton({
   isAwaitingApproval,
   installingModel,
   isChild = false,
+  hasDropdown = false,
+  dropdownOpen = false,
 }: NavButtonProps) {
   const { id, label, icon, badge, shortcutKey, memorySubTab: itemMemorySubTab, todoSubTab: itemTodoSubTab, settingsSubTab: itemSettingsSubTab } =
     item;
-  const isActive = isNavItemActive(
+  const childActive = isNavItemActive(
     item,
     activeTab,
     memorySubTab,
@@ -128,6 +136,12 @@ function NavButton({
     settingsShowAllSections,
     settingsHighlightedSubTab,
   );
+  const ownsCollapsedRoute =
+    !isChild &&
+    hasDropdown &&
+    !dropdownOpen &&
+    (activeTab === id || Boolean(item.children?.some((child) => child.id === activeTab)));
+  const isActive = ownsCollapsedRoute || childActive;
   const isParentWithChildren =
     !isChild &&
     ((id === "memories" && item.children?.some((c) => c.memorySubTab !== undefined)) ||
@@ -138,6 +152,8 @@ function NavButton({
     <button
       type="button"
       data-tour={`nav-${item.navKey ?? id}`}
+      aria-expanded={hasDropdown ? dropdownOpen : undefined}
+      aria-controls={hasDropdown ? `sidebar-subnav-${id}` : undefined}
       title={translate(uiLocale, "navShortcutTitle", {
         label,
         shortcut: `${modShortcutLabel()}+${shortcutKey ?? ""}`,
@@ -190,16 +206,30 @@ function NavButton({
       </span>
       {id === "queue" && isAwaitingApproval && (
         <span
-          className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full motion-safe:animate-pulse
+          className={`w-2 h-2 shrink-0 rounded-full motion-safe:animate-pulse
           ${isActive ? "bg-white" : "bg-amber-400"}`}
         />
       )}
       {id === "settings" && !itemSettingsSubTab && installingModel && (
         <span
-          className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full motion-safe:animate-pulse
+          className={`w-2 h-2 shrink-0 rounded-full motion-safe:animate-pulse
           ${isActive ? "bg-white" : "bg-accent"}`}
         />
       )}
+      {hasDropdown ? (
+        <svg
+          className={`sidebar-nav-chevron h-3.5 w-3.5 shrink-0 transition-transform ${
+            dropdownOpen ? "rotate-180" : ""
+          }`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d={CHEVRON_DOWN_PATH} />
+        </svg>
+      ) : null}
     </button>
   );
 }
@@ -228,11 +258,15 @@ export default function SidebarNav({
   isAwaitingApproval,
   installingModel,
 }: SidebarNavProps) {
+  const { isExpanded, onParentActivate } = useSidebarNavExpand(items, activeTab);
+
   return (
     <nav className="flex flex-col gap-1 p-2">
       {items.map((item, index) => {
         const previousGroup = index > 0 ? items[index - 1]?.group : undefined;
         const showGroupHeader = item.group && item.group !== previousGroup;
+        const dropdown = hasSidebarDropdown(item);
+        const dropdownOpen = dropdown && isExpanded(item.id);
         return (
           <div key={item.navKey ?? item.id} className="flex flex-col gap-1">
             {showGroupHeader ? (
@@ -252,32 +286,41 @@ export default function SidebarNav({
               settingsHighlightedSubTab={settingsHighlightedSubTab}
               memoryHighlightedSubTab={memoryHighlightedSubTab}
               todoHighlightedSubTab={todoHighlightedSubTab}
-              onSelect={onSelect}
+              onSelect={(id, memory, settings, todo, openAll) => {
+                if (dropdown && onParentActivate(item.id) === "collapse") return;
+                onSelect(id, memory, settings, todo, openAll);
+              }}
               uiLocale={uiLocale}
               isAwaitingApproval={isAwaitingApproval}
               installingModel={installingModel}
+              hasDropdown={dropdown}
+              dropdownOpen={dropdownOpen}
             />
-            {item.children?.map((child) => (
-              <NavButton
-                key={child.navKey ?? child.id}
-                item={child}
-                activeTab={activeTab}
-                memorySubTab={memorySubTab}
-                memoryShowAllSections={memoryShowAllSections}
-                todoSubTab={todoSubTab}
-                todoShowAllSections={todoShowAllSections}
-                settingsSubTab={settingsSubTab}
-                settingsShowAllSections={settingsShowAllSections}
-                settingsHighlightedSubTab={settingsHighlightedSubTab}
-                memoryHighlightedSubTab={memoryHighlightedSubTab}
-                todoHighlightedSubTab={todoHighlightedSubTab}
-                onSelect={onSelect}
-                uiLocale={uiLocale}
-                isAwaitingApproval={isAwaitingApproval}
-                installingModel={installingModel}
-                isChild
-              />
-            ))}
+            {dropdown ? (
+              <div id={`sidebar-subnav-${item.id}`} role="group" hidden={!dropdownOpen}>
+                {item.children?.map((child) => (
+                  <NavButton
+                    key={child.navKey ?? child.id}
+                    item={child}
+                    activeTab={activeTab}
+                    memorySubTab={memorySubTab}
+                    memoryShowAllSections={memoryShowAllSections}
+                    todoSubTab={todoSubTab}
+                    todoShowAllSections={todoShowAllSections}
+                    settingsSubTab={settingsSubTab}
+                    settingsShowAllSections={settingsShowAllSections}
+                    settingsHighlightedSubTab={settingsHighlightedSubTab}
+                    memoryHighlightedSubTab={memoryHighlightedSubTab}
+                    todoHighlightedSubTab={todoHighlightedSubTab}
+                    onSelect={onSelect}
+                    uiLocale={uiLocale}
+                    isAwaitingApproval={isAwaitingApproval}
+                    installingModel={installingModel}
+                    isChild
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
         );
       })}

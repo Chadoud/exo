@@ -82,7 +82,9 @@ class _ReminderSettingsSectionState extends State<ReminderSettingsSection> {
               const Divider(height: 1),
               SwitchListTile(
                 title: Text(copy.lockScreenTitle),
-                subtitle: Text(copy.lockScreenSubtitle),
+                subtitle: Text(
+                  _enabled ? copy.lockScreenSubtitle : copy.lockScreenNeedsReminders,
+                ),
                 value: _lockDetail,
                 onChanged: _ready && _enabled ? _setLockDetail : null,
               ),

@@ -15,6 +15,7 @@ import '../sync/sync_engine.dart';
 import '../sync/sync_errors.dart';
 import '../sync/sync_failure.dart';
 import '../sync/stale_pull_cursor.dart';
+import '../sync/pending_action_edits.dart';
 import '../sync/task_local_edits.dart';
 
 /// Shared sync + auth configuration persisted in secure storage.
@@ -429,6 +430,7 @@ class MobileSyncConfig extends ChangeNotifier {
   }
 
   /// Remove tasks from this phone and push tombstones so desktop dismisses them.
+  /// Joined Inbox drafts leave with the task so they cannot linger after Remove.
   Future<int> deleteTasks({required List<String> recordIds}) async {
     final now = DateTime.now().toUtc().toIso8601String();
     var changed = 0;
@@ -443,14 +445,31 @@ class MobileSyncConfig extends ChangeNotifier {
         changed++;
       }
     }
+    final inboxDropped = await applyJoinedPendingDeletes(
+      store: _localStore,
+      taskRecordIds: recordIds,
+      now: now,
+      deviceId: _deviceIdSync,
+    );
+    if (changed == 0 && inboxDropped == 0) return 0;
+    if (changed == 0) {
+      _dataEpoch++;
+      notifyListeners();
+      unawaited(engine.pushPendingEdits().catchError((_) => 0));
+      return 0;
+    }
     return _afterTaskEdits(changed);
+  }
+
+  void noteLocalDataChanged() {
+    _dataEpoch++;
+    notifyListeners();
   }
 
   Future<int> _afterTaskEdits(int changed) async {
     if (changed == 0) return 0;
     _dataEpoch++;
     notifyListeners();
-    // Don't block the snack / list refresh on the relay — keep the edit queued.
     unawaited(
       engine.pushPendingEdits().catchError((_) => 0),
     );

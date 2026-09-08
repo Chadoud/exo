@@ -6,6 +6,25 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('shouldPlayBootIntro is false when the session is already connected', () {
+    expect(
+      shouldPlayBootIntro(signedIn: false, paired: false, onboardingComplete: false),
+      isTrue,
+    );
+    expect(
+      shouldPlayBootIntro(signedIn: true, paired: false, onboardingComplete: false),
+      isFalse,
+    );
+    expect(
+      shouldPlayBootIntro(signedIn: false, paired: true, onboardingComplete: false),
+      isFalse,
+    );
+    expect(
+      shouldPlayBootIntro(signedIn: false, paired: false, onboardingComplete: true),
+      isFalse,
+    );
+  });
+
   test('cube one-path has measurable stroke length', () {
     expect(exoCubeDrawPathLength(), greaterThan(400));
   });
@@ -54,6 +73,25 @@ void main() {
     // Hold is the same stroke painter — never a PNG brand mark.
     expect(find.byType(ExoCubeDraw), findsOneWidget);
     expect(find.byType(Image), findsNothing);
+  });
+
+  testWidgets('ExoCubeIntro skipAnimation completes without waiting for draw', (tester) async {
+    var done = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ExoCubeIntro(
+            skipAnimation: true,
+            duration: const Duration(milliseconds: 1400),
+            settleDuration: const Duration(milliseconds: 280),
+            onComplete: () => done = true,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(done, isTrue);
+    expect(find.byType(ExoCubeDraw), findsOneWidget);
   });
 
   testWidgets('ExoBootScreen does not show PNG mark while holding', (tester) async {

@@ -11,6 +11,7 @@ import '../../app/mobile_sync_config.dart';
 import '../../notifications/due_reminder_scope.dart';
 import 'pairing_screen.dart';
 import 'reminder_settings_section.dart';
+import 'source_stop_section.dart';
 import 'sync_debug_section.dart';
 
 /// Account, pairing, privacy — post-setup hub (no Profile tab).
@@ -146,6 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: _pair,
                 ),
                 const SizedBox(height: ExoSpacing.xl),
+                SourceStopSection(config: cfg),
                 ReminderSettingsSection(config: cfg),
                 const SizedBox(height: ExoSpacing.xl),
                 SyncDebugSection(config: cfg),

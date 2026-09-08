@@ -8,6 +8,9 @@ export const APP_DISPLAY_NAME = "Exo";
 /** Logo in `frontend/public/logo.png` — must stay relative for packaged Electron (`file://`). */
 export const APP_LOGO_URL = `${import.meta.env.BASE_URL}logo.png`;
 
+/** Phone-style Exo mark (`frontend/public/exo-app-icon.png`) — same cube as the iOS home-screen icon. */
+export const EXO_APP_ICON_URL = `${import.meta.env.BASE_URL}exo-app-icon.png`;
+
 /**
  * URL for a file under `frontend/public/`.
  * Avoid leading `/` — absolute paths break when the renderer loads from `file://`.

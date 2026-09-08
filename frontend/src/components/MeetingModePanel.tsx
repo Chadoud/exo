@@ -1,8 +1,8 @@
 /**
  * MeetingModePanel — live meeting notes with end-of-meeting summary extraction.
  *
- * Replaces the removed floating bar: start a session, capture what was said,
- * and on end the backend distills tasks + memories into the second brain.
+ * Start a session, capture what was said, and on end the backend distills
+ * tasks + memories into the second brain.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -19,6 +19,7 @@ import { useMeetingTranscription } from "../hooks/useMeetingTranscription";
 import { useI18n } from "../i18n/I18nContext";
 import { randomHexId } from "../utils/randomHexId";
 import { EntitlementBlockedError } from "../api/client";
+import MeetingLiveStatus from "./MeetingLiveStatus";
 import ProUpgradeCard from "./ProUpgradeCard";
 
 interface Props {
@@ -29,6 +30,10 @@ interface Props {
   proAllowed?: boolean;
   onUpgrade?: () => void;
   hideProCard?: boolean;
+  /** Drop the inner card chrome when this panel already sits in a modal. */
+  plain?: boolean;
+  onSessionActiveChange?: (active: boolean) => void;
+  bindEndSession?: (end: () => Promise<void>) => void;
 }
 
 const SYNC_INTERVAL_MS = 5000;
@@ -40,10 +45,18 @@ export default function MeetingModePanel({
   proAllowed = true,
   onUpgrade,
   hideProCard = false,
+  plain = false,
+  onSessionActiveChange,
+  bindEndSession,
 }: Props) {
   const { t } = useI18n();
   const { setActive } = useConversations();
-  const transcription = useMeetingTranscription();
+  const {
+    recording: listening,
+    issue: transcriptionIssue,
+    start: startTranscription,
+    stop: stopTranscription,
+  } = useMeetingTranscription();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [lines, setLines] = useState<string[]>([]);
@@ -51,6 +64,7 @@ export default function MeetingModePanel({
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState(false);
   const [recordAudio, setRecordAudio] = useState(true);
+  const [retrying, setRetrying] = useState(false);
   const [lastSummary, setLastSummary] = useState<MeetingSummary | null>(null);
   const [proBlocked, setProBlocked] = useState(false);
   const proLocked = !proAllowed || proBlocked;
@@ -70,6 +84,11 @@ export default function MeetingModePanel({
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
+  useEffect(() => {
+    onSessionActiveChange?.(Boolean(activeId));
+    return () => onSessionActiveChange?.(false);
+  }, [activeId, onSessionActiveChange]);
+
   const handleStart = async () => {
     const meetingTitle = title.trim() || t("meeting.defaultTitle");
     const id = randomHexId();
@@ -84,15 +103,16 @@ export default function MeetingModePanel({
         void syncNotes(id).catch(() => {});
       }, SYNC_INTERVAL_MS);
       if (recordAudio) {
-        // Best-effort: if the mic/STT isn't available the panel stays in manual mode.
-        await transcription.start(id);
+        const { listening: didListen } = await startTranscription(id);
+        toast.success(didListen ? t("meeting.toastRecordingStarted") : t("meeting.toastStarted"));
+      } else {
+        toast.success(t("meeting.toastStarted"));
       }
-      toast.success(recordAudio ? t("meeting.toastRecordingStarted") : t("meeting.toastStarted"));
     } catch (e) {
       if (e instanceof EntitlementBlockedError) {
         setProBlocked(true);
       } else {
-        toast.error(e instanceof Error ? e.message : t("meeting.toastStartFailed"));
+        toast.error(t("meeting.toastStartFailed"));
       }
     } finally {
       setStarting(false);
@@ -108,16 +128,16 @@ export default function MeetingModePanel({
       if (result.line_count != null) {
         await syncNotes(activeId);
       }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("meeting.toastAddFailed"));
+    } catch {
+      toast.error(t("meeting.toastAddFailed"));
     }
   };
 
-  const handleEnd = async () => {
+  const handleEnd = useCallback(async () => {
     if (!activeId) return;
     setEnding(true);
     stopPolling();
-    transcription.stop();
+    stopTranscription();
     try {
       const summary = await endMeeting(activeId);
       setLastSummary(summary);
@@ -133,29 +153,33 @@ export default function MeetingModePanel({
         toast.success(summary.title ? `${summary.title}${tasksLabel}` : t("meeting.toastSaved"));
       }
       onMeetingEnded?.(summary);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("meeting.toastEndFailed"));
+    } catch {
+      toast.error(t("meeting.toastEndFailed"));
     } finally {
       setEnding(false);
+    }
+  }, [activeId, onMeetingEnded, stopPolling, stopTranscription, t]);
+
+  useEffect(() => {
+    bindEndSession?.(() => handleEnd());
+  }, [bindEndSession, handleEnd]);
+
+  const handleRetryListening = async () => {
+    if (!activeId || retrying) return;
+    setRetrying(true);
+    try {
+      const { listening: didListen } = await startTranscription(activeId);
+      if (didListen) toast.success(t("meeting.toastRecordingStarted"));
+    } finally {
+      setRetrying(false);
     }
   };
 
   if (!backendOnline) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-bg-secondary p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted">{t("meeting.heading")}</p>
-          <p className="max-w-md text-xs text-muted">{t("meeting.desc")}</p>
-        </div>
-        {activeId && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-1 text-[11px] font-medium text-red-400">
-            <span className="h-2 w-2 rounded-full bg-red-500 motion-safe:animate-pulse" />
-            {transcription.recording ? t("meeting.listening") : t("meeting.recording")}
-          </span>
-        )}
-      </div>
+    <section className={plain ? "space-y-3" : "rounded-xl border border-border bg-bg-secondary p-4"}>
+      <p className="max-w-md text-xs text-muted">{t("meeting.desc")}</p>
 
       {proLocked && !hideProCard ? (
         <div className="mt-3">
@@ -195,13 +219,19 @@ export default function MeetingModePanel({
         </div>
       ) : (
         <div className="mt-3 space-y-3">
-          {transcription.error && (
-            <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
-              {transcription.micDenied
-                ? t("meeting.micDenied")
-                : t("meeting.transcribeUnavailable", { error: transcription.error })}
-            </p>
-          )}
+          <MeetingLiveStatus
+            listening={listening}
+            issue={transcriptionIssue}
+            notesEmpty={lines.length === 0}
+            listeningLabel={t("meeting.listening")}
+            notesOnlyLabel={t("meeting.notesOnly")}
+            micDeniedLabel={t("meeting.micDenied")}
+            unavailableLabel={t("meeting.transcribeUnavailable")}
+            retryLabel={t("meeting.retryListening")}
+            emptyListeningLabel={t("meeting.notesEmptyListening")}
+            retrying={retrying}
+            onRetry={() => void handleRetryListening()}
+          />
           <div className="flex gap-2">
             <input
               autoFocus

@@ -4,6 +4,10 @@ import { hasElectronBridge } from "../../utils/platform";
 import { describeIntegrationConnectFailure } from "../../utils/externalSourceConnectUi";
 import { useI18n } from "../../i18n/I18nContext";
 import {
+  refreshIntegrationTasksBestEffort,
+  resumeIntegrationSourcesBestEffort,
+} from "../../utils/forgetIntegrationTasks";
+import {
   MICROSOFT_INTEGRATION_CHANGED_EVENT,
   notifyMicrosoftIntegrationChanged,
 } from "./OneDriveConnectionSection";
@@ -58,6 +62,8 @@ export default function MicrosoftConnectAllButton() {
       const r = await window.electronAPI.integrationConnect({ providerId: PROVIDER_MICROSOFT });
       if (r.ok) {
         toast.message(t("sources.microsoftConnectAllSuccess"));
+        resumeIntegrationSourcesBestEffort(["outlook", "outlook-calendar"]);
+        refreshIntegrationTasksBestEffort();
         notifyMicrosoftIntegrationChanged();
       } else {
         toast.error(t("sources.microsoftConnectAllFailed"), {

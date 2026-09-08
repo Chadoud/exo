@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -6,18 +8,21 @@ import 'package:app_links/app_links.dart';
 import '../app/mobile_sync_config.dart';
 import '../design/exo_colors.dart';
 import '../features/auth/mobile_auth_service.dart';
+import '../features/inbox/inbox_screen.dart';
 import '../features/memory/memory_screen.dart';
 import '../features/settings/pairing_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/tasks/tasks_screen.dart';
 import '../notifications/due_reminder_binder.dart';
+import '../notifications/due_reminder_copy.dart';
 import '../notifications/due_reminder_host.dart';
 import '../notifications/due_reminder_scope.dart';
+import '../sync/inbox_payload.dart';
 import '../sync/user_messages.dart';
 import 'window_size.dart';
 
 /// Shell destinations — Capture is never a tab.
-enum ShellTab { memory, tasks }
+enum ShellTab { memory, inbox, tasks }
 
 class _TabSpec {
   const _TabSpec({
@@ -35,7 +40,7 @@ class _TabSpec {
   final IconData selectedIcon;
 }
 
-/// Adaptive navigation: Memory (default) + Tasks.
+/// Adaptive navigation: Memory (default) + Inbox + Tasks.
 class AdaptiveShell extends StatefulWidget {
   const AdaptiveShell({
     super.key,
@@ -61,6 +66,13 @@ class AdaptiveShell extends StatefulWidget {
       selectedIcon: Icons.psychology,
     ),
     _TabSpec(
+      id: ShellTab.inbox,
+      label: SyncUserMessages.inboxTitle,
+      title: SyncUserMessages.inboxTitle,
+      icon: Icons.inbox_outlined,
+      selectedIcon: Icons.inbox,
+    ),
+    _TabSpec(
       id: ShellTab.tasks,
       label: SyncUserMessages.tasksTitle,
       title: SyncUserMessages.tasksTitle,
@@ -79,7 +91,10 @@ class AdaptiveShell extends StatefulWidget {
 class _AdaptiveShellState extends State<AdaptiveShell> {
   late ShellTab _tab = widget.initialTab;
   bool _didAutoPull = false;
+  bool _didLand = false;
   String? _focusTaskId;
+  String? _focusInboxId;
+  int _readyCount = 0;
 
   int get _tabIndex {
     final i = AdaptiveShell._tabs.indexWhere((t) => t.id == _tab);
@@ -92,7 +107,10 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   void initState() {
     super.initState();
     widget.config.addListener(_onConfig);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _autoPullOnce());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_tab != ShellTab.inbox) await _refreshReadyCount();
+      await _autoPullOnce();
+    });
   }
 
   @override
@@ -102,7 +120,50 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   }
 
   void _onConfig() {
+    if (_tab != ShellTab.inbox) unawaited(_refreshReadyCount());
     if (mounted) setState(() {});
+  }
+
+  void _setReadyCount(int n) {
+    if (!mounted || n == _readyCount) return;
+    setState(() => _readyCount = n);
+  }
+
+  Future<void> _refreshReadyCount() async {
+    if (_tab == ShellTab.inbox) return;
+    if (!widget.config.isPaired) {
+      if (_readyCount != 0 && mounted) setState(() => _readyCount = 0);
+      _maybeLandInbox(0);
+      return;
+    }
+    final n = await countInboxAttentionFromStore(widget.config.localStore);
+    if (!mounted) return;
+    if (n != _readyCount) setState(() => _readyCount = n);
+    _maybeLandInbox(n);
+  }
+
+  void _maybeLandInbox(int n) {
+    if (_didLand) return;
+    if (widget.initialTab != ShellTab.memory) {
+      _didLand = true;
+      return;
+    }
+    if (n <= 0 || _tab != ShellTab.memory) return;
+    _didLand = true;
+    if (mounted) setState(() => _tab = ShellTab.inbox);
+  }
+
+  Widget _tabIcon(_TabSpec tab, {required bool selected, Color? selectedColor}) {
+    final icon = Icon(
+      selected ? tab.selectedIcon : tab.icon,
+      color: selected ? selectedColor : null,
+    );
+    if (tab.id != ShellTab.inbox || _readyCount <= 0) return icon;
+    final label = DueReminderCopy.of(context).actionsToSend(_readyCount);
+    return Badge(
+      label: Text('$_readyCount'),
+      child: Semantics(label: label, child: icon),
+    );
   }
 
   /// One pull when a paired session enters the shell — no AppBar-only surprise empty.
@@ -111,6 +172,8 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     if (!widget.config.isConfigured) return;
     _didAutoPull = true;
     await _sync();
+    if (!mounted) return;
+    if (_tab != ShellTab.inbox) await _refreshReadyCount();
   }
 
   void _openSettings() {
@@ -170,12 +233,21 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
           onSignInAgain: _signInAgain,
           onPairAgain: _pairAgain,
         );
+      case ShellTab.inbox:
+        return InboxScreen(
+          config: widget.config,
+          onSignInAgain: _signInAgain,
+          onPairAgain: _pairAgain,
+          onReadyCount: _setReadyCount,
+          focusRecordId: _focusInboxId,
+        );
       case ShellTab.tasks:
         return TasksScreen(
           config: widget.config,
           onSignInAgain: _signInAgain,
           onPairAgain: _pairAgain,
           focusRecordId: _focusTaskId,
+          onOpenInbox: _openInbox,
         );
     }
   }
@@ -204,13 +276,23 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
 
   void _selectIndex(int i) {
     if (i < 0 || i >= AdaptiveShell._tabs.length) return;
-    setState(() => _tab = AdaptiveShell._tabs[i].id);
+    final next = AdaptiveShell._tabs[i].id;
+    setState(() => _tab = next);
+    if (next != ShellTab.inbox) unawaited(_refreshReadyCount());
   }
 
   void _openTask(String recordId) {
     setState(() {
       _tab = ShellTab.tasks;
       _focusTaskId = recordId.isEmpty ? null : recordId;
+    });
+  }
+
+  void _openInbox(String recordId) {
+    setState(() {
+      _tab = ShellTab.inbox;
+      _focusTaskId = null;
+      _focusInboxId = recordId.isEmpty ? null : recordId;
     });
   }
 
@@ -225,6 +307,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
       host: widget.reminderHost,
       appLinks: widget.appLinks,
       onOpenTask: _openTask,
+      onOpenInbox: _openInbox,
       child: Scaffold(
       appBar: AppBar(
         title: Text(_current.title),
@@ -243,8 +326,8 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                   destinations: [
                     for (final t in tabs)
                       NavigationRailDestination(
-                        icon: Icon(t.icon),
-                        selectedIcon: Icon(t.selectedIcon),
+                        icon: _tabIcon(t, selected: false),
+                        selectedIcon: _tabIcon(t, selected: true),
                         label: Text(t.label),
                       ),
                   ],
@@ -266,8 +349,12 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                   destinations: [
                     for (final t in tabs)
                       NavigationDestination(
-                        icon: Icon(t.icon),
-                        selectedIcon: Icon(t.selectedIcon, color: ExoColors.brandPrimary),
+                        icon: _tabIcon(t, selected: false),
+                        selectedIcon: _tabIcon(
+                          t,
+                          selected: true,
+                          selectedColor: ExoColors.brandPrimary,
+                        ),
                         label: t.label,
                       ),
                   ],

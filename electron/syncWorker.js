@@ -43,10 +43,10 @@ function keyPath(userData) {
 function readPrefs(userData) {
   try {
     const p = prefsPath(userData);
-    if (!fs.existsSync(p)) return { enabled: false, deviceId: null, deviceName: "Desktop" };
+    if (!fs.existsSync(p)) return { enabled: true, deviceId: null, deviceName: "Desktop" };
     return JSON.parse(fs.readFileSync(p, "utf8"));
   } catch {
-    return { enabled: false, deviceId: null, deviceName: "Desktop" };
+    return { enabled: true, deviceId: null, deviceName: "Desktop" };
   }
 }
 
@@ -94,7 +94,11 @@ function normalizePullCursor(value) {
 
 function ensureMasterKey(userData) {
   const kp = keyPath(userData);
-  const encOk = safeStorage.isEncryptionAvailable();
+  const encOk = Boolean(
+    safeStorage &&
+      typeof safeStorage.isEncryptionAvailable === "function" &&
+      safeStorage.isEncryptionAvailable(),
+  );
   const allowPlain =
     process.env.EXOSITES_INSECURE_LOCAL === "1" || process.env.NODE_ENV === "test";
   if (fs.existsSync(kp)) {
@@ -109,7 +113,7 @@ function ensureMasterKey(userData) {
       // Fail closed: regenerating would mint a new key while relay ciphertext
       // stays encrypted under the old one — mobile pairing then "works" but decrypt fails.
       throw new Error(
-        `sync_master_key_unreadable: ${err?.message || err}. Unlock Keychain or re-enable GO SYNC after a data reset.`,
+        `sync_master_key_unreadable: ${err?.message || err}. Unlock Keychain or install a signed build.`,
       );
     }
   }
@@ -135,6 +139,18 @@ async function runSyncOnce(deviceRootHint) {
     lastStatus = { ...lastStatus, lastError: "cloud_url_not_configured" };
     return lastStatus;
   }
+  let masterKeyB64;
+  try {
+    ensureSyncOn(profileRoot);
+    masterKeyB64 = ensureMasterKey(profileRoot);
+  } catch (err) {
+    lastStatus = {
+      ...lastStatus,
+      enabled: false,
+      lastError: err instanceof Error ? err.message : String(err),
+    };
+    return lastStatus;
+  }
   const prefs = readPrefs(profileRoot);
   if (!prefs.enabled) {
     lastStatus = { ...lastStatus, enabled: false };
@@ -145,7 +161,6 @@ async function runSyncOnce(deviceRootHint) {
     lastStatus = { ...lastStatus, lastError: "not_logged_in" };
     return lastStatus;
   }
-  const masterKeyB64 = ensureMasterKey(profileRoot);
   const deviceId = prefs.deviceId || crypto.randomUUID();
   if (!prefs.deviceId) {
     prefs.deviceId = deviceId;
@@ -220,9 +235,24 @@ async function runSyncOnce(deviceRootHint) {
 
 function startSyncWorker(deviceRoot) {
   activeDeviceRoot = deviceRoot || activeDeviceRoot;
+  try {
+    const { profileRoot } = syncRoots(activeDeviceRoot);
+    ensureSyncOn(profileRoot);
+  } catch (err) {
+    lastStatus = {
+      ...lastStatus,
+      enabled: false,
+      lastError: err instanceof Error ? err.message : String(err),
+    };
+  }
   if (timer) return;
   timer = setInterval(() => {
-    void runSyncOnce(activeDeviceRoot);
+    void runSyncOnce(activeDeviceRoot).catch((err) => {
+      lastStatus = {
+        ...lastStatus,
+        lastError: err instanceof Error ? err.message : String(err),
+      };
+    });
   }, INTERVAL_MS);
 }
 
@@ -235,11 +265,31 @@ function clearLastError() {
   lastStatus = { ...lastStatus, lastError: null };
 }
 
+function markEnabled() {
+  lastStatus = { ...lastStatus, enabled: true, lastError: null };
+}
+
+function ensureSyncOn(profileRoot) {
+  const prefs = readPrefs(profileRoot);
+  const hadDeviceId = Boolean(prefs.deviceId);
+  if (!prefs.deviceId) prefs.deviceId = crypto.randomUUID();
+  // Probe even when already enabled — start must fail the same way pairing does.
+  ensureMasterKey(profileRoot);
+  if (!prefs.enabled || !hadDeviceId) {
+    prefs.enabled = true;
+    writePrefs(profileRoot, prefs);
+  }
+  markEnabled();
+  return prefs;
+}
+
 function getSyncStatus(deviceRootHint) {
   const { profileRoot } = syncRoots(deviceRootHint);
   const prefs = readPrefs(profileRoot);
   return {
     ...lastStatus,
+    enabled: Boolean(prefs.enabled),
+    lastRunAt: lastStatus.lastRunAt || prefs.lastSyncedAt || null,
     /** ISO time of last successful push (prefs) — used for Sync-before-pair gate. */
     lastSuccessfulSyncAt: prefs.lastSyncedAt || null,
   };
@@ -357,6 +407,7 @@ module.exports = {
   getSyncStatus,
   setSyncEnabled,
   readPrefs,
+  ensureSyncOn,
   getPairingPayload,
   getPairingQrDataUrl,
   copyPairingPayloadToClipboard,

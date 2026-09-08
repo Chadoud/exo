@@ -7,6 +7,7 @@ import 'local_store.dart';
 import 'pairing_payload.dart';
 import 'sync_crypto.dart';
 import 'sync_errors.dart';
+import 'task_source_forget.dart';
 
 /// Result of pulling until the relay reports no more pages.
 class SyncPullResult {
@@ -149,8 +150,42 @@ class SyncEngine {
           continue;
         }
       }
+      final payload = row['payload'];
+      if (collection == tasksCollection && payload is Map) {
+        deleted += await applyTaskSourceForgetIfMarker(
+          store: _localStore,
+          recordId: recordId,
+          deleted: row['deleted'] == true,
+          payload: Map<String, dynamic>.from(payload),
+          updatedAt: row['updated_at'] as String?,
+        );
+      }
       if (row['deleted'] == true) {
-        await _localStore.deleteRecord(collection: collection, recordId: recordId);
+        final forgetPayload =
+            collection == tasksCollection && payload is Map
+                ? Map<String, dynamic>.from(payload)
+                : null;
+        if (forgetPayload != null &&
+            isSourceForgetRecord(
+              recordId: recordId,
+              deleted: true,
+              payload: forgetPayload,
+            )) {
+          forgetPayload['stop_state'] = 'paused';
+          await _localStore.upsertRecord(
+            collection: collection,
+            recordId: recordId,
+            payloadJson: jsonEncode(forgetPayload),
+            updatedAt: row['updated_at'] as String?,
+            logicalClock: logicalClock,
+            deviceId: rowDevice,
+          );
+        } else {
+          await _localStore.deleteRecord(
+            collection: collection,
+            recordId: recordId,
+          );
+        }
         deleted++;
         continue;
       }

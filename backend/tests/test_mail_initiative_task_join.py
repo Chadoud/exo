@@ -1,7 +1,11 @@
 """Join drafted ready-replies onto mail tasks by message id."""
 
 from mail_initiative import store
-from mail_initiative.task_join import attach_mail_reply_ids, reply_id_for_external_id
+from mail_initiative.task_join import (
+    attach_mail_reply_ids,
+    reply_id_for_external_id,
+    task_record_ids_by_reply_id,
+)
 
 
 def test_reply_id_matches_gmail_message(tmp_path, monkeypatch) -> None:
@@ -27,3 +31,27 @@ def test_attach_mail_reply_ids_skips_non_mail() -> None:
     tasks = [{"id": 1, "external_id": None, "source": "manual"}]
     attach_mail_reply_ids(tasks)
     assert "mail_reply_id" not in tasks[0]
+
+
+def test_task_record_ids_by_reply_id(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("EXOSITES_DATA_DIR", str(tmp_path))
+    store.remember_mailbox("me@example.com")
+    row = store.upsert_candidate(
+        thread_id="thr-1",
+        message_ids=["mid-a"],
+        last_message_id="mid-a",
+        from_name="Ada",
+        from_email="ada@example.com",
+        subject="Lunch?",
+        draft_subject="Re: Lunch?",
+        draft_body="Noon works.",
+    )
+    import tasks_store
+
+    task = tasks_store.create_task(
+        "Reply to Ada",
+        source="manual",
+        external_id="gmail:mail:mid-a",
+    )
+    mapping = task_record_ids_by_reply_id()
+    assert mapping[int(row["id"])] == str(task["id"])

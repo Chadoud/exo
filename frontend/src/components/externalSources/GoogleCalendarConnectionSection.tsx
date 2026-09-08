@@ -9,6 +9,7 @@ import { useDesktopOAuthCardState } from "../../hooks/useDesktopOAuthCardState";
 import {
   forgetIntegrationSourcesBestEffort,
   refreshIntegrationTasksBestEffort,
+  resumeIntegrationSourcesBestEffort,
 } from "../../utils/forgetIntegrationTasks";
 import SourceAccountLine from "./SourceAccountLine";
 
@@ -34,7 +35,10 @@ export default function GoogleCalendarConnectionSection({
       providerId: PROVIDER_ID,
       integrationChangedEvent: EXOSITES_GOOGLE_INTEGRATION_CHANGED_EVENT,
       onConnected: () => {
-        if (backendOnline) refreshIntegrationTasksBestEffort();
+        if (backendOnline) {
+          resumeIntegrationSourcesBestEffort(["google-calendar"]);
+          refreshIntegrationTasksBestEffort();
+        }
       },
       onDisconnected: () => {
         if (backendOnline) void forgetIntegrationSourcesBestEffort(["google-calendar"]);

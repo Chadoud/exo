@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "../../i18n/I18nContext";
 import { isStaleTrialSyncError, syncLastErrorKind } from "../../utils/syncLastErrorCopy";
+import ExoAppIcon from "../ExoAppIcon";
 import ProUpgradeCard from "../ProUpgradeCard";
 
 interface SyncStatus {
@@ -44,7 +45,10 @@ function pairingErrorMessage(
   if (result && typeof result === "object" && "error" in result) {
     const err = (result as { error?: unknown }).error;
     if (typeof err === "string" && err.trim()) {
-      if (err.includes("sync_master_key_unreadable") && keyUnreadable) {
+      if (
+        keyUnreadable &&
+        (err.includes("sync_master_key_unreadable") || err.includes("sync_not_enabled"))
+      ) {
         return keyUnreadable;
       }
       // Cloud JWT rejected when minting a pairing grant.
@@ -87,12 +91,6 @@ export default function SettingsSyncSection({ canUseSync, licensed = false, onUp
   const hasSyncedOnce = Boolean(status.lastSuccessfulSyncAt);
 
   useEffect(() => {
-    if (!status.enabled) {
-      setPairQrDataUrl(null);
-      setPairError(null);
-      setCopyHint(null);
-      return;
-    }
     // Do not mint a pairing QR until desktop has synced at least once.
     if (!hasSyncedOnce) {
       setPairQrDataUrl(null);
@@ -128,40 +126,7 @@ export default function SettingsSyncSection({ canUseSync, licensed = false, onUp
         setPairError(t("sync.pairQrError"));
       }
     })();
-  }, [status.enabled, hasSyncedOnce, t, pairRetryTick]);
-
-  const toggle = async () => {
-    if (!canUseSync) return;
-    const api = window.electronAPI;
-    if (!api?.syncSetEnabled) return;
-    setBusy(true);
-    setCopyHint(null);
-    setPairError(null);
-    try {
-      const result = await api.syncSetEnabled(!status.enabled);
-      if (
-        result &&
-        typeof result === "object" &&
-        "ok" in result &&
-        (result as { ok?: unknown }).ok === false
-      ) {
-        setPairError(
-          pairingErrorMessage(
-            result,
-            t("sync.pairQrError"),
-            t("sync.pairKeyUnreadable"),
-            t("sync.pairSessionExpired"),
-          ),
-        );
-        return;
-      }
-      await refresh();
-    } catch {
-      setPairError(t("sync.pairQrError"));
-    } finally {
-      setBusy(false);
-    }
-  };
+  }, [hasSyncedOnce, t, pairRetryTick]);
 
   const runNow = useCallback(async () => {
     const api = window.electronAPI;
@@ -237,75 +202,58 @@ export default function SettingsSyncSection({ canUseSync, licensed = false, onUp
 
   return (
     <section className="space-y-3 rounded-xl border border-border bg-bg-card p-4" data-tour="settings-sync">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-semibold text-text-primary">{t("sync.settingsTitle")}</h3>
-          <p className="mt-0.5 text-xs text-muted">{t("sync.settingsDesc")}</p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={Boolean(status.enabled)}
-          disabled={busy}
-          onClick={() => void toggle()}
-          className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-            status.enabled ? "bg-accent" : "bg-border"
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-              status.enabled ? "translate-x-4" : "translate-x-0"
-            }`}
-          />
+      <div className="space-y-3 text-xs text-text-secondary">
+        <p>
+          {status.lastRunAt
+            ? t("sync.lastRun").replace("{time}", new Date(status.lastRunAt).toLocaleString())
+            : t("sync.neverRun")}
+        </p>
+        {syncErrorDetail ? (
+          <p className="text-red-500">
+            {t("sync.errorPrefix")} {syncErrorDetail}
+          </p>
+        ) : null}
+        <button type="button" disabled={busy} onClick={() => void runNow()} className="text-accent hover:underline">
+          {t("sync.runNow")}
         </button>
-      </div>
-      {status.enabled ? (
-        <div className="space-y-3 text-xs text-text-secondary">
-          <p>{status.lastRunAt ? t("sync.lastRun").replace("{time}", new Date(status.lastRunAt).toLocaleString()) : t("sync.neverRun")}</p>
-          {syncErrorDetail ? (
-            <p className="text-red-500">
-              {t("sync.errorPrefix")} {syncErrorDetail}
-            </p>
-          ) : null}
-          <button type="button" disabled={busy} onClick={() => void runNow()} className="text-accent hover:underline">
-            {t("sync.runNow")}
-          </button>
-          <div className="rounded-lg border border-border bg-bg-primary/40 p-3">
+        <div className="rounded-lg border border-border bg-bg-primary/40 p-3">
+          <div className="flex items-center gap-2.5">
+            <ExoAppIcon decorative />
             <p className="text-xs font-medium text-text-primary">{t("sync.pairTitle")}</p>
-            <p className="mt-1 text-[11px] text-muted">
-              {hasSyncedOnce ? t("sync.pairHint") : t("sync.pairSyncFirst")}
-            </p>
-            {pairError ? <p className="mt-2 text-[11px] text-red-500">{pairError}</p> : null}
-            {hasSyncedOnce && pairQrDataUrl ? (
-              <img src={pairQrDataUrl} alt="" className="mt-3 h-[220px] w-[220px] rounded-md bg-white p-2" />
-            ) : null}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+          </div>
+          <p className="mt-1 text-[11px] text-muted">
+            {hasSyncedOnce && !pairError ? t("sync.pairHint") : t("sync.pairSyncFirst")}
+          </p>
+          {pairError ? <p className="mt-2 text-[11px] text-red-500">{pairError}</p> : null}
+          {hasSyncedOnce && pairQrDataUrl ? (
+            <img src={pairQrDataUrl} alt="" className="mt-3 h-[220px] w-[220px] rounded-md bg-white p-2" />
+          ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={busy || !hasSyncedOnce}
+              onClick={() => void copyPairing()}
+              className="inline-flex min-h-10 items-center rounded-lg border border-border bg-bg-card px-3 py-2 text-xs font-medium text-text-primary hover:bg-hover-overlay disabled:opacity-50"
+            >
+              {t("sync.pairCopy")}
+            </button>
+            {hasSyncedOnce ? (
               <button
                 type="button"
-                disabled={busy || !hasSyncedOnce}
-                onClick={() => void copyPairing()}
+                disabled={busy}
+                onClick={() => {
+                  setCopyHint(null);
+                  setPairRetryTick((n) => n + 1);
+                }}
                 className="inline-flex min-h-10 items-center rounded-lg border border-border bg-bg-card px-3 py-2 text-xs font-medium text-text-primary hover:bg-hover-overlay disabled:opacity-50"
               >
-                {t("sync.pairCopy")}
+                {t("sync.pairRetry")}
               </button>
-              {hasSyncedOnce ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    setCopyHint(null);
-                    setPairRetryTick((n) => n + 1);
-                  }}
-                  className="inline-flex min-h-10 items-center rounded-lg border border-border bg-bg-card px-3 py-2 text-xs font-medium text-text-primary hover:bg-hover-overlay disabled:opacity-50"
-                >
-                  {t("sync.pairRetry")}
-                </button>
-              ) : null}
-              {copyHint ? <p className="text-[11px] text-muted">{copyHint}</p> : null}
-            </div>
+            ) : null}
+            {copyHint ? <p className="text-[11px] text-muted">{copyHint}</p> : null}
           </div>
         </div>
-      ) : null}
+      </div>
     </section>
   );
 }

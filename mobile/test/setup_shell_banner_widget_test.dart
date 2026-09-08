@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:exosites_mobile/app/mobile_sync_config.dart';
@@ -25,6 +26,16 @@ Widget _app(Widget child, {Size size = const Size(390, 844)}) {
       child: Scaffold(body: child),
     ),
   );
+}
+
+Future<void> _waitForInboxCard(WidgetTester tester) async {
+  for (var i = 0; i < 24; i++) {
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    await tester.pump();
+    if (find.text('READY TO SEND').evaluate().isNotEmpty) return;
+  }
 }
 
 Future<void> _settleStore(WidgetTester tester) async {
@@ -255,7 +266,7 @@ void main() {
   });
 
   group('AdaptiveShell', () {
-    testWidgets('phone shell shows Memory and Tasks destinations', (tester) async {
+    testWidgets('phone shell shows Memory Inbox and Tasks destinations', (tester) async {
       final config = await _hydratedConfig(tester);
       await tester.pumpWidget(
         MaterialApp(
@@ -268,8 +279,9 @@ void main() {
       );
       await _settleStore(tester);
 
-      expect(AdaptiveShell.tabLabels, ['Memory', 'Tasks']);
+      expect(AdaptiveShell.tabLabels, ['Memory', 'Inbox', 'Tasks']);
       expect(find.text('Memory'), findsWidgets);
+      expect(find.text('Inbox'), findsWidgets);
       expect(find.text('Tasks'), findsWidgets);
       expect(find.text('Today'), findsNothing);
       expect(find.text('Capture'), findsNothing);
@@ -319,6 +331,78 @@ void main() {
       expect(find.text(SyncUserMessages.tasksTitle), findsWidgets);
       expect(find.text(SyncUserMessages.searchMemoriesLabel), findsNothing);
       expect(find.text('Suggested by EXO'), findsNothing);
+    });
+
+    testWidgets('Inbox tab badges ready mail count', (tester) async {
+      final storage = MemoryKeyValueStore();
+      await storage.write('access_token', 'tok');
+      await storage.write('sync_paired', '1');
+      final store = LocalBrainStore(
+        databasePath: '${Directory.systemTemp.path}/shell_badge_${++_dbSerial}.db',
+      );
+      await tester.runAsync(() async {
+        await store.upsertRecord(
+          collection: 'pending_actions',
+          recordId: 'mail_reply:1',
+          payloadJson: jsonEncode({
+            'type': 'mail_reply',
+            'status': 'ready',
+            'subject': 'Re: Lunch',
+          }),
+          updatedAt: '2026-09-07T00:00:00Z',
+        );
+      });
+      final config = MobileSyncConfig(storage: storage, localStore: store);
+      await tester.runAsync(config.hydrate);
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          theme: ExoTheme.dark(),
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(390, 844)),
+            child: AdaptiveShell(config: config, initialTab: ShellTab.inbox),
+          ),
+        ),
+      );
+      await _waitForInboxCard(tester);
+      expect(find.text('READY TO SEND'), findsOneWidget);
+      expect(find.byType(Badge), findsWidgets);
+      expect(find.text('1'), findsWidgets);
+    });
+
+    testWidgets('lands on Inbox when a ready draft is waiting', (tester) async {
+      final storage = MemoryKeyValueStore();
+      await storage.write('access_token', 'tok');
+      await storage.write('sync_paired', '1');
+      final store = LocalBrainStore(
+        databasePath: '${Directory.systemTemp.path}/shell_land_${++_dbSerial}.db',
+      );
+      await tester.runAsync(() async {
+        await store.upsertRecord(
+          collection: 'pending_actions',
+          recordId: 'mail_reply:1',
+          payloadJson: jsonEncode({
+            'type': 'mail_reply',
+            'status': 'ready',
+            'subject': 'Re: Lunch',
+          }),
+          updatedAt: '2026-09-07T00:00:00Z',
+        );
+      });
+      final config = MobileSyncConfig(storage: storage, localStore: store);
+      await tester.runAsync(config.hydrate);
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          theme: ExoTheme.dark(),
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(390, 844)),
+            child: AdaptiveShell(config: config),
+          ),
+        ),
+      );
+      await _waitForInboxCard(tester);
+      expect(find.text('READY TO SEND'), findsOneWidget);
     });
   });
 

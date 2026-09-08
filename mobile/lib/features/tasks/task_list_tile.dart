@@ -4,6 +4,7 @@ import '../../design/exo_colors.dart';
 import '../../design/exo_spacing.dart';
 import '../../sync/task_payload.dart';
 import '../../sync/user_messages.dart';
+import 'task_due_label.dart';
 
 /// Task row — description, priority, due, and a tappable completed toggle.
 class TaskListTile extends StatelessWidget {
@@ -40,7 +41,11 @@ class TaskListTile extends StatelessWidget {
     return taskPayloadIsCompleted(payload);
   }
 
-  static String? metaLine(Map<String, dynamic> payload) {
+  static String? metaLine(
+    Map<String, dynamic> payload, {
+    DateTime? now,
+    Locale? locale,
+  }) {
     final parts = <String>[];
     if (isCompleted(payload)) {
       parts.add(SyncUserMessages.taskCompletedLabel);
@@ -49,15 +54,12 @@ class TaskListTile extends StatelessWidget {
       if (priority != null && priority.isNotEmpty && priority != 'normal') {
         parts.add(priority);
       }
-      final due = payload['due_at']?.toString().trim();
-      if (due != null && due.isNotEmpty) {
-        final dt = DateTime.tryParse(due);
-        if (dt != null) {
-          parts.add(
-            'Due ${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}',
-          );
-        }
-      }
+      final due = taskDueMeta(
+        payload,
+        now: now ?? DateTime.now(),
+        french: isFrenchLocale(locale),
+      );
+      if (due != null) parts.add(due);
     }
     if (parts.isEmpty) return null;
     return parts.join(' · ');
@@ -67,7 +69,10 @@ class TaskListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = titleOf(payload);
     final done = isCompleted(payload);
-    final meta = metaLine(payload);
+    final clock = DateTime.now();
+    final locale = Localizations.localeOf(context);
+    final meta = metaLine(payload, now: clock, locale: locale);
+    final overdue = taskDueIsOverdue(payload, now: clock);
     final leadingAction = selecting ? onTap : onToggleCompleted;
 
     return Material(
@@ -106,7 +111,12 @@ class TaskListTile extends StatelessWidget {
                     ),
                     if (meta != null) ...[
                       const SizedBox(height: ExoSpacing.xs),
-                      Text(meta, style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        meta,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: overdue ? ExoColors.error : null,
+                            ),
+                      ),
                     ],
                   ],
                 ),

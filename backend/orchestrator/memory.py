@@ -66,13 +66,18 @@ def _path() -> Path:
     return memory_db_path()
 
 
-def _ensure_dismissed_column(conn: sqlite3.Connection) -> None:
+def _ensure_inbox_columns(conn: sqlite3.Connection) -> None:
     cols = {str(r[1]) for r in conn.execute("PRAGMA table_info(episodic_memory)").fetchall()}
     if "dismissed" not in cols:
         conn.execute(
             "ALTER TABLE episodic_memory ADD COLUMN dismissed INTEGER NOT NULL DEFAULT 0"
         )
-        conn.commit()
+    if "updated_at" not in cols:
+        conn.execute("ALTER TABLE episodic_memory ADD COLUMN updated_at TEXT")
+        conn.execute(
+            "UPDATE episodic_memory SET updated_at = created_at WHERE updated_at IS NULL"
+        )
+    conn.commit()
 
 
 def _connect() -> sqlite3.Connection:
@@ -81,7 +86,7 @@ def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(str(path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(_DDL)
-    _ensure_dismissed_column(conn)
+    _ensure_inbox_columns(conn)
     conn.commit()
     return conn
 
@@ -259,9 +264,10 @@ def dismiss_failure(memory_id: int) -> bool:
     try:
         conn = _connect()
         try:
+            now = datetime.now(UTC).isoformat()
             cur = conn.execute(
-                "UPDATE episodic_memory SET dismissed=1 WHERE id=? AND kind=?",
-                (int(memory_id), KIND_FAILURE),
+                "UPDATE episodic_memory SET dismissed=1, updated_at=? WHERE id=? AND kind=?",
+                (now, int(memory_id), KIND_FAILURE),
             )
             conn.commit()
             return cur.rowcount > 0
@@ -277,9 +283,10 @@ def restore_failure(memory_id: int) -> bool:
     try:
         conn = _connect()
         try:
+            now = datetime.now(UTC).isoformat()
             cur = conn.execute(
-                "UPDATE episodic_memory SET dismissed=0 WHERE id=? AND kind=?",
-                (int(memory_id), KIND_FAILURE),
+                "UPDATE episodic_memory SET dismissed=0, updated_at=? WHERE id=? AND kind=?",
+                (now, int(memory_id), KIND_FAILURE),
             )
             conn.commit()
             return cur.rowcount > 0
@@ -288,6 +295,39 @@ def restore_failure(memory_id: int) -> bool:
     except Exception:
         logger.exception("episodic restore_failure failed")
         return False
+
+
+def list_failures_for_sync(*, limit: int = 30) -> list[dict]:
+    """Open + dismissed failures for GO SYNC tombstones."""
+    cap = max(1, min(int(limit), 50))
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, content, dismissed, created_at, updated_at
+            FROM episodic_memory
+            WHERE kind = ?
+            ORDER BY COALESCE(updated_at, created_at) DESC
+            LIMIT ?
+            """,
+            (KIND_FAILURE, cap),
+        ).fetchall()
+    finally:
+        conn.close()
+    out: list[dict] = []
+    for row in rows:
+        created = str(row["created_at"] or "")
+        updated = str(row["updated_at"] or created)
+        out.append(
+            {
+                "id": int(row["id"]),
+                "content": str(row["content"] or ""),
+                "dismissed": bool(row["dismissed"]),
+                "created_at": created,
+                "updated_at": updated,
+            }
+        )
+    return out
 
 
 def forget(memory_id: int) -> bool:
@@ -357,10 +397,12 @@ def _dismiss_failures(ids: list[int]) -> None:
     try:
         conn = _connect()
         try:
+            now = datetime.now(UTC).isoformat()
             placeholders = ",".join("?" * len(ids))
             conn.execute(
-                f"UPDATE episodic_memory SET dismissed=1 WHERE kind=? AND id IN ({placeholders})",
-                (KIND_FAILURE, *ids),
+                f"UPDATE episodic_memory SET dismissed=1, updated_at=? "
+                f"WHERE kind=? AND id IN ({placeholders})",
+                (now, KIND_FAILURE, *ids),
             )
             conn.commit()
         finally:

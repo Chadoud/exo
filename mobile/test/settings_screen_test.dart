@@ -48,5 +48,8 @@ void main() {
     expect(find.text('chady@example.com'), findsOneWidget);
     expect(find.text(SyncUserMessages.settingsAccountSignedIn), findsNothing);
     expect(find.text('Remind me when due'), findsOneWidget);
+    expect(find.text('Show the task name'), findsOneWidget);
+    expect(find.text('Turn on reminders first.'), findsOneWidget);
+    expect(find.text('Mail & calendars'), findsNothing);
   });
 }
