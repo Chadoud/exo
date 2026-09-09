@@ -4,7 +4,6 @@ import { computeAppInteractionGates } from "./useAppInteractionGates";
 const base = {
   helpOpen: false,
   tourOpen: false,
-  settingsUnsavedOpen: false,
   showWelcome: false,
   launchSphereSplashOpen: false,
   reassignFile: null,

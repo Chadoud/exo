@@ -2133,6 +2133,7 @@ export default {
     sortPromptModalHelpCloud:
       "Ce texte guide la façon dont Exo suggère des dossiers lors du tri. Laissez vide pour l’invite intégrée.",
     sortPromptClose: "Fermer",
+    sortPromptRevert: "Annuler les modifications",
     sortPromptSave: "Enregistrer",
     sortPromptSaved: "Consignes enregistrées",
     sortPromptLoadDefault: "Insérer l’invite par défaut",
@@ -2998,25 +2999,11 @@ Exemples :
     voiceLocalModelHint:
       "Le modèle hors ligne n’est pas prêt — ouvrez Réglages → Commande vocale et touchez Préparer le modèle hors ligne.",
   },
-  unsaved: {
-    title: "Modifications non enregistrées",
-    body: "Des changements dans les réglages ne sont pas enregistrés. Quitter quand même ?",
-    stay: "Rester",
-    leave: "Quitter",
-  },
   reassign: {
     title: "Changer de dossier",
   },
   common: {
     loading: "Chargement…",
-  },
-  settingsLeave: {
-    title: "Quitter les réglages ?",
-    message:
-      "Les réglages ont changé depuis l’ouverture de cet onglet. Conserver vos changements (déjà enregistrés automatiquement) ou abandonner et revenir à l’état d’alors ?",
-    keepEditing: "Continuer à modifier",
-    discard: "Abandonner les changements",
-    keep: "Conserver les changements",
   },
   trial: {
     nudgeTitleToday: "Votre essai gratuit se termine aujourd'hui",

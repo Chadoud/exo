@@ -2133,6 +2133,7 @@ export default {
     sortPromptModalHelpCloud:
       "Questo testo guida come Exo suggerisce le cartelle quando ordini i file. Lascia vuoto per il prompt predefinito.",
     sortPromptClose: "Chiudi",
+    sortPromptRevert: "Annulla modifiche",
     sortPromptSave: "Salva",
     sortPromptSaved: "Istruzioni salvate",
     sortPromptLoadDefault: "Inserisci predefinito app",
@@ -2997,25 +2998,11 @@ Esempi:
     voiceLocalModelHint:
       "Il modello offline non Ã¨ pronto â€” apri Impostazioni â†’ Comando vocale e tocca Prepara modello offline.",
   },
-  unsaved: {
-    title: "Modifiche non salvate",
-    body: "Ci sono modifiche non salvate nelle impostazioni. Uscire senza salvare?",
-    stay: "Resta",
-    leave: "Esci",
-  },
   reassign: {
     title: "Cambia cartella",
   },
   common: {
     loading: "Caricamentoâ€¦",
-  },
-  settingsLeave: {
-    title: "Uscire da Impostazioni?",
-    message:
-      "Le impostazioni sono cambiate da quando hai aperto questa scheda. Mantieni le modifiche (giÃ  salvate automaticamente) o scarta e torna allo stato precedente?",
-    keepEditing: "Continua a modificare",
-    discard: "Scarta modifiche",
-    keep: "Mantieni modifiche",
   },
   trial: {
     nudgeTitleToday: "La tua prova gratuita termina oggi",

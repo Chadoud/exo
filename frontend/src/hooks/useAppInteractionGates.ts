@@ -1,7 +1,6 @@
 interface AppInteractionGateInput {
   helpOpen: boolean;
   tourOpen: boolean;
-  settingsUnsavedOpen: boolean;
   showWelcome: boolean;
   launchSphereSplashOpen: boolean;
   reassignFile: unknown | null;
@@ -16,7 +15,6 @@ export function computeAppInteractionGates(input: AppInteractionGateInput): bool
   const {
     helpOpen,
     tourOpen,
-    settingsUnsavedOpen,
     showWelcome,
     launchSphereSplashOpen,
     reassignFile,
@@ -25,7 +23,6 @@ export function computeAppInteractionGates(input: AppInteractionGateInput): bool
   return (
     helpOpen ||
     tourOpen ||
-    settingsUnsavedOpen ||
     showWelcome ||
     launchSphereSplashOpen ||
     reassignFile !== null ||

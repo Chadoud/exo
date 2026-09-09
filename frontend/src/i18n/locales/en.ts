@@ -2300,6 +2300,7 @@ export default {
     sortPromptModalHelpCloud:
       "This text guides how Exo suggests folders when you sort files. Leave empty to use the app default.",
     sortPromptClose: "Close",
+    sortPromptRevert: "Revert edits",
     sortPromptSave: "Save",
     sortPromptSaved: "Sort instructions saved",
     sortPromptLoadDefault: "Insert app default",
@@ -3151,25 +3152,11 @@ Override examples:
     voiceNetworkHint: "Dictation couldn’t reach the service — check your connection or use offline speech in Settings.",
     voiceLocalModelHint: "Choose Auto/Cloud in Settings → Voice control, or prepare the offline model first.",
   },
-  unsaved: {
-    title: "Unsaved changes",
-    body: "You have unsaved changes in Settings. Leave without saving?",
-    stay: "Stay",
-    leave: "Leave",
-  },
   reassign: {
     title: "Change folder",
   },
   common: {
     loading: "Loading…",
-  },
-  settingsLeave: {
-    title: "Leave Settings?",
-    message:
-      "You changed settings since opening this tab. Keep your changes (already saved automatically) or discard and revert to how they were when you opened Settings?",
-    keepEditing: "Keep editing",
-    discard: "Discard changes",
-    keep: "Keep changes",
   },
   trial: {
     nudgeTitleToday: "Your free trial ends today",

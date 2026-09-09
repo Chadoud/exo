@@ -318,10 +318,6 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
                 tab={tab}
                 tourNavigate={chrome.tourNavigate}
                 markTourComplete={chrome.markTourComplete}
-                settingsUnsavedOpen={chrome.settingsUnsavedOpen}
-                cancelSettingsNavigation={chrome.cancelSettingsNavigation}
-                confirmSettingsDiscard={chrome.confirmSettingsDiscard}
-                confirmSettingsKeep={chrome.confirmSettingsKeep}
                 reassignFile={workspace.reassignFile}
                 folderTree={workspace.folderTree}
                 handleReassign={workspace.handleReassign}
@@ -334,7 +330,6 @@ export function AppShell({ settings, setSettings, hydrated, uiLocale }: AppShell
                 commandPaletteOpen={chrome.commandPaletteOpen}
                 setCommandPaletteOpen={chrome.setCommandPaletteOpen}
                 commandPaletteCommands={chrome.commandPaletteCommands}
-                uiLocale={uiLocale}
               />
             }
           />

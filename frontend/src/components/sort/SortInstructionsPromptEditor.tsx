@@ -108,7 +108,7 @@ function InlinePromptEditor({
             onClick={() => setDraft(settings.sortSystemPrompt)}
             className={SECONDARY_BTN_CLASS}
           >
-            {t("queue.sortPromptClose")}
+            {t("queue.sortPromptRevert")}
           </button>
         ) : null}
         {builtin ? (

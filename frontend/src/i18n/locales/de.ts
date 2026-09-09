@@ -2129,6 +2129,7 @@ export default {
     sortPromptModalHelpCloud:
       "Dieser Text steuert, wie Exo Ordner vorschlägt, wenn Sie Dateien sortieren. Leer lassen für die Standardanweisung.",
     sortPromptClose: "Schließen",
+    sortPromptRevert: "Änderungen verwerfen",
     sortPromptSave: "Speichern",
     sortPromptSaved: "Sortieranweisungen gespeichert",
     sortPromptLoadDefault: "App-Standard einfügen",
@@ -2992,25 +2993,11 @@ Beispiele:
     voiceLocalModelHint:
       "Offline-Modell nicht bereit — Einstellungen → Sprachsteuerung öffnen und \"Offline-Modell vorbereiten\" tippen.",
   },
-  unsaved: {
-    title: "Ungespeicherte Änderungen",
-    body: "Einstellungen wurden geändert. Ohne Speichern verlassen?",
-    stay: "Bleiben",
-    leave: "Verlassen",
-  },
   reassign: {
     title: "Ordner ändern",
   },
   common: {
     loading: "Laden…",
-  },
-  settingsLeave: {
-    title: "Einstellungen verlassen?",
-    message:
-      "Seit dem Öffnen dieses Tabs haben sich Einstellungen geändert. Änderungen behalten (bereits automatisch gespeichert) oder verwerfen und den früheren Stand wiederherstellen?",
-    keepEditing: "Weiter bearbeiten",
-    discard: "Änderungen verwerfen",
-    keep: "Änderungen behalten",
   },
   trial: {
     nudgeTitleToday: "Ihre Testphase endet heute",

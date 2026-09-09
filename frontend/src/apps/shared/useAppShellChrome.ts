@@ -33,7 +33,7 @@ import {
 import { useMainNavItems, orderNavItemsByPersona, type MainNavTab } from "../../hooks/useMainNavItems";
 import { useTodoFeed } from "../../hooks/useTodoFeed";
 import { useEntitlement } from "../../hooks/useEntitlement";
-import { useSettingsTabGuard } from "../../hooks/useSettingsTabGuard";
+import { useTabNavigation } from "../../hooks/useTabNavigation";
 import { useSettingsNavigation } from "../../hooks/useSettingsNavigation";
 import { useOutputFolderSortTabToast } from "../../hooks/useOutputFolderSortTabToast";
 import { useAppTelemetry } from "../../hooks/useAppTelemetry";
@@ -246,13 +246,7 @@ export function useAppShellChrome(opts: {
   const helpFocusReturnRef = useRef<HTMLElement | null>(null);
   const prevHelpOpenRef = useRef(helpOpen);
 
-  const settingsGuard = useSettingsTabGuard({
-    tab,
-    setTab,
-    settings,
-    setSettings,
-    refreshTree,
-  });
+  const tabNavigation = useTabNavigation({ setTab, refreshTree });
 
   const {
     registerSettingsScroll,
@@ -260,7 +254,7 @@ export function useAppShellChrome(opts: {
     jumpToSettingsSection,
     openPrimarySettings,
     openSettingsHome,
-  } = useSettingsNavigation(settingsGuard.requestTab);
+  } = useSettingsNavigation(tabNavigation.requestTab);
 
   useEffect(() => {
     const onOpenSettingsSection = (ev: Event) => {
@@ -384,7 +378,7 @@ export function useAppShellChrome(opts: {
   useTelemetryHeartbeat(settings.telemetryOptIn, settings.uiLocale);
 
   useSystemCommandDelegate({
-    requestTab: settingsGuard.requestTab,
+    requestTab: tabNavigation.requestTab,
     openHelpModal,
     openTour,
   });
@@ -401,7 +395,7 @@ export function useAppShellChrome(opts: {
   const commandPaletteCommands = useCommandPaletteCommands(
     uiLocale,
     settings.outputDir,
-    settingsGuard.requestTab,
+    tabNavigation.requestTab,
     openHelpModal,
     openTour,
     jumpToSettingsSection,
@@ -414,10 +408,9 @@ export function useAppShellChrome(opts: {
     setHelpOpen,
     setCommandPaletteOpen,
     openHelpModal,
-    requestTab: settingsGuard.requestTab,
+    requestTab: tabNavigation.requestTab,
     openSettingsHome: openSettingsHome,
     tourOpen,
-    settingsUnsavedOpen: settingsGuard.settingsUnsavedOpen,
     showWelcome: welcome.showWelcome,
     launchSphereSplashOpen: welcome.launchSphereSplashOpen,
     reassignFile,
@@ -479,7 +472,7 @@ export function useAppShellChrome(opts: {
     commandPaletteOpen,
     setCommandPaletteOpen,
     ...welcome,
-    ...settingsGuard,
+    ...tabNavigation,
     registerSettingsScroll,
     registerSettingsSubTabSelector,
     jumpToSettingsSection,

@@ -9,7 +9,6 @@ interface UseCommandPaletteShortcutsArgs {
   requestTab: (next: MainNavTab) => void;
   openSettingsHome?: () => void;
   tourOpen: boolean;
-  settingsUnsavedOpen: boolean;
   showWelcome: boolean;
   launchSphereSplashOpen: boolean;
   reassignFile: unknown;
@@ -40,7 +39,6 @@ export function useCommandPaletteShortcuts({
   requestTab,
   openSettingsHome,
   tourOpen,
-  settingsUnsavedOpen,
   showWelcome,
   launchSphereSplashOpen,
   reassignFile,
@@ -61,7 +59,6 @@ export function useCommandPaletteShortcuts({
         if (
           helpOpen ||
           tourOpen ||
-          settingsUnsavedOpen ||
           showWelcome ||
           launchSphereSplashOpen ||
           reassignFile ||
@@ -114,7 +111,6 @@ export function useCommandPaletteShortcuts({
     openSettingsHome,
     openHelpModal,
     tourOpen,
-    settingsUnsavedOpen,
     showWelcome,
     launchSphereSplashOpen,
     reassignFile,

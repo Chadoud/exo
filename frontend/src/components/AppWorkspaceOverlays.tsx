@@ -1,5 +1,4 @@
 import type { ComponentProps } from "react";
-import type { UiLocale } from "../types/settings";
 import type { FileEntry } from "../api";
 import type { UseModelsReturn } from "../hooks/useModels";
 import type { MainNavTab } from "../hooks/useMainNavItems";
@@ -7,7 +6,6 @@ import AppTour from "./AppTour";
 import type { ProductTourStepMeta } from "../i18n/productTourSteps";
 import WelcomeScreen from "./WelcomeScreen";
 import LaunchSphereSplash from "./LaunchSphereSplash";
-import UnsavedChangesDialog from "./UnsavedChangesDialog";
 import ReassignModal from "./ReassignModal";
 import GlobalModelDownloadBanner from "./GlobalModelDownloadBanner";
 import type { EntitlementStatus } from "../api";
@@ -16,7 +14,6 @@ import InstallFromDmgBanner from "./InstallFromDmgBanner";
 import HelpShortcutsModal from "./HelpShortcutsModal";
 import CommandPalette from "./CommandPalette";
 import type { CommandItem } from "./CommandPalette";
-import { translate } from "../i18n/translate";
 import { useInstallFromDmgHint } from "../hooks/useInstallFromDmgHint";
 
 type Tab = MainNavTab;
@@ -50,11 +47,6 @@ interface AppWorkspaceOverlaysProps {
   tab: Tab;
   tourNavigate: (t: Tab) => void;
   markTourComplete: () => void;
-  uiLocale: UiLocale;
-  settingsUnsavedOpen: boolean;
-  cancelSettingsNavigation: () => void;
-  confirmSettingsDiscard: () => void;
-  confirmSettingsKeep: () => void;
   reassignFile: FileEntry | null;
   folderTree: ComponentProps<typeof ReassignModal>["existingFolders"];
   handleReassign: ComponentProps<typeof ReassignModal>["onReassign"];
@@ -101,11 +93,6 @@ export default function AppWorkspaceOverlays(props: AppWorkspaceOverlaysProps) {
     tab,
     tourNavigate,
     markTourComplete,
-    uiLocale,
-    settingsUnsavedOpen,
-    cancelSettingsNavigation,
-    confirmSettingsDiscard,
-    confirmSettingsKeep,
     reassignFile,
     folderTree,
     handleReassign,
@@ -167,18 +154,6 @@ export default function AppWorkspaceOverlays(props: AppWorkspaceOverlaysProps) {
         onNavigateTab={tourNavigate}
         onComplete={markTourComplete}
         tourLayoutKey={tourOpen ? `${tourStepMeta[tourStep]?.id ?? ""}` : ""}
-      />
-
-      <UnsavedChangesDialog
-        open={settingsUnsavedOpen}
-        title={translate(uiLocale, "settingsLeave.title")}
-        message={translate(uiLocale, "settingsLeave.message")}
-        cancelLabel={translate(uiLocale, "settingsLeave.keepEditing")}
-        discardLabel={translate(uiLocale, "settingsLeave.discard")}
-        saveLabel={translate(uiLocale, "settingsLeave.keep")}
-        onCancel={cancelSettingsNavigation}
-        onDiscard={confirmSettingsDiscard}
-        onSave={confirmSettingsKeep}
       />
 
       {reassignFile && (
