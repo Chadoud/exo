@@ -17,21 +17,25 @@ fi
 "$FLUTTER" pub get
 
 INFO_PLIST="ios/Runner/Info.plist"
-if [[ -f "$INFO_PLIST" ]]; then
+PLIST_BUDDY="/usr/libexec/PlistBuddy"
+# PlistBuddy ships with macOS only. The Linux CI runner cannot patch the plist,
+# and does not need to: the committed one already carries these keys, and
+# verify-mobile-manifests fails the build if that ever stops being true.
+if [[ -f "$INFO_PLIST" && -x "$PLIST_BUDDY" ]]; then
   # Camera required for GO SYNC QR pairing (mobile_scanner).
   if ! grep -q NSCameraUsageDescription "$INFO_PLIST"; then
-    /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string Exo uses the camera to scan the desktop pairing QR code." "$INFO_PLIST" 2>/dev/null || true
+    "$PLIST_BUDDY" -c "Add :NSCameraUsageDescription string Exo uses the camera to scan the desktop pairing QR code." "$INFO_PLIST" 2>/dev/null || true
     echo "Patched NSCameraUsageDescription"
   fi
 
   # Exact URL scheme "exosites" — do not match CFBundleName "exosites_mobile".
-  scheme="$(/usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$INFO_PLIST" 2>/dev/null || true)"
+  scheme="$("$PLIST_BUDDY" -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$INFO_PLIST" 2>/dev/null || true)"
   if [[ "$scheme" != "exosites" ]]; then
-    /usr/libexec/PlistBuddy -c "Delete :CFBundleURLTypes" "$INFO_PLIST" 2>/dev/null || true
-    /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$INFO_PLIST"
-    /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$INFO_PLIST"
-    /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$INFO_PLIST"
-    /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string exosites" "$INFO_PLIST"
+    "$PLIST_BUDDY" -c "Delete :CFBundleURLTypes" "$INFO_PLIST" 2>/dev/null || true
+    "$PLIST_BUDDY" -c "Add :CFBundleURLTypes array" "$INFO_PLIST"
+    "$PLIST_BUDDY" -c "Add :CFBundleURLTypes:0 dict" "$INFO_PLIST"
+    "$PLIST_BUDDY" -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$INFO_PLIST"
+    "$PLIST_BUDDY" -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string exosites" "$INFO_PLIST"
     echo "Patched iOS URL scheme exosites://"
   fi
 fi
