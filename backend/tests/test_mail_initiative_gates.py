@@ -106,8 +106,12 @@ def test_gmail_disconnect_clears_store(mail_dir):
         res = client.delete("/gmail/oauth")
     assert res.status_code == 200
     assert store.list_candidates() == []
-    assert tasks_store.get_task(harvested["id"]) is None
-    assert tasks_store.get_task(typed["id"]) is not None
+    # Harvested rows are dismissed rather than deleted so GO SYNC can push a
+    # tombstone and the phone drops its copy too.
+    open_ids = {t["id"] for t in tasks_store.list_tasks()}
+    assert harvested["id"] not in open_ids
+    assert tasks_store.get_task(harvested["id"])["dismissed"] == 1
+    assert typed["id"] in open_ids
 
 
 def test_clear_endpoint_drops_token_and_store(mail_dir):
