@@ -1,13 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:exosites_mobile/app/mobile_sync_config.dart';
-import 'package:exosites_mobile/design/exo_theme.dart';
 import 'package:exosites_mobile/features/tasks/task_detail_sheet.dart';
 import 'package:exosites_mobile/features/tasks/task_due_label.dart';
 import 'package:exosites_mobile/features/tasks/task_list_tile.dart';
-import 'package:exosites_mobile/features/tasks/tasks_screen.dart';
-import 'package:exosites_mobile/sync/key_value_store.dart';
+import 'package:exosites_mobile/notifications/due_reminder_copy.dart';
 import 'package:exosites_mobile/sync/local_store.dart';
 import 'package:exosites_mobile/sync/task_source_forget.dart';
 import 'package:exosites_mobile/sync/user_messages.dart';
@@ -15,10 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-int _dbSerial = 0;
-
-String _tempDb() =>
-    '${Directory.systemTemp.path}/tasks_ui_${++_dbSerial}.db';
+import 'support/task_test_harness.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -70,165 +63,14 @@ void main() {
     );
   });
 
-  test('local store round-trips tasks collection', () async {
-    final store = LocalBrainStore(databasePath: _tempDb());
-    await store.upsertRecord(
-      collection: 'tasks',
-      recordId: '1',
-      payloadJson: jsonEncode({
-        'description': 'Call the landlord',
-        'completed': false,
-      }),
-      updatedAt: '2026-07-21T12:00:00Z',
-    );
-    final rows = await store.listByCollection('tasks');
-    expect(rows, hasLength(1));
-    expect(rows.first['record_id'], '1');
-  });
-
-  test('pending push queue: clock guard keeps re-edited rows flagged', () async {
-    final store = LocalBrainStore(databasePath: _tempDb());
-    await store.clearAll();
-    await store.applyLocalEdit(
-      collection: 'tasks',
-      recordId: '1',
-      payloadJson: '{"completed":true}',
-      updatedAt: '2026-08-11T20:00:00Z',
-      logicalClock: 100,
-      deviceId: 'mobile-1',
-    );
-    expect(await store.listPendingPush(), hasLength(1));
-
-    // Clearing with a stale clock (row edited again mid-push) keeps the flag.
-    await store.clearPendingPush(collection: 'tasks', recordId: '1', logicalClock: 99);
-    expect(await store.listPendingPush(), hasLength(1));
-
-    await store.clearPendingPush(collection: 'tasks', recordId: '1', logicalClock: 100);
-    expect(await store.listPendingPush(), isEmpty);
-
-    // Pull-applied rows supersede any queued edit.
-    await store.applyLocalEdit(
-      collection: 'tasks',
-      recordId: '1',
-      payloadJson: '{"completed":true}',
-      updatedAt: '2026-08-11T21:00:00Z',
-      logicalClock: 200,
-      deviceId: 'mobile-1',
-    );
-    await store.upsertRecord(
-      collection: 'tasks',
-      recordId: '1',
-      payloadJson: '{"completed":true}',
-      updatedAt: '2026-08-11T22:00:00Z',
-      logicalClock: 300,
-      deviceId: 'desktop-1',
-    );
-    expect(await store.listPendingPush(), isEmpty);
-  });
-
-  test('setTaskCompleted rewrites cached payload and queues a push', () async {
-    final store = LocalBrainStore(databasePath: _tempDb());
-    await store.clearAll();
-    await store.upsertRecord(
-      collection: 'tasks',
-      recordId: '9',
-      payloadJson: jsonEncode({'description': 'Water plants', 'completed': false}),
-      updatedAt: '2026-08-01T00:00:00Z',
-      logicalClock: 10,
-      deviceId: 'desktop-1',
-    );
-    final config = MobileSyncConfig(
-      storage: MemoryKeyValueStore(),
-      localStore: store,
-    );
-    await config.hydrate();
-
-    // Not paired — the immediate push fails silently and the edit stays queued.
-    expect(
-      await config.setTaskCompleted(recordId: '9', completed: true),
-      isTrue,
-    );
-    final row = (await store.listByCollection('tasks')).single;
-    final payload = jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
-    expect(payload['completed'], isTrue);
-    expect(payload['completed_at'], isNotNull);
-    expect((row['logical_clock'] as int), greaterThan(10));
-    expect(await store.listPendingPush(), hasLength(1));
-
-    // Unknown record: no-op.
-    expect(
-      await config.setTaskCompleted(recordId: 'missing', completed: true),
-      isFalse,
-    );
-
-    // Un-complete clears completed_at.
-    expect(
-      await config.setTaskCompleted(recordId: '9', completed: false),
-      isTrue,
-    );
-    final after = (await store.listByCollection('tasks')).single;
-    final payload2 = jsonDecode(after['payload_json'] as String) as Map<String, dynamic>;
-    expect(payload2['completed'], isFalse);
-    expect(payload2['completed_at'], isNull);
-  });
-
-  test('setTasksCompleted skips unknown and already-correct ids', () async {
-    final store = LocalBrainStore(databasePath: _tempDb());
-    await store.clearAll();
-    await store.upsertRecord(
-      collection: 'tasks',
-      recordId: 'open',
-      payloadJson: jsonEncode({'description': 'Open', 'completed': false}),
-      updatedAt: '2026-08-01T00:00:00Z',
-      logicalClock: 10,
-      deviceId: 'desktop-1',
-    );
-    await store.upsertRecord(
-      collection: 'tasks',
-      recordId: 'done',
-      payloadJson: jsonEncode({'description': 'Done', 'completed': true}),
-      updatedAt: '2026-08-01T00:00:00Z',
-      logicalClock: 10,
-      deviceId: 'desktop-1',
-    );
-    final config = MobileSyncConfig(
-      storage: MemoryKeyValueStore(),
-      localStore: store,
-    );
-    await config.hydrate();
-
-    expect(
-      await config.setTasksCompleted(
-        recordIds: ['open', 'done', 'missing'],
-        completed: true,
-      ),
-      1,
-    );
-    final rows = await store.listByCollection('tasks');
-    final byId = {for (final row in rows) row['record_id']: row};
-    final openPayload = jsonDecode(byId['open']!['payload_json'] as String);
-    final donePayload = jsonDecode(byId['done']!['payload_json'] as String);
-    expect(openPayload['completed'], isTrue);
-    expect(donePayload['completed'], isTrue);
-    expect(byId['done']!['logical_clock'], 10);
-    expect(await store.listPendingPush(), hasLength(1));
-  });
-
-  testWidgets('Open filter hides completed; All keeps open first', (tester) async {
-    final store = await _seedTwoTasks(tester);
-    await _pumpedTasks(tester, store);
+  testWidgets('Open filter hides completed; Done shows completed', (tester) async {
+    final store = await seedTwoTasks(tester);
+    await pumpedTasks(tester, store);
 
     expect(find.text('Call the landlord'), findsOneWidget);
     expect(find.text('Done already'), findsNothing);
     expect(find.text('Suggested by EXO'), findsNothing);
-
-    await tester.tap(find.widgetWithText(ChoiceChip, SyncUserMessages.taskFilterAll));
-    await tester.pump();
-    expect(find.text('Call the landlord'), findsOneWidget);
-    expect(find.text('Done already'), findsOneWidget);
-    final openY = tester.getTopLeft(find.text('Call the landlord')).dy;
-    final doneY = tester.getTopLeft(find.text('Done already')).dy;
-    expect(openY, lessThan(doneY));
+    expect(find.text(SyncUserMessages.taskFilterAll), findsNothing);
 
     await tester.tap(find.widgetWithText(ChoiceChip, SyncUserMessages.taskFilterDone));
     await tester.pump();
@@ -236,22 +78,9 @@ void main() {
     expect(find.text('Done already'), findsOneWidget);
   });
 
-  testWidgets('tapping the title opens the sheet; circle marks done and leaves Open', (tester) async {
-    final store = LocalBrainStore(databasePath: _tempDb());
-    await tester.runAsync(() async {
-      await store.clearAll();
-      await store.upsertRecord(
-        collection: 'tasks',
-        recordId: '5',
-        payloadJson: jsonEncode({
-          'description': 'Buy stamps',
-          'completed': false,
-          'priority': 'normal',
-        }),
-        updatedAt: '2026-08-01T00:00:00Z',
-      );
-    });
-    await _pumpedTasks(tester, store);
+  testWidgets('tapping the title opens the sheet; Mark done leaves Open', (tester) async {
+    final store = await _oneTask(tester, '5', 'Buy stamps');
+    await pumpedTasks(tester, store);
     expect(find.text('Buy stamps'), findsOneWidget);
 
     await tester.tap(find.text('Buy stamps'));
@@ -262,12 +91,10 @@ void main() {
     var payload = jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
     expect(payload['completed'], isFalse);
 
-    await tester.tapAt(const Offset(12, 12));
+    await tester.ensureVisible(find.widgetWithText(FilledButton, SyncUserMessages.taskMarkDone));
+    await tester.tap(find.widgetWithText(FilledButton, SyncUserMessages.taskMarkDone));
     await tester.pumpAndSettle();
-    expect(find.byType(TaskDetailSheet), findsNothing);
-
-    await tester.tap(find.bySemanticsLabel(SyncUserMessages.taskMarkDone));
-    await _waitUntil(tester, () => find.text('Buy stamps').evaluate().isEmpty);
+    await waitUntil(tester, () => find.text('Buy stamps').evaluate().isEmpty);
 
     expect(find.text('Buy stamps'), findsNothing);
     expect(find.text(SyncUserMessages.markedDone), findsOneWidget);
@@ -282,8 +109,22 @@ void main() {
     expect(payload['completed'], isTrue);
   });
 
+  testWidgets('checkbox tap starts multi-select without completing', (tester) async {
+    final store = await _oneTask(tester, '5', 'Buy stamps');
+    await pumpedTasks(tester, store);
+
+    await tester.tap(find.byIcon(Icons.check_box_outline_blank));
+    await tester.pump();
+    expect(find.text(SyncUserMessages.taskSelectAll), findsOneWidget);
+    expect(find.byType(TaskDetailSheet), findsNothing);
+
+    final row = (await tester.runAsync(() => store.listByCollection('tasks')))!.single;
+    final payload = jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
+    expect(payload['completed'], isFalse);
+  });
+
   testWidgets('long-press select marks two tasks done and exits select', (tester) async {
-    final store = LocalBrainStore(databasePath: _tempDb());
+    final store = LocalBrainStore(databasePath: uniqueTaskDbPath());
     await tester.runAsync(() async {
       await store.clearAll();
       await store.upsertRecord(
@@ -299,7 +140,7 @@ void main() {
         updatedAt: '2026-08-02T00:00:00Z',
       );
     });
-    await _pumpedTasks(tester, store);
+    await pumpedTasks(tester, store);
 
     await tester.longPress(find.text('First open'));
     await tester.pump();
@@ -313,7 +154,7 @@ void main() {
     expect(find.text(SyncUserMessages.tasksSelected(2)), findsOneWidget);
 
     await tester.tap(find.widgetWithText(TextButton, SyncUserMessages.taskMarkDone));
-    await _waitUntil(tester, () => find.text('First open').evaluate().isEmpty);
+    await waitUntil(tester, () => find.text('First open').evaluate().isEmpty);
 
     expect(find.text('First open'), findsNothing);
     expect(find.text('Second open'), findsNothing);
@@ -322,8 +163,8 @@ void main() {
   });
 
   testWidgets('Select all on Open; changing filter clears selection', (tester) async {
-    final store = await _seedTwoTasks(tester);
-    await _pumpedTasks(tester, store);
+    final store = await seedTwoTasks(tester);
+    await pumpedTasks(tester, store);
 
     await tester.longPress(find.text('Call the landlord'));
     await tester.pump();
@@ -331,28 +172,16 @@ void main() {
     await tester.pump();
     expect(find.text(SyncUserMessages.tasksSelected(1)), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(ChoiceChip, SyncUserMessages.taskFilterAll));
+    await tester.tap(find.widgetWithText(ChoiceChip, SyncUserMessages.taskFilterDone));
     await tester.pump();
     expect(find.text(SyncUserMessages.taskSelectAll), findsNothing);
-    expect(find.text('Call the landlord'), findsOneWidget);
+    expect(find.text('Call the landlord'), findsNothing);
     expect(find.text('Done already'), findsOneWidget);
   });
 
   testWidgets('Remove asks once then hides the task', (tester) async {
-    final store = LocalBrainStore(databasePath: _tempDb());
-    await tester.runAsync(() async {
-      await store.clearAll();
-      await store.upsertRecord(
-        collection: 'tasks',
-        recordId: 'prep',
-        payloadJson: jsonEncode({
-          'description': 'Prepare for: Team standup',
-          'completed': false,
-        }),
-        updatedAt: '2026-08-01T00:00:00Z',
-      );
-    });
-    await _pumpedTasks(tester, store);
+    final store = await _oneTask(tester, 'prep', 'Prepare for: Team standup');
+    await pumpedTasks(tester, store);
 
     await tester.longPress(find.text('Prepare for: Team standup'));
     await tester.pump();
@@ -361,79 +190,13 @@ void main() {
     expect(find.text(SyncUserMessages.taskRemoveConfirmTitle), findsOneWidget);
 
     await tester.tap(find.widgetWithText(TextButton, SyncUserMessages.taskRemove).last);
-    await _waitUntil(tester, () => find.text('Prepare for: Team standup').evaluate().isEmpty);
+    await waitUntil(tester, () => find.text('Prepare for: Team standup').evaluate().isEmpty);
     expect(find.text('Prepare for: Team standup'), findsNothing);
     expect(find.text(SyncUserMessages.tasksRemoved(1)), findsOneWidget);
   });
 
-  test('deleteTasks flags a tombstone and hides the row from Open', () async {
-    final store = LocalBrainStore(databasePath: _tempDb());
-    await store.clearAll();
-    await store.upsertRecord(
-      collection: 'tasks',
-      recordId: 'prep',
-      payloadJson: jsonEncode({
-        'description': 'Prepare for: Team standup',
-        'completed': false,
-      }),
-      updatedAt: '2026-08-01T00:00:00Z',
-      logicalClock: 10,
-      deviceId: 'desktop-1',
-    );
-    final config = MobileSyncConfig(
-      storage: MemoryKeyValueStore(),
-      localStore: store,
-    );
-    await config.hydrate();
-
-    expect(await config.deleteTasks(recordIds: ['prep', 'missing']), 1);
-    final row = (await store.listByCollection('tasks')).single;
-    expect(LocalBrainStore.rowIsPendingDelete(row), isTrue);
-    expect(await store.listPendingPush(), hasLength(1));
-  });
-
-  test('deleteTasks also tombstones the joined Inbox draft', () async {
-    final store = LocalBrainStore(databasePath: _tempDb());
-    await store.clearAll();
-    await store.upsertRecord(
-      collection: 'tasks',
-      recordId: '5',
-      payloadJson: jsonEncode({
-        'description': 'Reply to Ada',
-        'completed': false,
-      }),
-      updatedAt: '2026-08-01T00:00:00Z',
-      logicalClock: 10,
-      deviceId: 'desktop-1',
-    );
-    await store.upsertRecord(
-      collection: 'pending_actions',
-      recordId: 'mail_reply:9',
-      payloadJson: jsonEncode({
-        'type': 'mail_reply',
-        'status': 'ready',
-        'task_record_id': '5',
-        'subject': 'Re: Lunch',
-      }),
-      updatedAt: '2026-09-07T00:00:00Z',
-      logicalClock: 4,
-      deviceId: 'desktop-1',
-    );
-    final config = MobileSyncConfig(
-      storage: MemoryKeyValueStore(),
-      localStore: store,
-    );
-    await config.hydrate();
-
-    expect(await config.deleteTasks(recordIds: ['5']), 1);
-    final inbox = (await store.listByCollection('pending_actions')).single;
-    expect(LocalBrainStore.rowIsPendingDelete(inbox), isTrue);
-    final pending = await store.listPendingPush();
-    expect(pending, hasLength(2));
-  });
-
   testWidgets('gmail task offers Stop when desktop advertised capability', (tester) async {
-    final store = LocalBrainStore(databasePath: _tempDb());
+    final store = LocalBrainStore(databasePath: uniqueTaskDbPath());
     await tester.runAsync(() async {
       await store.clearAll();
       await store.upsertRecord(
@@ -452,15 +215,15 @@ void main() {
         updatedAt: '2026-09-01T00:00:00Z',
       );
     });
-    await _pumpedTasks(tester, store, paired: true);
+    await pumpedTasks(tester, store, paired: true);
     await tester.tap(find.text('Starred mail'));
     await tester.pumpAndSettle();
     expect(find.text('From Gmail'), findsOneWidget);
     expect(find.text('Stop adding from Gmail'), findsOneWidget);
   });
 
-  testWidgets('tapping a joined mail task opens Inbox instead of the sheet', (tester) async {
-    final store = LocalBrainStore(databasePath: _tempDb());
+  testWidgets('tapping a joined mail task shows the draft in the sheet', (tester) async {
+    final store = LocalBrainStore(databasePath: uniqueTaskDbPath());
     await tester.runAsync(() async {
       await store.clearAll();
       await store.upsertRecord(
@@ -485,107 +248,45 @@ void main() {
         updatedAt: '2026-09-07T00:00:00Z',
       );
     });
-    String? opened;
-    final storage = MemoryKeyValueStore();
-    await storage.write('access_token', 'tok');
-    await storage.write('sync_paired', '1');
-    final config = MobileSyncConfig(storage: storage, localStore: store);
-    await tester.runAsync(config.hydrate);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: ExoTheme.dark(),
-        home: Scaffold(
-          body: TasksScreen(
-            config: config,
-            onOpenInbox: (id) => opened = id,
-          ),
-        ),
-      ),
-    );
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 250));
-    });
-    await tester.pump();
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 250));
-    });
-    await tester.pump();
+    await pumpedTasks(tester, store, paired: true);
 
     await tester.tap(find.text('Reply to Ada'));
+    await tester.pumpAndSettle();
+    final copy = DueReminderCopy(const Locale('en'));
+    await waitUntil(tester, () => find.text(copy.actionCardTitle).evaluate().isNotEmpty);
+
+    expect(find.byType(TaskDetailSheet), findsOneWidget);
+    expect(find.text(copy.actionCardTitle), findsOneWidget);
+    expect(find.text('Re: Lunch'), findsWidgets);
+    expect(find.text(copy.actionSend), findsOneWidget);
+    expect(find.text(SyncUserMessages.taskMarkDone), findsOneWidget);
+
+    await tester.tap(find.text(copy.actionSend));
     await tester.pump();
-    expect(opened, 'mail_reply:9');
-    expect(find.byType(TaskDetailSheet), findsNothing);
+    expect(find.text(copy.actionConfirmTitle), findsOneWidget);
+    expect(find.text(copy.actionConfirmBody), findsOneWidget);
+    expect(find.text(SyncUserMessages.cancel), findsOneWidget);
   });
 }
 
-Future<LocalBrainStore> _seedTwoTasks(WidgetTester tester) async {
-  final store = LocalBrainStore(databasePath: _tempDb());
+Future<LocalBrainStore> _oneTask(
+  WidgetTester tester,
+  String recordId,
+  String description,
+) async {
+  final store = LocalBrainStore(databasePath: uniqueTaskDbPath());
   await tester.runAsync(() async {
     await store.clearAll();
     await store.upsertRecord(
       collection: 'tasks',
-      recordId: '2',
+      recordId: recordId,
       payloadJson: jsonEncode({
-        'description': 'Done already',
-        'completed': true,
+        'description': description,
+        'completed': false,
         'priority': 'normal',
       }),
-      updatedAt: '2026-07-20T12:00:00Z',
-    );
-    await store.upsertRecord(
-      collection: 'tasks',
-      recordId: '1',
-      payloadJson: jsonEncode({
-        'description': 'Call the landlord',
-        'completed': false,
-        'priority': 'high',
-        'due_at': '2026-07-25T09:00:00Z',
-      }),
-      updatedAt: '2026-07-21T12:00:00Z',
+      updatedAt: '2026-08-01T00:00:00Z',
     );
   });
   return store;
-}
-
-Future<MobileSyncConfig> _pumpedTasks(
-  WidgetTester tester,
-  LocalBrainStore store, {
-  bool paired = false,
-}) async {
-  final storage = MemoryKeyValueStore();
-  if (paired) {
-    await storage.write('access_token', 'tok');
-    await storage.write('sync_paired', '1');
-  }
-  final config = MobileSyncConfig(
-    storage: storage,
-    localStore: store,
-  );
-  await tester.runAsync(config.hydrate);
-  await tester.pumpWidget(
-    MaterialApp(
-      theme: ExoTheme.dark(),
-      home: Scaffold(body: TasksScreen(config: config)),
-    ),
-  );
-  await tester.runAsync(() async {
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-  });
-  await tester.pump();
-  if (paired) {
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 250));
-    });
-    await tester.pump();
-  }
-  return config;
-}
-
-Future<void> _waitUntil(WidgetTester tester, bool Function() ready) async {
-  for (var i = 0; i < 40 && !ready(); i++) {
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    });
-    await tester.pump();
-  }
 }

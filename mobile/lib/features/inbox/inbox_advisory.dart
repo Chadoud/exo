@@ -3,40 +3,33 @@ import 'package:flutter/material.dart';
 import '../../design/exo_spacing.dart';
 import '../../design/exo_widgets.dart';
 import 'inbox_copy.dart';
+import 'inbox_expand_card.dart';
 
 class InboxNudgeCard extends StatelessWidget {
   const InboxNudgeCard({
     super.key,
     required this.payload,
     required this.onDismiss,
+    this.dueDays,
   });
 
   final Map<String, dynamic> payload;
   final VoidCallback onDismiss;
+  final int? dueDays;
 
   @override
   Widget build(BuildContext context) {
     final copy = InboxCopy.of(context);
     final title = payload['title']?.toString().trim() ?? '';
     final body = payload['body']?.toString().trim() ?? '';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: ExoSpacing.md),
-      child: ExoSurface(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (title.isNotEmpty)
-              Text(title, style: Theme.of(context).textTheme.titleSmall),
-            if (body.isNotEmpty) ...[
-              const SizedBox(height: ExoSpacing.xs),
-              Text(body, style: Theme.of(context).textTheme.bodySmall),
-            ],
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(onPressed: onDismiss, child: Text(copy.dismiss)),
-            ),
-          ],
-        ),
+    return InboxExpandCard(
+      title: title.isNotEmpty ? title : copy.needsLook,
+      subtitle: body,
+      dueDays: dueDays,
+      french: copy.locale.languageCode == 'fr',
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: TextButton(onPressed: onDismiss, child: Text(copy.dismiss)),
       ),
     );
   }
@@ -47,39 +40,32 @@ class InboxFailureCard extends StatelessWidget {
     super.key,
     required this.payload,
     required this.onDismiss,
+    this.dueDays,
   });
 
   final Map<String, dynamic> payload;
   final VoidCallback onDismiss;
+  final int? dueDays;
 
   @override
   Widget build(BuildContext context) {
     final copy = InboxCopy.of(context);
     final goal = payload['goal']?.toString().trim() ?? '';
     final outcome = payload['outcome']?.toString().trim() ?? '';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: ExoSpacing.md),
-      child: ExoSurface(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (goal.isNotEmpty) ...[
-              ExoSectionLabel(copy.failureAsk),
-              const SizedBox(height: ExoSpacing.xs),
-              Text(goal, style: Theme.of(context).textTheme.titleSmall),
-            ],
-            if (outcome.isNotEmpty) ...[
-              const SizedBox(height: ExoSpacing.sm),
-              Text(outcome, style: Theme.of(context).textTheme.bodySmall),
-            ],
-            const SizedBox(height: ExoSpacing.sm),
-            Text(copy.failureHint, style: Theme.of(context).textTheme.bodySmall),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(onPressed: onDismiss, child: Text(copy.dismiss)),
-            ),
-          ],
-        ),
+    return InboxExpandCard(
+      title: goal.isNotEmpty ? goal : copy.failureAsk,
+      subtitle: outcome,
+      dueDays: dueDays,
+      french: copy.locale.languageCode == 'fr',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(copy.failureHint, style: Theme.of(context).textTheme.bodySmall),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(onPressed: onDismiss, child: Text(copy.dismiss)),
+          ),
+        ],
       ),
     );
   }

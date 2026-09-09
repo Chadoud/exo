@@ -325,7 +325,7 @@ class _FirstSyncBodyState extends State<_FirstSyncBody> {
             ),
           TextButton(
             onPressed: () => widget.onContinue(),
-            child: const Text(SyncUserMessages.continueToMemories),
+            child: const Text(SyncUserMessages.continueToInbox),
           ),
         ],
       );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../design/exo_colors.dart';
+import '../../design/exo_palette.dart';
 import '../../design/exo_spacing.dart';
 import '../../design/exo_widgets.dart';
 import '../../sync/user_messages.dart';
@@ -139,7 +139,8 @@ class _SetupLinkPanelState extends State<SetupLinkPanel> {
                 const SizedBox(height: ExoSpacing.md),
                 Text(
                   SyncUserMessages.skipPairingDevHint,
-                  style: textTheme.bodySmall?.copyWith(color: ExoColors.textMuted),
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: ExoPalette.of(context).textMuted),
                 ),
                 const SizedBox(height: ExoSpacing.sm),
                 TextButton(

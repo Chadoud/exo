@@ -4,6 +4,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../app/mobile_sync_config.dart';
 import '../../design/exo_spacing.dart';
+import '../../design/exo_theme.dart';
 import '../../design/exo_widgets.dart';
 import '../../sync/pairing_payload.dart';
 import '../../sync/user_messages.dart';
@@ -187,7 +188,7 @@ class _PairingScreenState extends State<PairingScreen>
 
   Widget _scannerPane() {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(ExoTheme.radius),
       child: ColoredBox(
         color: const Color(0xFF000000),
         child: MobileScanner(

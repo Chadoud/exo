@@ -14,7 +14,7 @@ void main() {
   test('needs pair and decrypt map to pair recovery', () {
     expect(bannerActionFor(ExoStatusKind.needsPair)?.$1, SyncUserMessages.scanDesktopCode);
     expect(bannerActionFor(ExoStatusKind.needsPair)?.$2, SyncBannerAction.pair);
-    expect(bannerActionFor(ExoStatusKind.decryptError)?.$1, SyncUserMessages.pairAgain);
+    expect(bannerActionFor(ExoStatusKind.decryptError)?.$1, SyncUserMessages.linkAgain);
     expect(bannerActionFor(ExoStatusKind.decryptError)?.$2, SyncBannerAction.pair);
   });
 
@@ -29,11 +29,12 @@ void main() {
     expect(bannerActionFor(ExoStatusKind.info), isNull);
   });
 
-  test('shell tabs are Memory Inbox Tasks without Capture; Memory is default index 0', () {
-    expect(AdaptiveShell.tabLabels, ['Memory', 'Inbox', 'Tasks']);
+  test('shell tabs are Inbox Tasks Settings without Memory or Capture', () {
+    expect(AdaptiveShell.tabLabels, ['Inbox', 'Tasks', 'Settings']);
     expect(AdaptiveShell.tabLabels.contains('Capture'), isFalse);
-    expect(AdaptiveShell.tabLabels.indexOf('Memory'), 0);
-    expect(AdaptiveShell.tabLabels.indexOf('Inbox'), 1);
+    expect(AdaptiveShell.tabLabels.contains('Memory'), isFalse);
+    expect(AdaptiveShell.tabLabels.indexOf('Inbox'), 0);
+    expect(AdaptiveShell.tabLabels.indexOf('Settings'), 2);
   });
 }
 

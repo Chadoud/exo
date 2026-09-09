@@ -44,7 +44,7 @@ class SyncCollectionEmpty extends StatelessWidget {
           title: SyncUserMessages.syncEmptyUnpairedTitle,
           subtitle: SyncUserMessages.syncEmptyUnpairedSubtitle,
           icon: Icons.link_off_outlined,
-          actionLabel: onPair == null ? null : SyncUserMessages.pairAgain,
+          actionLabel: onPair == null ? null : SyncUserMessages.openLink,
           onAction: onPair,
         );
       case SyncListEmptyKind.neverPulled:

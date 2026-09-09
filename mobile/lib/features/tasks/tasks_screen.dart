@@ -8,7 +8,6 @@ import '../../design/exo_widgets.dart';
 import '../../sync/sync_collection_scaffold.dart';
 import '../../sync/sync_list_empty.dart';
 import '../../sync/local_store.dart';
-import '../../sync/pending_action_payload.dart';
 import '../../sync/task_payload.dart';
 import '../../sync/task_source_forget.dart';
 import '../../sync/source_stop.dart';
@@ -27,14 +26,12 @@ class TasksScreen extends StatefulWidget {
     this.onSignInAgain,
     this.onPairAgain,
     this.focusRecordId,
-    this.onOpenInbox,
   });
 
   final MobileSyncConfig config;
   final VoidCallback? onSignInAgain;
   final VoidCallback? onPairAgain;
   final String? focusRecordId;
-  final ValueChanged<String>? onOpenInbox;
 
   @override
   State<TasksScreen> createState() => _TasksScreenState();
@@ -42,7 +39,6 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   List<Map<String, dynamic>> _items = [];
-  List<Map<String, dynamic>> _pendingRows = [];
   TaskListFilter _filter = TaskListFilter.open;
   final Set<String> _selectedIds = {};
   bool _selecting = false;
@@ -51,7 +47,6 @@ class _TasksScreenState extends State<TasksScreen> {
   final _scroll = ScrollController();
   String? _missingFocus;
   String? _openedSheetFor;
-  String? _redirectedFocus;
   bool _hasForgetCapability = false;
   final Map<String, SourceStopPhase> _stopPhases = {};
 
@@ -104,35 +99,8 @@ class _TasksScreenState extends State<TasksScreen> {
       rows.add(row);
     }
     rows.sort(compareTaskRows);
-    var pending = <Map<String, dynamic>>[];
-    if (widget.config.isPaired) {
-      pending = List<Map<String, dynamic>>.from(
-        await widget.config.localStore.listByCollection(pendingActionsCollection),
-      ).where((row) => !LocalBrainStore.rowIsPendingDelete(row)).toList();
-      if (!mounted || token != _loadToken) return;
-    }
+    if (!mounted || token != _loadToken) return;
     final focus = widget.focusRecordId;
-    if (focus != null &&
-        focus.isNotEmpty &&
-        focus != _redirectedFocus) {
-      final join = pendingRecordIdForTask(pending, focus);
-      if (join != null) {
-        _redirectedFocus = focus;
-        setState(() {
-          _items = rows;
-          _pendingRows = pending;
-          _missingFocus = null;
-          _hasForgetCapability = capable;
-          _stopPhases
-            ..clear()
-            ..addAll(phases);
-        });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          widget.onOpenInbox?.call(join);
-        });
-        return;
-      }
-    }
     var missing = _missingFocus;
     if (focus != null &&
         focus.isNotEmpty &&
@@ -144,7 +112,6 @@ class _TasksScreenState extends State<TasksScreen> {
     }
     setState(() {
       _items = rows;
-      _pendingRows = pending;
       _missingFocus = missing;
       _hasForgetCapability = capable;
       _stopPhases
@@ -222,6 +189,14 @@ class _TasksScreenState extends State<TasksScreen> {
         ..clear()
         ..add(recordId);
     });
+  }
+
+  void _onCheckboxTap(String recordId) {
+    if (_selecting) {
+      _toggleSelect(recordId);
+      return;
+    }
+    _enterSelect(recordId);
   }
 
   void _toggleSelect(String recordId) {
@@ -312,11 +287,6 @@ class _TasksScreenState extends State<TasksScreen> {
       _toggleSelect(recordId);
       return;
     }
-    final join = pendingRecordIdForTask(_pendingRows, recordId);
-    if (join != null) {
-      widget.onOpenInbox?.call(join);
-      return;
-    }
     _showDetail(row);
   }
 
@@ -346,10 +316,12 @@ class _TasksScreenState extends State<TasksScreen> {
       context: context,
       config: widget.config,
       payload: payload,
+      taskRecordId: taskRecordIdOf(row) ?? '',
       canStop: widget.config.isPaired && _hasForgetCapability,
       stopPhase: _stopPhases[source] ?? SourceStopPhase.ready,
       onToggleCompleted: () => unawaited(_toggleCompleted(row)),
     );
+    if (mounted) _openedSheetFor = null;
   }
 
   Widget _header() {
@@ -471,7 +443,7 @@ class _TasksScreenState extends State<TasksScreen> {
           highlighted: recordId.isNotEmpty && recordId == widget.focusRecordId,
           onTap: () => _onRowTap(row),
           onLongPress: recordId.isEmpty ? null : () => _enterSelect(recordId),
-          onToggleCompleted: () => _toggleCompleted(row),
+          onSelect: recordId.isEmpty ? null : () => _onCheckboxTap(recordId),
         );
       },
     );

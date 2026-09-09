@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app/mobile_sync_config.dart';
-import '../../design/exo_colors.dart';
+import '../../design/exo_palette.dart';
 import '../../design/exo_spacing.dart';
 import '../../design/exo_theme.dart';
 import '../../design/exo_widgets.dart';
@@ -12,6 +12,8 @@ import '../../notifications/sync_debug_log.dart';
 import '../../sync/pending_action_edits.dart';
 import '../../sync/pending_action_payload.dart';
 import '../../sync/user_messages.dart';
+import '../inbox/inbox_due.dart';
+import '../inbox/inbox_expand_card.dart';
 
 class PendingActionsSection extends StatefulWidget {
   const PendingActionsSection({
@@ -20,12 +22,18 @@ class PendingActionsSection extends StatefulWidget {
     required this.rows,
     this.onChanged,
     this.focusRecordId,
+    this.padded = true,
+    this.taskDueById = const {},
+    this.startExpanded = false,
   });
 
   final MobileSyncConfig config;
   final List<Map<String, dynamic>> rows;
   final VoidCallback? onChanged;
   final String? focusRecordId;
+  final bool padded;
+  final Map<String, int> taskDueById;
+  final bool startExpanded;
 
   @override
   State<PendingActionsSection> createState() => _PendingActionsSectionState();
@@ -103,16 +111,18 @@ class _PendingActionsSectionState extends State<PendingActionsSection> {
   Widget build(BuildContext context) {
     if (widget.rows.isEmpty) return const SizedBox.shrink();
     final copy = DueReminderCopy.of(context);
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ExoSectionLabel(copy.actionSection),
+        const SizedBox(height: ExoSpacing.sm),
+        for (final row in widget.rows) _card(row, copy),
+      ],
+    );
+    if (!widget.padded) return column;
     return Padding(
       padding: const EdgeInsets.fromLTRB(ExoSpacing.lg, ExoSpacing.sm, ExoSpacing.lg, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ExoSectionLabel(copy.actionSection),
-          const SizedBox(height: ExoSpacing.sm),
-          for (final row in widget.rows) _card(row, copy),
-        ],
-      ),
+      child: column,
     );
   }
 
@@ -132,29 +142,28 @@ class _PendingActionsSectionState extends State<PendingActionsSection> {
     final waiting = status == 'confirmed';
     final ready = pendingActionIsReady(payload);
     final focused = recordId.isNotEmpty && recordId == widget.focusRecordId;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: ExoSpacing.md),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(ExoTheme.radius),
-          border: focused ? Border.all(color: ExoColors.brandPrimary, width: 2) : null,
-        ),
-        child: ExoSurface(
+    final palette = ExoPalette.of(context);
+    final dueDays = inboxDueDaysFor(
+      payload,
+      taskDueById: widget.taskDueById,
+      now: DateTime.now(),
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(ExoTheme.radius),
+        border: focused ? Border.all(color: palette.selectedInk, width: 2) : null,
+      ),
+      child: InboxExpandCard(
+        title: copy.actionCardTitleFor(ready: ready, waiting: waiting, stale: stale),
+        subtitle: to,
+        dueDays: dueDays,
+        french: Localizations.localeOf(context).languageCode == 'fr',
+        initiallyExpanded: focused || widget.startExpanded,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              copy.actionCardTitleFor(ready: ready, waiting: waiting, stale: stale),
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            if (to.isNotEmpty) ...[
-              const SizedBox(height: ExoSpacing.xs),
-              Text(to, style: Theme.of(context).textTheme.bodySmall),
-            ],
-            if (ready) ...[
-              const SizedBox(height: ExoSpacing.xs),
+            if (ready)
               Text(copy.actionCardHint, style: Theme.of(context).textTheme.bodySmall),
-            ],
             if (stale)
               Text(copy.actionStale, style: Theme.of(context).textTheme.bodySmall),
             if (waiting)
@@ -171,11 +180,10 @@ class _PendingActionsSectionState extends State<PendingActionsSection> {
               const SizedBox(height: ExoSpacing.sm),
               TextField(
                 controller: subjectCtrl,
-                style: const TextStyle(color: ExoColors.textPrimary),
                 decoration: InputDecoration(
                   labelText: copy.actionSubject,
                   filled: true,
-                  fillColor: ExoColors.bgPrimary,
+                  fillColor: palette.well,
                 ),
               ),
               const SizedBox(height: ExoSpacing.sm),
@@ -183,11 +191,10 @@ class _PendingActionsSectionState extends State<PendingActionsSection> {
                 controller: bodyCtrl,
                 maxLines: 8,
                 minLines: 4,
-                style: const TextStyle(color: ExoColors.textPrimary),
                 decoration: InputDecoration(
                   labelText: copy.actionBody,
                   filled: true,
-                  fillColor: ExoColors.bgPrimary,
+                  fillColor: palette.well,
                 ),
               ),
               const SizedBox(height: ExoSpacing.md),
@@ -195,12 +202,13 @@ class _PendingActionsSectionState extends State<PendingActionsSection> {
                 alignment: Alignment.centerRight,
                 child: ExoPrimaryButton(
                   label: copy.actionSend,
-                  onPressed: recordId.isEmpty ? null : () => _confirm(recordId, payload),
+                  onPressed: recordId.isEmpty
+                      ? null
+                      : () => _confirm(recordId, payload),
                 ),
               ),
             ],
           ],
-        ),
         ),
       ),
     );
@@ -215,11 +223,12 @@ class _InboundBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ExoPalette.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: ExoColors.bgPrimary,
+        color: palette.well,
         borderRadius: BorderRadius.circular(ExoTheme.radius),
-        border: Border.all(color: ExoColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(ExoSpacing.md),

@@ -13,7 +13,7 @@ enum SyncBannerAction { signIn, pair, retry }
     case ExoStatusKind.needsPair:
       return (SyncUserMessages.scanDesktopCode, SyncBannerAction.pair);
     case ExoStatusKind.decryptError:
-      return (SyncUserMessages.pairAgain, SyncBannerAction.pair);
+      return (SyncUserMessages.linkAgain, SyncBannerAction.pair);
     case ExoStatusKind.networkError:
     case ExoStatusKind.error:
       return (SyncUserMessages.tryAgain, SyncBannerAction.retry);

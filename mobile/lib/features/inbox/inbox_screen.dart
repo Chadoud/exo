@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app/mobile_sync_config.dart';
+import '../../design/exo_choice_chips.dart';
 import '../../design/exo_spacing.dart';
 import '../../notifications/sync_debug_log.dart';
 import '../../sync/inbox_edits.dart';
@@ -11,9 +12,12 @@ import '../../sync/local_store.dart';
 import '../../sync/pending_action_payload.dart';
 import '../../sync/sync_collection_scaffold.dart';
 import '../../sync/sync_list_empty.dart';
+import '../../sync/task_source_forget.dart';
 import '../tasks/pending_actions_section.dart';
 import 'inbox_advisory.dart';
 import 'inbox_copy.dart';
+import 'inbox_due.dart';
+import 'inbox_sub_tab.dart';
 
 /// Review lane — mail drafts, nudges, and agent failures.
 class InboxScreen extends StatefulWidget {
@@ -40,6 +44,9 @@ class _InboxScreenState extends State<InboxScreen> {
   List<Map<String, dynamic>> _pending = [];
   List<Map<String, dynamic>> _nudges = [];
   List<Map<String, dynamic>> _failures = [];
+  Map<String, int> _taskDueById = {};
+  InboxSubTab _sub = InboxSubTab.toSend;
+  bool _userPickedSub = false;
   int _seenEpoch = -1;
   int _loadToken = 0;
 
@@ -48,6 +55,18 @@ class _InboxScreenState extends State<InboxScreen> {
     super.initState();
     widget.config.addListener(_onConfig);
     WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
+  }
+
+  @override
+  void didUpdateWidget(covariant InboxScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusRecordId != widget.focusRecordId &&
+        (widget.focusRecordId ?? '').isNotEmpty) {
+      setState(() {
+        _sub = InboxSubTab.toSend;
+        _userPickedSub = true;
+      });
+    }
   }
 
   @override
@@ -61,6 +80,22 @@ class _InboxScreenState extends State<InboxScreen> {
     if (widget.config.dataEpoch != _seenEpoch) _reload();
   }
 
+  List<Map<String, dynamic>> get _visibleNudges => visibleInboxNudges(_nudges);
+
+  bool get _needsLookHasItems =>
+      _visibleNudges.isNotEmpty || _failures.isNotEmpty;
+
+  bool get _isEmpty => _pending.isEmpty && !_needsLookHasItems;
+
+  bool get _laneEmpty {
+    switch (_sub) {
+      case InboxSubTab.toSend:
+        return _pending.isEmpty;
+      case InboxSubTab.needsLook:
+        return !_needsLookHasItems;
+    }
+  }
+
   Future<void> _reload() async {
     final token = ++_loadToken;
     _seenEpoch = widget.config.dataEpoch;
@@ -68,11 +103,14 @@ class _InboxScreenState extends State<InboxScreen> {
       final pending = await _kept(pendingActionsCollection);
       final nudges = await _kept(nudgesCollection);
       final failures = await _kept(agentFailuresCollection);
+      final tasks = await _kept(tasksCollection);
       if (!mounted || token != _loadToken) return;
       setState(() {
         _pending = pending;
         _nudges = nudges;
         _failures = failures;
+        _taskDueById = taskDueDaysByRecordId(tasks, now: DateTime.now());
+        _landIfNeeded();
       });
       widget.onReadyCount?.call(
         countInboxAttention(pending: pending, nudges: nudges, failures: failures),
@@ -80,6 +118,21 @@ class _InboxScreenState extends State<InboxScreen> {
     } catch (_) {
       if (!mounted || token != _loadToken) return;
       widget.onReadyCount?.call(0);
+    }
+  }
+
+  void _landIfNeeded() {
+    if (_userPickedSub) return;
+    if ((widget.focusRecordId ?? '').isNotEmpty) {
+      _sub = InboxSubTab.toSend;
+      return;
+    }
+    if (_pending.isNotEmpty) {
+      _sub = InboxSubTab.toSend;
+      return;
+    }
+    if (_needsLookHasItems) {
+      _sub = InboxSubTab.needsLook;
     }
   }
 
@@ -108,25 +161,102 @@ class _InboxScreenState extends State<InboxScreen> {
     _reload();
   }
 
-  bool get _isEmpty =>
-      _pending.isEmpty &&
-      visibleInboxNudges(_nudges).isEmpty &&
-      _failures.isEmpty;
+  void _pickSub(InboxSubTab next) {
+    if (next == _sub) return;
+    setState(() {
+      _sub = next;
+      _userPickedSub = true;
+    });
+  }
 
   Widget _empty() {
     final copy = InboxCopy.of(context);
+    final kind = classifySyncListEmpty(widget.config);
+    final perLane = kind == SyncListEmptyKind.syncedEmpty && !_isEmpty;
     return ListenableBuilder(
       listenable: widget.config,
       builder: (context, _) {
         return SyncCollectionEmpty(
           kind: classifySyncListEmpty(widget.config),
-          syncedEmptyTitle: copy.emptyTitle,
-          syncedEmptySubtitle: copy.emptySubtitle,
+          syncedEmptyTitle: perLane
+              ? (_sub == InboxSubTab.toSend
+                  ? copy.toSendEmptyTitle
+                  : copy.needsLookEmptyTitle)
+              : copy.emptyTitle,
+          syncedEmptySubtitle: perLane
+              ? (_sub == InboxSubTab.toSend
+                  ? copy.toSendEmptySubtitle
+                  : copy.needsLookEmptySubtitle)
+              : copy.emptySubtitle,
           icon: Icons.inbox_outlined,
           syncInFlight: widget.config.syncInFlight,
           onPair: widget.onPairAgain,
         );
       },
+    );
+  }
+
+  Widget _header() {
+    final copy = InboxCopy.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        ExoSpacing.lg,
+        ExoSpacing.sm,
+        ExoSpacing.lg,
+        ExoSpacing.xs,
+      ),
+      child: ExoChoiceChips<InboxSubTab>(
+        options: [
+          (InboxSubTab.toSend, copy.toSend),
+          (InboxSubTab.needsLook, copy.needsLook),
+        ],
+        selected: _sub,
+        onSelected: _pickSub,
+      ),
+    );
+  }
+
+  Widget _toSendBody() {
+    return PendingActionsSection(
+      config: widget.config,
+      rows: _pending,
+      onChanged: _reload,
+      focusRecordId: widget.focusRecordId,
+      taskDueById: _taskDueById,
+    );
+  }
+
+  Widget _needsLookBody(InboxCopy copy) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InboxAdvisorySection(
+          label: copy.nudgeSection,
+          children: [
+            for (final row in _visibleNudges)
+              InboxNudgeCard(
+                payload: inboxPayloadOf(row),
+                onDismiss: () => _dismiss(
+                  nudgesCollection,
+                  row['record_id']?.toString() ?? '',
+                ),
+              ),
+          ],
+        ),
+        InboxAdvisorySection(
+          label: copy.failureSection,
+          children: [
+            for (final row in _failures)
+              InboxFailureCard(
+                payload: inboxPayloadOf(row),
+                onDismiss: () => _dismiss(
+                  agentFailuresCollection,
+                  row['record_id']?.toString() ?? '',
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -137,42 +267,12 @@ class _InboxScreenState extends State<InboxScreen> {
       config: widget.config,
       onSignInAgain: widget.onSignInAgain,
       onPairAgain: widget.onPairAgain,
+      header: _isEmpty ? null : _header(),
       listBody: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          PendingActionsSection(
-            config: widget.config,
-            rows: _pending,
-            onChanged: _reload,
-            focusRecordId: widget.focusRecordId,
-          ),
-          InboxAdvisorySection(
-            label: copy.nudgeSection,
-            children: [
-              for (final row in visibleInboxNudges(_nudges))
-                InboxNudgeCard(
-                  payload: inboxPayloadOf(row),
-                  onDismiss: () => _dismiss(
-                    nudgesCollection,
-                    row['record_id']?.toString() ?? '',
-                  ),
-                ),
-            ],
-          ),
-          InboxAdvisorySection(
-            label: copy.failureSection,
-            children: [
-              for (final row in _failures)
-                InboxFailureCard(
-                  payload: inboxPayloadOf(row),
-                  onDismiss: () => _dismiss(
-                    agentFailuresCollection,
-                    row['record_id']?.toString() ?? '',
-                  ),
-                ),
-            ],
-          ),
-          if (_isEmpty) ...[
+          if (_sub == InboxSubTab.toSend) _toSendBody() else _needsLookBody(copy),
+          if (_laneEmpty) ...[
             const SizedBox(height: ExoSpacing.xl),
             _empty(),
             const SizedBox(height: ExoSpacing.xl),

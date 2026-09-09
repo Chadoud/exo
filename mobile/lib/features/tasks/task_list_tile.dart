@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../design/exo_colors.dart';
+import '../../design/due_day_badge.dart';
+import '../../design/exo_palette.dart';
 import '../../design/exo_spacing.dart';
 import '../../sync/task_payload.dart';
 import '../../sync/user_messages.dart';
 import 'task_due_label.dart';
 
-/// Task row — description, priority, due, and a tappable completed toggle.
+/// Task row — description, due, and a checkbox that starts multi-select.
 class TaskListTile extends StatelessWidget {
   const TaskListTile({
     super.key,
@@ -14,7 +15,7 @@ class TaskListTile extends StatelessWidget {
     this.updatedAt,
     this.onTap,
     this.onLongPress,
-    this.onToggleCompleted,
+    this.onSelect,
     this.selecting = false,
     this.selected = false,
     this.highlighted = false,
@@ -24,7 +25,7 @@ class TaskListTile extends StatelessWidget {
   final String? updatedAt;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
-  final VoidCallback? onToggleCompleted;
+  final VoidCallback? onSelect;
   final bool selecting;
   final bool selected;
   final bool highlighted;
@@ -73,10 +74,12 @@ class TaskListTile extends StatelessWidget {
     final locale = Localizations.localeOf(context);
     final meta = metaLine(payload, now: clock, locale: locale);
     final overdue = taskDueIsOverdue(payload, now: clock);
-    final leadingAction = selecting ? onTap : onToggleCompleted;
+    final dueDays = taskDueDayDelta(payload, now: clock);
+    final theme = Theme.of(context);
+    final palette = ExoPalette.of(context);
 
     return Material(
-      color: (selected || highlighted) ? ExoColors.accentLight : Colors.transparent,
+      color: (selected || highlighted) ? palette.accentLight : Colors.transparent,
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
@@ -85,43 +88,45 @@ class TaskListTile extends StatelessWidget {
             horizontal: ExoSpacing.lg,
             vertical: ExoSpacing.md,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _LeadingControl(
-                done: done,
-                title: title,
-                selecting: selecting,
-                selected: selected,
-                onToggle: leadingAction,
-              ),
-              const SizedBox(width: ExoSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: ExoColors.textPrimary,
-                            decoration: done ? TextDecoration.lineThrough : null,
-                          ),
-                    ),
-                    if (meta != null) ...[
-                      const SizedBox(height: ExoSpacing.xs),
+          child: DueDayCardStack(
+            days: dueDays,
+            french: isFrenchLocale(locale),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _LeadingControl(
+                  title: title,
+                  selected: selected,
+                  onSelect: onSelect,
+                ),
+                const SizedBox(width: ExoSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        meta,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: overdue ? ExoColors.error : null,
+                        title,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                              decoration: done ? TextDecoration.lineThrough : null,
                             ),
                       ),
+                      if (meta != null) ...[
+                        const SizedBox(height: ExoSpacing.xs),
+                        Text(
+                          meta,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                                color: overdue ? theme.colorScheme.error : null,
+                              ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -129,52 +134,39 @@ class TaskListTile extends StatelessWidget {
   }
 }
 
-/// 44dp target — completion when browsing, selection when multi-selecting.
+/// Always a checkbox — tap enters or toggles multi-select, never completes.
 class _LeadingControl extends StatelessWidget {
   const _LeadingControl({
-    required this.done,
     required this.title,
-    required this.selecting,
     required this.selected,
-    this.onToggle,
+    this.onSelect,
   });
 
-  final bool done;
   final String title;
-  final bool selecting;
   final bool selected;
-  final VoidCallback? onToggle;
+  final VoidCallback? onSelect;
 
   @override
   Widget build(BuildContext context) {
-    final IconData iconData;
-    final Color color;
-    if (selecting) {
-      iconData = selected ? Icons.check_box : Icons.check_box_outline_blank;
-      color = selected ? ExoColors.brandPrimary : ExoColors.textSecondary;
-    } else {
-      iconData = done ? Icons.check_circle : Icons.radio_button_unchecked;
-      color = done ? ExoColors.brandPrimary : ExoColors.textSecondary;
-    }
-    final icon = Icon(iconData, size: 22, color: color);
-    if (onToggle == null) {
+    final palette = ExoPalette.of(context);
+    final icon = Icon(
+      selected ? Icons.check_box : Icons.check_box_outline_blank,
+      size: 22,
+      color: selected ? palette.selectedInk : palette.textSecondary,
+    );
+    if (onSelect == null) {
       return Padding(padding: const EdgeInsets.all(ExoSpacing.xs), child: icon);
     }
     return Semantics(
       button: true,
-      checked: selecting ? selected : done,
-      selected: selecting ? selected : null,
-      label: selecting
-          ? title
-          : (done
-              ? SyncUserMessages.taskMarkNotDone
-              : SyncUserMessages.taskMarkDone),
+      checked: selected,
+      label: '$title · ${SyncUserMessages.taskSelect}',
       child: InkWell(
-        onTap: onToggle,
+        onTap: onSelect,
         customBorder: const CircleBorder(),
         child: SizedBox(
-          width: 44,
-          height: 44,
+          width: 48,
+          height: 48,
           child: Center(child: icon),
         ),
       ),

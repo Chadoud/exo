@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../app/exo_config.dart';
 import '../../app/mobile_sync_config.dart';
 import '../../design/exo_spacing.dart';
 import '../../design/exo_widgets.dart';
@@ -15,7 +14,7 @@ class SyncDebugSection extends StatefulWidget {
 
   final MobileSyncConfig config;
 
-  static bool get visible => kDebugMode || ExoConfig.isStaging;
+  static bool get visible => kDebugMode;
 
   @override
   State<SyncDebugSection> createState() => _SyncDebugSectionState();

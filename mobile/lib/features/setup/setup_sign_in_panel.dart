@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 
-import '../../design/exo_colors.dart';
+import '../../design/exo_palette.dart';
 import '../../design/exo_spacing.dart';
 import '../../design/exo_status_banner.dart';
 import '../../design/exo_widgets.dart';
@@ -135,6 +135,8 @@ class _SetupSignInPanelState extends State<SetupSignInPanel> {
         width: 20,
         height: 20,
         filterQuality: FilterQuality.medium,
+        // The Apple mark ships white; keep Google's official colors.
+        color: isGoogle ? null : Theme.of(context).colorScheme.onSurface,
       ),
       busy: widget.launchingProvider == provider,
       onPressed: _busy ? null : () => widget.onProviderSignIn(provider),
@@ -144,6 +146,8 @@ class _SetupSignInPanelState extends State<SetupSignInPanel> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final muted = textTheme.bodySmall
+        ?.copyWith(color: ExoPalette.of(context).textMuted);
     final appleFirst = defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.macOS;
     final providers = appleFirst
@@ -158,7 +162,7 @@ class _SetupSignInPanelState extends State<SetupSignInPanel> {
         const SizedBox(height: ExoSpacing.xl),
         Text(
           SyncUserMessages.stepSignIn,
-          style: textTheme.bodySmall?.copyWith(color: ExoColors.textMuted),
+          style: muted,
         ),
         const SizedBox(height: ExoSpacing.xs),
         Text(
@@ -170,7 +174,7 @@ class _SetupSignInPanelState extends State<SetupSignInPanel> {
         const SizedBox(height: ExoSpacing.sm),
         Text(
           SyncUserMessages.setupPairingHint,
-          style: textTheme.bodySmall?.copyWith(color: ExoColors.textMuted),
+          style: muted,
         ),
         const SizedBox(height: ExoSpacing.xl),
         if (waiting != null) ...[

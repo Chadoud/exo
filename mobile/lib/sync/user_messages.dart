@@ -30,7 +30,8 @@ abstract final class SyncUserMessages {
   static const orContinueWith = 'or continue with';
   static const openSignInAgain = 'Open sign-in again';
   static const signInAgain = 'Sign in again';
-  static const pairAgain = 'Pair again';
+  static const linkAgain = 'Link again';
+  static const scanNewCode = 'Scan a new code';
   static const waitingForBrowser =
       'Finish sign-in in the browser, then return here.';
   static const signInFailed = 'Couldn\'t sign in — try again.';
@@ -58,11 +59,12 @@ abstract final class SyncUserMessages {
       'Nothing to paste yet. On desktop: Settings → Sync → Copy pairing code.';
   static const skipPairingDev = 'Skip pairing (dev)';
   static const skipPairingDevHint =
-      'Enter the app without desktop sync. Pair later from Settings when you have a code.';
+      'Enter the app without desktop sync. Link later from Settings when you have a code.';
   static const updatingFromDesktop = 'Updating from desktop…';
   static const syncNow = 'Sync now';
   static const firstSyncFailed = 'Couldn\'t update yet.';
-  static const continueToMemories = 'Continue to memories';
+  static const continueToInbox = 'Continue';
+  static const continueToMemories = continueToInbox;
   static const tryAgain = 'Try again';
   static const stepSignIn = 'Step 1 of 2 · Sign in';
   static const stepPair = 'Step 2 of 2 · Link phone';
@@ -73,7 +75,7 @@ abstract final class SyncUserMessages {
   static const authExpired = 'Session ended — sign in again.';
   static const networkFailed = 'Couldn\'t reach Exo — check your connection.';
   static const decryptFailed =
-      'This phone can\'t read that computer\'s data. Pair again.';
+      'This phone can\'t read that computer\'s data. Link again.';
   static const schemaTooOld =
       'Update EXO to continue syncing.';
   static const syncFailed = 'Couldn\'t update — try again.';
@@ -93,12 +95,12 @@ abstract final class SyncUserMessages {
   static const pairingExpired =
       'This pairing code has expired. On desktop: Settings → Sync → Copy pairing code, then try again.';
   static const pairingAccountMismatch =
-      'This code belongs to a different EXO account. Sign in with the same account as desktop, then pair again.';
+      'This code belongs to a different EXO account. Sign in with the same account as desktop, then link again.';
   static const pairingRegisterFailed =
       'Phone linked, but device registration failed — Sync still works; try Sync again if the list stays empty.';
 
   static String upToDate(int memoryCount) =>
-      'Up to date · $memoryCount memories on this phone';
+      'Up to date · $memoryCount facts on this phone';
 
   static String syncedNothingNew() => 'Up to date — nothing new yet.';
 
@@ -108,37 +110,26 @@ abstract final class SyncUserMessages {
   static const settingsLinkPaired =
       'Linked to your computer — notes and tasks can update here.';
   static const settingsLinkPairedPendingPull =
-      'Paired — pull once to finish linking notes and tasks.';
+      'Linked — pull once to finish linking notes and tasks.';
   static const settingsLinkUnpaired = notPaired;
   static const signOutSwitchAccount = 'Sign out / switch account';
+  static const settingsTitle = 'Settings';
   static const settingsLastUpdateNever =
-      'Not updated yet — tap Sync on Memory or Tasks.';
+      'Not updated yet — tap Sync on Inbox or Tasks.';
+  static String settingsFactsOnPhone(int count) =>
+      count == 1 ? '1 fact on this phone' : '$count facts on this phone';
   static String settingsLastUpdate(String when) => 'Last updated $when';
 
   // Shared sync empties (honest why-empty)
   static const syncEmptyUnpairedTitle = 'Link this phone to your computer';
+  static const openLink = 'Open Link';
   static const syncEmptyUnpairedSubtitle =
-      'Scan or paste the desktop code in Settings to see your notes and tasks here.';
+      'Scan or paste the desktop code in Settings to see your tasks here.';
   static const syncEmptyNeverPulledTitle = 'Getting your data from desktop';
   static const syncEmptyNeverPulledSubtitle =
       'Hang tight — or pull down to refresh.';
   static const syncEmptyNeverPulledIdleSubtitle =
       'Pull down to refresh, or tap Sync at the top.';
-
-  // Memory
-  static const memoriesTitle = 'Memories';
-  static const memoryFallbackTitle = 'Memory';
-  static const memoryEmptyTitle = 'Nothing from desktop yet';
-  static const memoryEmptySubtitle =
-      'Add notes on your computer, then pull to refresh.';
-  static const selectMemoryTitle = 'Select a memory';
-  static const selectMemorySubtitle = 'Choose an item from the list to read it here.';
-  static const searchMemoriesLabel = 'Search';
-  static const searchMemoriesHint = 'Search memories';
-  static const clearSearch = 'Clear search';
-  static const searchNoMatchesTitle = 'No matches';
-  static String searchNoMatchesSubtitle(String query) =>
-      'Nothing matched “$query”.';
 
   // Inbox tab — drafts / nudges / failures to review
   static const inboxTitle = 'Inbox';
@@ -156,6 +147,7 @@ abstract final class SyncUserMessages {
   static const taskCompletedLabel = 'Done';
   static const taskMarkDone = 'Mark done';
   static const taskMarkNotDone = 'Mark not done';
+  static const taskSelect = 'Select';
   static const taskRemove = 'Remove';
   static const taskRemoveConfirmTitle = 'Remove from your list?';
   static const taskRemoveConfirmBody =
@@ -188,16 +180,12 @@ abstract final class SyncUserMessages {
   static const actionsEmptyTitle = tasksEmptyTitle;
   static const actionsEmptySubtitle = tasksEmptySubtitle;
 
-  // Capture / settings
-  static const captureComingSoon =
-      'Voice capture is coming in a later update.';
   static const signOut = 'Sign out';
-  static const signOutConfirmTitle = 'Sign out and clear memories on this phone?';
+  static const signOutConfirmTitle = 'Sign out and remove this phone\'s data?';
   static const signOutConfirmBody =
-      'This removes sign-in, pairing, and local notes from this device.';
+      'This removes sign-in, the desktop link, and this phone\'s local copy.';
   static const cancel = 'Cancel';
-  static const signedOutSnack =
-      'Signed out — keys and local cache cleared on this phone.';
+  static const signedOutSnack = 'Signed out — this phone\'s data was removed.';
 
   // Legacy helpers used by older call sites
   static const signInAndPair = notSignedIn;

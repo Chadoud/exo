@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:exosites_mobile/app/mobile_sync_config.dart';
-import 'package:exosites_mobile/design/exo_theme.dart';
+import 'support/product_theme.dart';
 import 'package:exosites_mobile/features/inbox/inbox_copy.dart';
 import 'package:exosites_mobile/features/inbox/inbox_screen.dart';
 import 'package:exosites_mobile/notifications/due_reminder_copy.dart';
@@ -29,19 +29,16 @@ void main() {
   });
 
   test('joins pending actions to a task record id', () {
-    expect(
-      pendingRecordIdForTask(
-        [
-          {
-            'record_id': 'mail_reply:9',
-            'payload_json': jsonEncode({'task_record_id': '5', 'status': 'ready'}),
-          },
-        ],
-        '5',
-      ),
-      'mail_reply:9',
-    );
+    final rows = [
+      {
+        'record_id': 'mail_reply:9',
+        'payload_json': jsonEncode({'task_record_id': '5', 'status': 'ready'}),
+      },
+    ];
+    expect(pendingRecordIdForTask(rows, '5'), 'mail_reply:9');
+    expect(pendingRowForTask(rows, '5')?['record_id'], 'mail_reply:9');
     expect(pendingRecordIdForTask(const [], '5'), isNull);
+    expect(pendingRowForTask(const [], '5'), isNull);
   });
 
   test('inbox badge counts ready mail, nudges, and failures', () {
@@ -165,6 +162,9 @@ void main() {
     final copy = DueReminderCopy(const Locale('en'));
     expect(find.text(copy.actionSection.toUpperCase()), findsOneWidget);
     expect(find.text(copy.actionCardTitle), findsOneWidget);
+    expect(find.text(copy.actionSend), findsNothing);
+    await tester.tap(find.text(copy.actionCardTitle));
+    await tester.pump();
     expect(find.text(copy.actionContext.toUpperCase()), findsOneWidget);
     expect(find.text('Are you free Thursday?'), findsOneWidget);
     expect(find.text(copy.actionReply.toUpperCase()), findsOneWidget);
@@ -198,6 +198,46 @@ void main() {
     expect(find.text(copy.actionCardTitle), findsNothing);
   });
 
+  testWidgets('To send hides nudges; Needs a look hides mail', (tester) async {
+    final store = LocalBrainStore(databasePath: _tempDb());
+    await tester.runAsync(() async {
+      await store.clearAll();
+      await store.upsertRecord(
+        collection: pendingActionsCollection,
+        recordId: 'mail_reply:9',
+        payloadJson: jsonEncode({
+          'type': 'mail_reply',
+          'status': 'ready',
+          'to_email': 'ada@example.com',
+          'subject': 'Re: Lunch',
+          'body': 'See you at noon',
+        }),
+        updatedAt: '2026-09-07T00:00:00Z',
+      );
+      await store.upsertRecord(
+        collection: nudgesCollection,
+        recordId: '1',
+        payloadJson: jsonEncode({
+          'kind': 'suggestion',
+          'title': 'Try a recap',
+          'body': 'You asked for one.',
+        }),
+        updatedAt: '2026-09-07T00:00:00Z',
+      );
+    });
+    await _pumpedInbox(tester, store);
+    final inbox = InboxCopy(const Locale('en'));
+    final due = DueReminderCopy(const Locale('en'));
+    expect(find.text(inbox.toSend), findsOneWidget);
+    expect(find.text(due.actionCardTitle), findsOneWidget);
+    expect(find.text('Try a recap'), findsNothing);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, inbox.needsLook));
+    await tester.pump();
+    expect(find.text('Try a recap'), findsOneWidget);
+    expect(find.text(due.actionCardTitle), findsNothing);
+  });
+
   testWidgets('nudge and failure cards dismiss locally', (tester) async {
     final store = LocalBrainStore(databasePath: _tempDb());
     await tester.runAsync(() async {
@@ -226,7 +266,9 @@ void main() {
     final copy = InboxCopy(const Locale('en'));
     expect(find.text('Try a recap'), findsOneWidget);
     expect(find.text('Book the flight'), findsOneWidget);
-    expect(find.text(copy.failureHint), findsOneWidget);
+    await tester.tap(find.text('Try a recap'));
+    await tester.pump();
+    expect(find.text(copy.dismiss), findsWidgets);
     await tester.tap(find.text(copy.dismiss).first);
     await tester.pump();
     var gone = false;
@@ -242,18 +284,39 @@ void main() {
     }
     expect(gone, isTrue);
   });
+
+  testWidgets('empty Inbox hides chips and shows one empty', (tester) async {
+    final store = LocalBrainStore(databasePath: _tempDb());
+    await tester.runAsync(store.clearAll);
+    await _pumpedInbox(
+      tester,
+      store,
+      everSynced: true,
+      waitFor: InboxCopy(const Locale('en')).emptyTitle,
+    );
+    final inbox = InboxCopy(const Locale('en'));
+    expect(find.text(inbox.emptyTitle), findsOneWidget);
+    expect(find.text(inbox.toSend), findsNothing);
+    expect(find.text(inbox.needsLook), findsNothing);
+  });
 }
 
-Future<void> _pumpedInbox(WidgetTester tester, LocalBrainStore store) async {
+Future<void> _pumpedInbox(
+  WidgetTester tester,
+  LocalBrainStore store, {
+  bool everSynced = false,
+  String? waitFor,
+}) async {
   final storage = MemoryKeyValueStore();
   await storage.write('access_token', 'tok');
   await storage.write('sync_paired', '1');
+  if (everSynced) await storage.write('has_ever_synced', '1');
   final config = MobileSyncConfig(storage: storage, localStore: store);
   await tester.runAsync(config.hydrate);
   await tester.pumpWidget(
     MaterialApp(
       locale: const Locale('en'),
-      theme: ExoTheme.dark(),
+      theme: productTheme(),
       home: Scaffold(body: InboxScreen(config: config)),
     ),
   );
@@ -262,6 +325,10 @@ Future<void> _pumpedInbox(WidgetTester tester, LocalBrainStore store) async {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     });
     await tester.pump();
+    if (waitFor != null) {
+      if (find.text(waitFor).evaluate().isNotEmpty) return;
+      continue;
+    }
     if (find.text('READY TO SEND').evaluate().isNotEmpty ||
         find.text('Try a recap').evaluate().isNotEmpty ||
         find.text('Waiting on your computer').evaluate().isNotEmpty) {

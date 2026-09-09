@@ -6,23 +6,21 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 
 import '../app/mobile_sync_config.dart';
-import '../design/exo_colors.dart';
+import '../design/exo_palette.dart';
 import '../features/auth/mobile_auth_service.dart';
 import '../features/inbox/inbox_screen.dart';
-import '../features/memory/memory_screen.dart';
-import '../features/settings/pairing_screen.dart';
-import '../features/settings/settings_screen.dart';
+import '../features/app/app_panel.dart';
+import '../features/app/app_sub_tab.dart';
 import '../features/tasks/tasks_screen.dart';
 import '../notifications/due_reminder_binder.dart';
 import '../notifications/due_reminder_copy.dart';
 import '../notifications/due_reminder_host.dart';
-import '../notifications/due_reminder_scope.dart';
 import '../sync/inbox_payload.dart';
 import '../sync/user_messages.dart';
 import 'window_size.dart';
 
-/// Shell destinations — Capture is never a tab.
-enum ShellTab { memory, inbox, tasks }
+/// Shell destinations — Memory and Capture are not tabs.
+enum ShellTab { inbox, tasks, settings }
 
 class _TabSpec {
   const _TabSpec({
@@ -40,13 +38,13 @@ class _TabSpec {
   final IconData selectedIcon;
 }
 
-/// Adaptive navigation: Memory (default) + Inbox + Tasks.
+/// Adaptive navigation: Inbox (home) + Tasks + Settings.
 class AdaptiveShell extends StatefulWidget {
   const AdaptiveShell({
     super.key,
     required this.config,
     this.auth,
-    this.initialTab = ShellTab.memory,
+    this.initialTab = ShellTab.inbox,
     this.reminderHost,
     this.appLinks,
   });
@@ -58,13 +56,6 @@ class AdaptiveShell extends StatefulWidget {
   final AppLinks? appLinks;
 
   static const _tabs = <_TabSpec>[
-    _TabSpec(
-      id: ShellTab.memory,
-      label: 'Memory',
-      title: SyncUserMessages.memoriesTitle,
-      icon: Icons.psychology_outlined,
-      selectedIcon: Icons.psychology,
-    ),
     _TabSpec(
       id: ShellTab.inbox,
       label: SyncUserMessages.inboxTitle,
@@ -79,6 +70,13 @@ class AdaptiveShell extends StatefulWidget {
       icon: Icons.task_alt_outlined,
       selectedIcon: Icons.task_alt,
     ),
+    _TabSpec(
+      id: ShellTab.settings,
+      label: SyncUserMessages.settingsTitle,
+      title: SyncUserMessages.settingsTitle,
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings,
+    ),
   ];
 
   /// Tab labels for tests / docs — Capture must not appear.
@@ -90,8 +88,8 @@ class AdaptiveShell extends StatefulWidget {
 
 class _AdaptiveShellState extends State<AdaptiveShell> {
   late ShellTab _tab = widget.initialTab;
+  AppSubTab _appSubTab = AppSubTab.account;
   bool _didAutoPull = false;
-  bool _didLand = false;
   String? _focusTaskId;
   String? _focusInboxId;
   int _readyCount = 0;
@@ -133,24 +131,11 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     if (_tab == ShellTab.inbox) return;
     if (!widget.config.isPaired) {
       if (_readyCount != 0 && mounted) setState(() => _readyCount = 0);
-      _maybeLandInbox(0);
       return;
     }
     final n = await countInboxAttentionFromStore(widget.config.localStore);
     if (!mounted) return;
     if (n != _readyCount) setState(() => _readyCount = n);
-    _maybeLandInbox(n);
-  }
-
-  void _maybeLandInbox(int n) {
-    if (_didLand) return;
-    if (widget.initialTab != ShellTab.memory) {
-      _didLand = true;
-      return;
-    }
-    if (n <= 0 || _tab != ShellTab.memory) return;
-    _didLand = true;
-    if (mounted) setState(() => _tab = ShellTab.inbox);
   }
 
   Widget _tabIcon(_TabSpec tab, {required bool selected, Color? selectedColor}) {
@@ -176,17 +161,14 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     if (_tab != ShellTab.inbox) await _refreshReadyCount();
   }
 
-  void _openSettings() {
-    final reminders = DueReminderScope.maybeOf(context);
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) {
-          final settings = SettingsScreen(config: widget.config, auth: widget.auth);
-          if (reminders == null) return settings;
-          return DueReminderScope(controller: reminders, child: settings);
-        },
-      ),
-    );
+  AppSubTab get _settingsLanding =>
+      widget.config.isPaired ? AppSubTab.account : AppSubTab.link;
+
+  void _openApp({AppSubTab? sub}) {
+    setState(() {
+      _tab = ShellTab.settings;
+      _appSubTab = sub ?? _settingsLanding;
+    });
   }
 
   Future<void> _signInAgain() async {
@@ -199,17 +181,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     }
   }
 
-  Future<void> _pairAgain() async {
-    final paired = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => PairingScreen(config: widget.config)),
-    );
-    if (paired == true && mounted) {
-      try {
-        await widget.config.registerDeviceIfNeeded();
-      } catch (_) {}
-      setState(() {});
-    }
-  }
+  void _pairAgain() => _openApp(sub: AppSubTab.link);
 
   Future<void> _sync() async {
     if (widget.config.syncInFlight) return;
@@ -227,12 +199,6 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
 
   Widget _bodyFor(ShellTab tab) {
     switch (tab) {
-      case ShellTab.memory:
-        return MemoryScreen(
-          config: widget.config,
-          onSignInAgain: _signInAgain,
-          onPairAgain: _pairAgain,
-        );
       case ShellTab.inbox:
         return InboxScreen(
           config: widget.config,
@@ -247,7 +213,13 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
           onSignInAgain: _signInAgain,
           onPairAgain: _pairAgain,
           focusRecordId: _focusTaskId,
-          onOpenInbox: _openInbox,
+        );
+      case ShellTab.settings:
+        return AppPanel(
+          config: widget.config,
+          auth: widget.auth,
+          subTab: _appSubTab,
+          onSubTab: (tab) => setState(() => _appSubTab = tab),
         );
     }
   }
@@ -266,18 +238,16 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         onPressed: busy ? null : _sync,
         tooltip: SyncUserMessages.syncNow,
       ),
-      IconButton(
-        icon: const Icon(Icons.settings_outlined, size: 22),
-        onPressed: _openSettings,
-        tooltip: 'Settings',
-      ),
     ];
   }
 
   void _selectIndex(int i) {
     if (i < 0 || i >= AdaptiveShell._tabs.length) return;
     final next = AdaptiveShell._tabs[i].id;
-    setState(() => _tab = next);
+    setState(() {
+      _tab = next;
+      if (next == ShellTab.settings) _appSubTab = _settingsLanding;
+    });
     if (next != ShellTab.inbox) unawaited(_refreshReadyCount());
   }
 
@@ -327,7 +297,11 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                     for (final t in tabs)
                       NavigationRailDestination(
                         icon: _tabIcon(t, selected: false),
-                        selectedIcon: _tabIcon(t, selected: true),
+                        selectedIcon: _tabIcon(
+                          t,
+                          selected: true,
+                          selectedColor: ExoPalette.of(context).onNav,
+                        ),
                         label: Text(t.label),
                       ),
                   ],
@@ -353,7 +327,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
                         selectedIcon: _tabIcon(
                           t,
                           selected: true,
-                          selectedColor: ExoColors.brandPrimary,
+                          selectedColor: ExoPalette.of(context).onNav,
                         ),
                         label: t.label,
                       ),

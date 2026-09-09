@@ -66,17 +66,17 @@ CI: [`.github/workflows/mobile.yml`](../.github/workflows/mobile.yml) on every P
 | production (default for `npm run mobile:dev`) | `--dart-define-from-file=env/production.json` | `https://api.exosites.ch` |
 | staging | `--dart-define-from-file=env/staging.json` | same host today (`staging-api.exosites.ch` is not live DNS) |
 
-Optional: `--dart-define=APP_VERSION=0.2.0` (defaults match `pubspec.yaml`). Crash ingest via `EXOSITES_CRASH_INGEST_URL` / `EXOSITES_CRASH_INGEST_TOKEN` dart-defines only.
+Optional: `--dart-define=APP_VERSION=0.2.0` (defaults match `pubspec.yaml`). Crash ingest URL is in `env/production.json`; the token is merged from `backend/.env` / `cloud-node/.env` via `scripts/mobile-merge-dart-defines.sh` into gitignored `env/local.json` (never commit the token).
 
 ## GO SYNC flow
 
 1. **Desktop:** Settings → Sync → enable GO SYNC → **Pair mobile device** QR (or **Copy pairing code** for Simulator).
-2. **Mobile (first launch):** guided setup — Apple / Google / email → scan/paste desktop code → first sync → **Memories**.
+2. **Mobile (first launch):** guided setup — Apple / Google / email → scan/paste desktop code → first sync → **Inbox**.
 3. **Debug only:** after sign-in, **Skip pairing (dev)** enters the shell without a master key (sync off until you pair from Settings). Never in production release / TestFlight unless `EXOSITES_DEV_SKIP_PAIR=true` on a non-production flavor.
-4. **Pull to refresh** on Memories (or AppBar sync) updates the local SQLite cache.
+4. **Pull to refresh** (or AppBar sync) updates the local SQLite cache.
 5. **Sign out** confirms, then clears tokens, master key, pairing, cursor, and local DB.
 
-Tabs after setup: **Memory · Tasks** (Tasks lists GO SYNC `tasks` from desktop; AI draft/review execute is not shipped yet. Capture is deferred — not in the tab bar).
+Tabs after setup: **Inbox · Tasks · Settings**. Capture is deferred — not in the tab bar. Synced facts stay on the phone but are not a tab.
 
 ## Deferred (post-beta / Store GA)
 
@@ -84,8 +84,8 @@ Tracked for a later release — do not declare mic/camera beyond pairing until s
 
 - Tasks AI draft/review execute (cloud LLM; e.g. email to/body — user confirms before send)
 - Voice **Capture** + outbound `pushLocalRecords`
-- `flutter_localizations` / ARB (copy is centralized in `lib/sync/user_messages.dart` for extraction)
-- Background sync policy, cert pinning decision, a11y audit, memory filters
+- `flutter_localizations` / ARB (Inbox/Settings already have EN/FR helpers)
+- Background sync policy, cert pinning decision, a11y audit
 
 ## Branch home
 

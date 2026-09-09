@@ -44,10 +44,16 @@ DateTime? parseTaskDueAt(Map<String, dynamic> payload) {
 DateTime dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
 
 bool taskDueIsOverdue(Map<String, dynamic> payload, {required DateTime now}) {
-  if (taskPayloadIsCompleted(payload)) return false;
+  final days = taskDueDayDelta(payload, now: now);
+  return days != null && days < 0;
+}
+
+/// Calendar-day delta: negative = overdue, `0` = due today, positive = coming.
+int? taskDueDayDelta(Map<String, dynamic> payload, {required DateTime now}) {
+  if (taskPayloadIsCompleted(payload)) return null;
   final due = parseTaskDueAt(payload);
-  if (due == null) return false;
-  return dateOnly(due.toLocal()).isBefore(dateOnly(now.toLocal()));
+  if (due == null) return null;
+  return dateOnly(due.toLocal()).difference(dateOnly(now.toLocal())).inDays;
 }
 
 String formatTaskDue(

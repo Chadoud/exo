@@ -40,8 +40,8 @@ String pendingActionTaskRecordId(Map<String, dynamic> payload) {
   return payload['task_record_id']?.toString().trim() ?? '';
 }
 
-/// Pending-action record_id joined to a task, if the desktop export sent one.
-String? pendingRecordIdForTask(
+/// Pending-action row joined to a task, if the desktop export sent one.
+Map<String, dynamic>? pendingRowForTask(
   Iterable<Map<String, dynamic>> rows,
   String taskRecordId,
 ) {
@@ -51,9 +51,18 @@ String? pendingRecordIdForTask(
     final payload = pendingActionPayloadOf(row);
     if (pendingActionTaskRecordId(payload) != want) continue;
     final id = row['record_id']?.toString().trim() ?? '';
-    if (id.isNotEmpty) return id;
+    if (id.isNotEmpty) return row;
   }
   return null;
+}
+
+/// Pending-action record_id joined to a task, if the desktop export sent one.
+String? pendingRecordIdForTask(
+  Iterable<Map<String, dynamic>> rows,
+  String taskRecordId,
+) {
+  final id = pendingRowForTask(rows, taskRecordId)?['record_id']?.toString().trim();
+  return (id == null || id.isEmpty) ? null : id;
 }
 
 int countReadyPendingActions(Iterable<Map<String, dynamic>> rows) {

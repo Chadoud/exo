@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../design/exo_choice_chips.dart';
 import '../../design/exo_spacing.dart';
 import '../../sync/user_messages.dart';
 
@@ -16,7 +17,7 @@ String taskFilterLabel(TaskListFilter filter) {
   }
 }
 
-/// Open / Done / All chips for the Tasks header.
+/// Open / Done chips for the Tasks header.
 class TaskFilterChips extends StatelessWidget {
   const TaskFilterChips({
     super.key,
@@ -29,6 +30,8 @@ class TaskFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final selected =
+        value == TaskListFilter.all ? TaskListFilter.open : value;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         ExoSpacing.lg,
@@ -36,16 +39,13 @@ class TaskFilterChips extends StatelessWidget {
         ExoSpacing.lg,
         ExoSpacing.xs,
       ),
-      child: Wrap(
-        spacing: ExoSpacing.sm,
-        children: [
-          for (final filter in TaskListFilter.values)
-            ChoiceChip(
-              label: Text(taskFilterLabel(filter)),
-              selected: value == filter,
-              onSelected: (_) => onChanged(filter),
-            ),
+      child: ExoChoiceChips<TaskListFilter>(
+        options: const [
+          (TaskListFilter.open, SyncUserMessages.taskFilterOpen),
+          (TaskListFilter.done, SyncUserMessages.taskFilterDone),
         ],
+        selected: selected,
+        onSelected: onChanged,
       ),
     );
   }

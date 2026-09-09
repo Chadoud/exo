@@ -58,7 +58,7 @@ class SyncStatusBanner extends StatelessWidget {
       return ExoStatusBanner(
         kind: ExoStatusKind.needsPair,
         message: SyncUserMessages.notPaired,
-        actionLabel: SyncUserMessages.pairAgain,
+        actionLabel: SyncUserMessages.openLink,
         onAction: onPairAgain,
       );
     }

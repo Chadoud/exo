@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/mobile_sync_config.dart';
-import '../design/exo_colors.dart';
+import '../design/exo_palette.dart';
 import '../design/exo_spacing.dart';
 import 'sync_status_banner.dart';
 
@@ -38,6 +38,7 @@ class SyncCollectionScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ExoPalette.of(context);
     return ListenableBuilder(
       listenable: config,
       builder: (context, _) {
@@ -61,8 +62,8 @@ class SyncCollectionScaffold extends StatelessWidget {
             ),
             Expanded(
               child: RefreshIndicator(
-                color: ExoColors.brandPrimary,
-                backgroundColor: ExoColors.bgElevated,
+                color: palette.selectedInk,
+                backgroundColor: palette.bgElevated,
                 onRefresh: _refresh,
                 child: listBody,
               ),

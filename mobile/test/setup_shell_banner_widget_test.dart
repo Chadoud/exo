@@ -3,8 +3,7 @@ import 'dart:io';
 
 import 'package:exosites_mobile/app/mobile_sync_config.dart';
 import 'package:exosites_mobile/design/exo_status_banner.dart';
-import 'package:exosites_mobile/design/exo_theme.dart';
-import 'package:exosites_mobile/features/memory/memory_screen.dart';
+import 'support/product_theme.dart';
 import 'package:exosites_mobile/features/tasks/tasks_screen.dart';
 import 'package:exosites_mobile/features/setup/setup_link_panel.dart';
 import 'package:exosites_mobile/features/setup/setup_sign_in_panel.dart';
@@ -20,7 +19,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Widget _app(Widget child, {Size size = const Size(390, 844)}) {
   return MaterialApp(
-    theme: ExoTheme.dark(),
+    theme: productTheme(),
     home: MediaQuery(
       data: MediaQueryData(size: size),
       child: Scaffold(body: child),
@@ -266,11 +265,11 @@ void main() {
   });
 
   group('AdaptiveShell', () {
-    testWidgets('phone shell shows Memory Inbox and Tasks destinations', (tester) async {
+    testWidgets('phone shell shows Inbox Tasks and Settings destinations', (tester) async {
       final config = await _hydratedConfig(tester);
       await tester.pumpWidget(
         MaterialApp(
-          theme: ExoTheme.dark(),
+          theme: productTheme(),
           home: MediaQuery(
             data: const MediaQueryData(size: Size(390, 844)),
             child: AdaptiveShell(config: config),
@@ -279,22 +278,44 @@ void main() {
       );
       await _settleStore(tester);
 
-      expect(AdaptiveShell.tabLabels, ['Memory', 'Inbox', 'Tasks']);
-      expect(find.text('Memory'), findsWidgets);
+      expect(AdaptiveShell.tabLabels, ['Inbox', 'Tasks', 'Settings']);
       expect(find.text('Inbox'), findsWidgets);
       expect(find.text('Tasks'), findsWidgets);
+      expect(find.text(SyncUserMessages.settingsTitle), findsWidgets);
+      expect(find.text('Memory'), findsNothing);
+      expect(find.text('App'), findsNothing);
       expect(find.text('Today'), findsNothing);
       expect(find.text('Capture'), findsNothing);
-      expect(find.text(SyncUserMessages.memoriesTitle), findsOneWidget);
-      // Inline search field label (not a Search tab).
-      expect(find.text(SyncUserMessages.searchMemoriesLabel), findsOneWidget);
+      expect(find.text(SyncUserMessages.inboxTitle), findsWidgets);
+    });
+
+    testWidgets('Open Link on unpaired Inbox opens Settings Link', (tester) async {
+      final config = await _hydratedConfig(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: productTheme(),
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(390, 844)),
+            child: AdaptiveShell(config: config),
+          ),
+        ),
+      );
+      await _settleStore(tester);
+
+      await tester.tap(find.text(SyncUserMessages.openLink).first);
+      await _settleStore(tester);
+
+      expect(find.text(SyncUserMessages.scanDesktopCode), findsOneWidget);
+      expect(find.text('Link'), findsWidgets);
+      expect(find.text('Account'), findsWidgets);
+      expect(find.text(SyncUserMessages.settingsTitle), findsWidgets);
     });
 
     testWidgets('Tasks tab shows unpaired empty without AI suggestions', (tester) async {
       final config = await _hydratedConfig(tester);
       await tester.pumpWidget(
         MaterialApp(
-          theme: ExoTheme.dark(),
+          theme: productTheme(),
           home: MediaQuery(
             data: const MediaQueryData(size: Size(390, 844)),
             child: AdaptiveShell(config: config, initialTab: ShellTab.tasks),
@@ -312,7 +333,7 @@ void main() {
       final config = await _hydratedConfig(tester);
       await tester.pumpWidget(
         MaterialApp(
-          theme: ExoTheme.dark(),
+          theme: productTheme(),
           home: MediaQuery(
             data: const MediaQueryData(size: Size(390, 844)),
             child: AdaptiveShell(config: config),
@@ -321,15 +342,13 @@ void main() {
       );
       await _settleStore(tester);
 
-      expect(find.text(SyncUserMessages.memoriesTitle), findsOneWidget);
-      expect(find.text(SyncUserMessages.searchMemoriesLabel), findsOneWidget);
+      expect(find.text(SyncUserMessages.inboxTitle), findsWidgets);
       expect(find.text(SyncUserMessages.syncEmptyUnpairedTitle), findsOneWidget);
 
       await tester.tap(find.text('Tasks').last);
       await _settleStore(tester);
 
       expect(find.text(SyncUserMessages.tasksTitle), findsWidgets);
-      expect(find.text(SyncUserMessages.searchMemoriesLabel), findsNothing);
       expect(find.text('Suggested by EXO'), findsNothing);
     });
 
@@ -357,7 +376,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           locale: const Locale('en'),
-          theme: ExoTheme.dark(),
+          theme: productTheme(),
           home: MediaQuery(
             data: const MediaQueryData(size: Size(390, 844)),
             child: AdaptiveShell(config: config, initialTab: ShellTab.inbox),
@@ -394,7 +413,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           locale: const Locale('en'),
-          theme: ExoTheme.dark(),
+          theme: productTheme(),
           home: MediaQuery(
             data: const MediaQueryData(size: Size(390, 844)),
             child: AdaptiveShell(config: config),
@@ -406,18 +425,7 @@ void main() {
     });
   });
 
-  group('Empty Memory / Tasks', () {
-    testWidgets('MemoryScreen empty state copy', (tester) async {
-      final config = await _hydratedConfig(tester);
-      await tester.pumpWidget(
-        _app(MemoryScreen(config: config)),
-      );
-      await _settleStore(tester);
-
-      expect(find.text(SyncUserMessages.syncEmptyUnpairedTitle), findsOneWidget);
-      expect(find.text(SyncUserMessages.searchMemoriesLabel), findsOneWidget);
-    });
-
+  group('Empty Tasks', () {
     testWidgets('TasksScreen empty state', (tester) async {
       final config = await _hydratedConfig(tester);
       await tester.pumpWidget(_app(TasksScreen(config: config)));

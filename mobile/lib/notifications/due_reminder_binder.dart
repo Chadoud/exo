@@ -87,7 +87,7 @@ class _DueReminderBinderState extends State<DueReminderBinder> {
   }
 
   void _onController() {
-    if (_controller.consumeOpenTasks()) widget.onOpenInbox?.call('');
+    if (_controller.consumeOpenTasks()) widget.onOpenTask?.call('');
     final opened = _controller.consumeOpenedTaskId();
     if (opened != null) _emitTask(opened);
     if (_controller.needsPrompt) unawaited(_showPrompt());
