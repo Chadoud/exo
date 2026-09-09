@@ -18,7 +18,7 @@ import { sendVoiceWsAppAuth } from "../voice/voiceWsAuth";
 
 const WS_URL = `ws://${BACKEND_HOST}:${BACKEND_PORT}/ws/voice`;
 
-export interface MeetingTranscriptionStartResult {
+interface MeetingTranscriptionStartResult {
   listening: boolean;
 }
 

@@ -1,7 +1,5 @@
 import type { VoiceBackendReadyResult, VoiceBackendReadyReason } from "./ensureVoiceBackendReady";
 
-export type VoiceReadinessState = "checking" | "missing_key" | "ready" | "unavailable";
-
 export type VoiceUnavailableReason = Exclude<VoiceBackendReadyReason, "missing_key">;
 
 export type VoiceReadinessSnapshot =

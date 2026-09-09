@@ -12,6 +12,8 @@ test.describe("Assistant chat smoke", () => {
     await gotoSeededApp(page);
     await waitForAppShell(page);
 
+    // Chat is a child of Exo in the sidebar, so open that group before clicking.
+    await page.locator('[data-tour="nav-exo"]').click();
     await page.locator('[data-tour="nav-assistant"]').click();
 
     const workspace = page.locator('[data-tour="assistant-workspace"]');
