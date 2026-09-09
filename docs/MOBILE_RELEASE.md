@@ -18,7 +18,7 @@ See [`runbooks/relay-deploy.md`](runbooks/relay-deploy.md).
 npm run mobile:quality
 ```
 
-Runs setup + `mobile:verify-manifests` + `flutter analyze` + `flutter test` on pinned Flutter **3.24.5** (see [`.fvm/fvm_config.json`](../.fvm/fvm_config.json)).
+Runs setup + `mobile:verify-manifests` + `flutter analyze` + `flutter test` on pinned Flutter **3.44.2** (see [`.fvm/fvm_config.json`](../.fvm/fvm_config.json)).
 
 ## 3. Version bump
 

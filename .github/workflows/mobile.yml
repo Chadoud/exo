@@ -38,7 +38,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.5"
+          flutter-version: "3.44.2"
           channel: stable
           cache: true
 
@@ -73,7 +73,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.5"
+          flutter-version: "3.44.2"
           channel: stable
           cache: true
       - run: bash mobile/setup.sh
@@ -116,7 +116,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.5"
+          flutter-version: "3.44.2"
           channel: stable
           cache: true
       - run: bash mobile/setup.sh

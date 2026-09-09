@@ -1,6 +1,6 @@
 # Exo Mobile (Flutter)
 
-GO SYNC mobile client for **iOS** and **Android**. Requires **Flutter 3.24.5** (see [`.fvm/fvm_config.json`](../.fvm/fvm_config.json)).
+GO SYNC mobile client for **iOS** and **Android**. Requires **Flutter 3.44.2** (see [`.fvm/fvm_config.json`](../.fvm/fvm_config.json)).
 
 ## Module map
 
@@ -26,12 +26,12 @@ Generates `ios/` + `android/` on first run, patches OAuth deep links + camera pr
 
 Committed manifests are the source of truth; `npm run mobile:verify-manifests` fails if OAuth scheme / camera string regress (or if mic returns before Capture ships).
 
-**Flutter version:** CI pins **3.24.5** (`.fvm/fvm_config.json`). Local Homebrew Flutter works for dev; for release builds match CI via [FVM](https://fvm.app):
+**Flutter version:** CI pins **3.44.2** (`.fvm/fvm_config.json`). Local Homebrew Flutter works for dev; for release builds match CI via [FVM](https://fvm.app):
 
 ```bash
 dart pub global activate fvm
-fvm install 3.24.5
-fvm use 3.24.5
+fvm install 3.44.2
+fvm use 3.44.2
 ```
 
 ## Run
