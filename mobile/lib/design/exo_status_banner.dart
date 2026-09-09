@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'exo_colors.dart';
+import 'exo_palette.dart';
 import 'exo_spacing.dart';
 import 'exo_theme.dart';
 
@@ -65,9 +65,11 @@ class ExoStatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = _isError ? ExoColors.errorSoft : ExoColors.bgElevated;
-    final border = _isError ? ExoColors.error.withValues(alpha: 0.45) : ExoColors.border;
-    final iconColor = _isError ? ExoColors.error : ExoColors.textMuted;
+    final palette = ExoPalette.of(context);
+    final error = Theme.of(context).colorScheme.error;
+    final bg = _isError ? palette.errorSoft : palette.bgElevated;
+    final border = _isError ? error.withValues(alpha: 0.45) : palette.border;
+    final iconColor = _isError ? error : palette.textMuted;
 
     return Semantics(
       liveRegion: true,
@@ -101,7 +103,7 @@ class ExoStatusBanner extends StatelessWidget {
                   child: Text(
                     message,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: ExoColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                   ),
                 ),

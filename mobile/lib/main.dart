@@ -87,7 +87,10 @@ class _ExositesMobileAppState extends State<ExositesMobileApp> {
 
     return MaterialApp(
       title: title,
+      // Light only on the phone — the OS dark toggle must not flip us.
       theme: ExoTheme.light(),
+      darkTheme: ExoTheme.light(),
+      themeMode: ThemeMode.light,
       scaffoldMessengerKey: _scaffoldMessengerKey,
       // Hold a blank canvas until hydrate; play the stroke only on first install.
       home: !_hydrated

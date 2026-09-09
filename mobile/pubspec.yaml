@@ -34,15 +34,16 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: ../electron/assets/icon.png
-  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_background: "#0F0B2E"
   adaptive_icon_foreground: ../electron/assets/icon.png
   remove_alpha_ios: true
 
 flutter_native_splash:
   # Solid canvas only — cube draws itself in Flutter (ExoBootScreen).
-  color: "#FFFFFF"
+  # Matches the light canvas so the handoff to Flutter has no flash.
+  color: "#F0F2F8"
   android_12:
-    color: "#FFFFFF"
+    color: "#F0F2F8"
 
 flutter:
   # iOS 18 LLDB attach SIGKILLs debug launches on this device.

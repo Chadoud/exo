@@ -62,6 +62,10 @@
 		<true/>
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>
+		<!-- App is light only; without this the launch screen follows the
+		     phone's dark mode and the status bar goes light-on-light. -->
+		<key>UIUserInterfaceStyle</key>
+		<string>Light</string>
 		<key>UIMainStoryboardFile</key>
 		<string>Main</string>
 		<key>UIStatusBarHidden</key>

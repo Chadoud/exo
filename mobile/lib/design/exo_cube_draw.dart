@@ -2,11 +2,12 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'exo_colors.dart';
 
-/// Brand cube stroke — matches `assets/exo_cube.svg` / PNG (`#0F0B2E`).
-const Color kExoCubeStroke = Color(0xFF0F0B2E);
+/// Brand cube stroke — navy so the wireframe reads on the light canvas.
+const Color kExoCubeStroke = ExoLightColors.accent;
 
 /// First-install brand stroke only. A signed-in, paired, or finished session skips it.
 bool shouldPlayBootIntro({
@@ -139,13 +140,17 @@ class ExoBootScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: ExoColors.bgPrimary,
-      body: Center(
-        child: ExoCubeIntro(
-          duration: introDuration,
-          settleDuration: settleDuration,
-          onComplete: onIntroComplete,
+    // No AppBar here, so the status bar style has to be declared directly.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: ExoLightColors.bgPrimary,
+        body: Center(
+          child: ExoCubeIntro(
+            duration: introDuration,
+            settleDuration: settleDuration,
+            onComplete: onIntroComplete,
+          ),
         ),
       ),
     );
@@ -158,7 +163,10 @@ class ExoBootHold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(backgroundColor: ExoColors.bgPrimary);
+    return const AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(backgroundColor: ExoLightColors.bgPrimary),
+    );
   }
 }
 

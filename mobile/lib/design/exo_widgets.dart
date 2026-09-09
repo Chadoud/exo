@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'exo_colors.dart';
 import 'exo_cube_svg.dart';
+import 'exo_palette.dart';
 import 'exo_spacing.dart';
 import 'exo_theme.dart';
 
@@ -25,7 +25,7 @@ class ExoMark extends StatelessWidget {
             fontSize: compact ? 16 : 20,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.2,
-            color: ExoColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
       ],
@@ -44,7 +44,7 @@ class ExoSectionLabel extends StatelessWidget {
     return Text(
       text.toUpperCase(),
       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: ExoColors.textMuted,
+            color: ExoPalette.of(context).textMuted,
             letterSpacing: 0.8,
           ),
     );
@@ -64,11 +64,12 @@ class ExoSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ExoPalette.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: ExoColors.bgElevated,
+        color: palette.bgElevated,
         borderRadius: BorderRadius.circular(ExoTheme.radius),
-        border: Border.all(color: ExoColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: Material(
         color: Colors.transparent,
@@ -118,10 +119,13 @@ class ExoPrimaryButton extends StatelessWidget {
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(
+                SizedBox(
                   height: 16,
                   width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: ExoColors.onButton),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
                 ),
                 const SizedBox(width: ExoSpacing.sm),
                 Text(label),
@@ -180,13 +184,17 @@ class ExoSyncStatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ExoPalette.of(context);
+    final error = Theme.of(context).colorScheme.error;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(ExoSpacing.md),
       decoration: BoxDecoration(
-        color: isError ? ExoColors.errorSoft : ExoColors.bgElevated,
+        color: isError ? palette.errorSoft : palette.bgElevated,
         borderRadius: BorderRadius.circular(ExoTheme.radius),
-        border: Border.all(color: isError ? ExoColors.error.withValues(alpha: 0.45) : ExoColors.border),
+        border: Border.all(
+          color: isError ? error.withValues(alpha: 0.45) : palette.border,
+        ),
       ),
       child: Text(message, style: Theme.of(context).textTheme.bodyMedium),
     );
@@ -212,6 +220,7 @@ class ExoEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ExoPalette.of(context);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: ExoSpacing.contentMaxWidth),
@@ -225,11 +234,11 @@ class ExoEmptyState extends StatelessWidget {
                 height: 56,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: ExoColors.bgElevated,
+                  color: palette.bgElevated,
                   borderRadius: BorderRadius.circular(ExoTheme.radius),
-                  border: Border.all(color: ExoColors.border),
+                  border: Border.all(color: palette.border),
                 ),
-                child: Icon(icon, size: 26, color: ExoColors.textMuted),
+                child: Icon(icon, size: 26, color: palette.textMuted),
               ),
               const SizedBox(height: ExoSpacing.lg),
               Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
