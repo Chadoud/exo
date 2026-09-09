@@ -50,7 +50,22 @@ else
   fi
 fi
 
+PUBSPEC="$ROOT/mobile/pubspec.yaml"
+# A `config:` under `flutter:` needs a newer SDK than the pinned one CI builds
+# with, and the older toolchain rejects the whole pubspec at parse time — the
+# tag build dies before it analyzes anything. Set such options per machine with
+# `flutter config --...` instead.
+if [[ -f "$PUBSPEC" ]] && awk '
+  /^flutter:/ { in_flutter = 1; next }
+  /^[^[:space:]#]/ { in_flutter = 0 }
+  in_flutter && /^[[:space:]]+config:/ { found = 1 }
+  END { exit !found }
+' "$PUBSPEC"; then
+  echo "FAIL: pubspec.yaml sets flutter.config — the pinned CI Flutter cannot parse it"
+  fail=1
+fi
+
 if [[ "$fail" -ne 0 ]]; then
   exit 1
 fi
-echo "OK: mobile manifests (OAuth + tasks deep link + camera + local notifs; no mic)"
+echo "OK: mobile manifests (OAuth + tasks deep link + camera + local notifs; no mic) + pubspec parses on pinned Flutter"

@@ -46,9 +46,6 @@ flutter_native_splash:
     color: "#F0F2F8"
 
 flutter:
-  # iOS 18 LLDB attach SIGKILLs debug launches on this device.
-  config:
-    enable-lldb-debugging: false
   uses-material-design: true
   assets:
     # Stroke geometry lives in exo_cube_draw.dart (from exo_cube.svg); PNG unused in UI.

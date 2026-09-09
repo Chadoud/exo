@@ -51,6 +51,15 @@ npm run mobile:run:ios      # macOS + Xcode (device must already be booted)
 npm run mobile:run:android  # Android SDK / emulator
 ```
 
+If a debug launch on an iOS 18 device is SIGKILLed as it attaches, turn LLDB
+attach off for your machine. Keep this out of `pubspec.yaml`: the `flutter.config`
+key needs a newer SDK than the pinned one CI builds with, and committing it
+fails the release build at parse time.
+
+```bash
+flutter config --no-enable-lldb-debugging
+```
+
 ## Quality gate
 
 ```bash
