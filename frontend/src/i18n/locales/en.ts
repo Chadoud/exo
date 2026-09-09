@@ -2301,6 +2301,7 @@ export default {
       "This text guides how Exo suggests folders when you sort files. Leave empty to use the app default.",
     sortPromptClose: "Close",
     sortPromptRevert: "Revert edits",
+    sortPromptUnsaved: "Unsaved edits — sorting still uses the saved instructions until you save.",
     sortPromptSave: "Save",
     sortPromptSaved: "Sort instructions saved",
     sortPromptLoadDefault: "Insert app default",

@@ -2134,6 +2134,8 @@ export default {
       "Questo testo guida come Exo suggerisce le cartelle quando ordini i file. Lascia vuoto per il prompt predefinito.",
     sortPromptClose: "Chiudi",
     sortPromptRevert: "Annulla modifiche",
+    sortPromptUnsaved:
+      "Modifiche non salvate — l'ordinamento usa le istruzioni salvate finché non salvi.",
     sortPromptSave: "Salva",
     sortPromptSaved: "Istruzioni salvate",
     sortPromptLoadDefault: "Inserisci predefinito app",

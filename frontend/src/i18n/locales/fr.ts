@@ -2134,6 +2134,8 @@ export default {
       "Ce texte guide la façon dont Exo suggère des dossiers lors du tri. Laissez vide pour l’invite intégrée.",
     sortPromptClose: "Fermer",
     sortPromptRevert: "Annuler les modifications",
+    sortPromptUnsaved:
+      "Modifications non enregistrées — le tri utilise les instructions enregistrées tant que vous n'enregistrez pas.",
     sortPromptSave: "Enregistrer",
     sortPromptSaved: "Consignes enregistrées",
     sortPromptLoadDefault: "Insérer l’invite par défaut",

@@ -79,6 +79,12 @@ export const MEMORY_SUB_TAB_STORAGE_KEY = "exosites.memorySubTab.v1";
 /** Last selected Capture child (meeting | activity). */
 export const CAPTURE_SUB_TAB_STORAGE_KEY = "exosites.captureSubTab.v1";
 export const MEMORY_LIST_EXPANDED_STORAGE_KEY = "exosites.memoryListExpanded.v1";
+/**
+ * In-progress custom sort instructions. Kept apart from `sortSystemPrompt`
+ * because that field goes straight to the classifier — a half-typed prompt
+ * must survive leaving the editor without becoming the one sorting runs use.
+ */
+export const SORT_PROMPT_DRAFT_STORAGE_KEY = "exosites.sortPromptDraft.v1";
 /** Last selected sub-tab on the To Do panel (today | inbox | done). */
 export const TODO_SUB_TAB_STORAGE_KEY = "exosites.todoSubTab.v1";
 /** Open Memory → Overview with the needs-review filter applied once the panel mounts. */

@@ -6,6 +6,7 @@ import { SECONDARY_BTN_CLASS, PRIMARY_BTN_CLASS } from "../../utils/styles";
 import { useI18n } from "../../i18n/I18nContext";
 import { fetchSortPromptDefault } from "../../api/sortPromptMeta";
 import { useCloudSortActive } from "../../hooks/useCloudSortActive";
+import { clearSortPromptDraft, readSortPromptDraft, writeSortPromptDraft } from "./sortPromptDraft";
 
 interface SortInstructionsPromptEditorProps {
   settings: AppSettings;
@@ -27,13 +28,21 @@ function InlinePromptEditor({
 }: Pick<SortInstructionsPromptEditorProps, "settings" | "onSettingsPatch" | "backendOnline">) {
   const { t } = useI18n();
   const { cloudSortActive } = useCloudSortActive();
-  const [draft, setDraft] = useState(settings.sortSystemPrompt);
+  const [draft, setDraft] = useState(() => readSortPromptDraft() ?? settings.sortSystemPrompt);
   const [builtin, setBuiltin] = useState<string | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [showReference, setShowReference] = useState(false);
   const isDirty = draft !== settings.sortSystemPrompt;
 
+  /** Every edit parks the draft so unmounting the editor cannot lose it. */
+  const editDraft = (next: string) => {
+    setDraft(next);
+    writeSortPromptDraft(next);
+  };
+
   useEffect(() => {
+    // A parked draft outranks the saved value: the user is mid-edit.
+    if (readSortPromptDraft() !== null) return;
     setDraft(settings.sortSystemPrompt);
   }, [settings.sortSystemPrompt]);
 
@@ -53,7 +62,13 @@ function InlinePromptEditor({
 
   const handleSave = () => {
     onSettingsPatch({ sortSystemPrompt: draft });
+    clearSortPromptDraft();
     toast.message(t("queue.sortPromptSaved"), { duration: 3500 });
+  };
+
+  const handleRevert = () => {
+    clearSortPromptDraft();
+    setDraft(settings.sortSystemPrompt);
   };
 
   return (
@@ -86,13 +101,18 @@ function InlinePromptEditor({
         <span className="sr-only">{t("queue.sortPromptEditorLabel")}</span>
         <textarea
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => editDraft(e.target.value)}
           rows={10}
           placeholder={t("sortInstructionsStrip.customStripEmpty")}
           className="w-full min-h-[180px] rounded-lg border border-border bg-bg-primary px-3 py-2 font-mono text-2xs leading-relaxed text-text-primary placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           spellCheck={false}
         />
       </label>
+      {isDirty ? (
+        <p className="text-2xs text-warning" role="status">
+          {t("queue.sortPromptUnsaved")}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -105,7 +125,7 @@ function InlinePromptEditor({
         {isDirty ? (
           <button
             type="button"
-            onClick={() => setDraft(settings.sortSystemPrompt)}
+            onClick={handleRevert}
             className={SECONDARY_BTN_CLASS}
           >
             {t("queue.sortPromptRevert")}
@@ -114,7 +134,7 @@ function InlinePromptEditor({
         {builtin ? (
           <button
             type="button"
-            onClick={() => setDraft(builtin)}
+            onClick={() => editDraft(builtin)}
             className={`${SECONDARY_BTN_CLASS} text-xs`}
           >
             {t("queue.sortPromptLoadDefault")}
@@ -123,7 +143,7 @@ function InlinePromptEditor({
         {draft.trim() ? (
           <button
             type="button"
-            onClick={() => setDraft("")}
+            onClick={() => editDraft("")}
             className={`${SECONDARY_BTN_CLASS} text-xs`}
           >
             {t("queue.sortPromptUseBuiltin")}

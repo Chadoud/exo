@@ -2130,6 +2130,8 @@ export default {
       "Dieser Text steuert, wie Exo Ordner vorschlägt, wenn Sie Dateien sortieren. Leer lassen für die Standardanweisung.",
     sortPromptClose: "Schließen",
     sortPromptRevert: "Änderungen verwerfen",
+    sortPromptUnsaved:
+      "Nicht gespeicherte Änderungen — die Sortierung nutzt weiter die gespeicherten Anweisungen, bis Sie speichern.",
     sortPromptSave: "Speichern",
     sortPromptSaved: "Sortieranweisungen gespeichert",
     sortPromptLoadDefault: "App-Standard einfügen",
