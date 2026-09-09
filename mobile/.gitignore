@@ -18,6 +18,9 @@ android/key.properties
 **/*.keystore
 **/*.jks
 
+# Flutter dart-defines with local crash token (never commit)
+env/local.json
+
 # iOS local secrets
 ios/Runner/GoogleService-Info.plist
 ios/fastlane/report.xml

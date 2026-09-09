@@ -9,10 +9,12 @@ import '../app/exo_config.dart';
 
 /// Opt-in crash forwarding to the cloud relay (same contract as desktop).
 class MobileCrashReporter {
+  static const defaultIngestUrl = 'https://api.exosites.ch/v1/crash-reports';
+
   MobileCrashReporter({
     this.crashIngestUrl = const String.fromEnvironment(
       'EXOSITES_CRASH_INGEST_URL',
-      defaultValue: '',
+      defaultValue: defaultIngestUrl,
     ),
     this.crashIngestToken = const String.fromEnvironment(
       'EXOSITES_CRASH_INGEST_TOKEN',
@@ -31,11 +33,13 @@ class MobileCrashReporter {
   bool get isConfigured =>
       crashIngestUrl.trim().isNotEmpty && crashIngestToken.trim().isNotEmpty;
 
-  /// True when crash ingest URL + token are baked into this build.
+  /// True when the crash ingest token is baked into this build.
   static bool get isBuildConfigured {
-    const url = String.fromEnvironment('EXOSITES_CRASH_INGEST_URL', defaultValue: '');
-    const token = String.fromEnvironment('EXOSITES_CRASH_INGEST_TOKEN', defaultValue: '');
-    return url.trim().isNotEmpty && token.trim().isNotEmpty;
+    const token = String.fromEnvironment(
+      'EXOSITES_CRASH_INGEST_TOKEN',
+      defaultValue: '',
+    );
+    return token.trim().isNotEmpty;
   }
 
   bool get optIn => _optIn;

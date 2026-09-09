@@ -1,9 +1,15 @@
 default_platform(:ios)
 
+def flutter_define_file
+  File.exist?(File.join(__dir__, "..", "env", "local.json")) ?
+    "env/local.json" :
+    "env/production.json"
+end
+
 def flutter_build_args
   [
     "--release",
-    "--dart-define-from-file=env/production.json",
+    "--dart-define-from-file=#{flutter_define_file}",
   ]
 end
 
