@@ -151,6 +151,12 @@ export const MODAL_TITLE_CLASS = "font-semibold text-text-primary truncate min-w
 export const MODAL_CLOSE_BUTTON_CLASS =
   "text-muted hover:text-text-primary transition-colors shrink-0";
 
+/**
+ * Dialog footer row. `flex-wrap` is load-bearing: footer buttons are `shrink-0`
+ * so their labels never squeeze, which means a translated label that outgrows
+ * the modal has to wrap or it gets clipped by `overflow-hidden` on the surface.
+ * Do not override this with `flex-nowrap`.
+ */
 export const MODAL_FOOTER_ROW_CLASS =
   "w-full px-6 py-4 flex flex-wrap items-center gap-2 sm:gap-3";
 

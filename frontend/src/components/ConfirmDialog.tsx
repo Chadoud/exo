@@ -44,7 +44,7 @@ export default function ConfirmDialog({
       maxWidthClass="max-w-md"
       busy={busy}
       footer={
-        <div className={`${MODAL_FOOTER_ROW_CLASS} flex-col-reverse sm:flex-row sm:flex-nowrap justify-end`}>
+        <div className={`${MODAL_FOOTER_ROW_CLASS} flex-col-reverse sm:flex-row justify-end`}>
           <button
             type="button"
             onClick={onCancel}

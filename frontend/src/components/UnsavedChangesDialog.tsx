@@ -35,10 +35,10 @@ export default function UnsavedChangesDialog({
     <ModalShell
       title={title}
       onClose={onCancel}
-      maxWidthClass="max-w-md"
+      maxWidthClass="max-w-lg"
       footer={
         <div
-          className={`${MODAL_FOOTER_ROW_CLASS} flex-col-reverse sm:flex-row sm:flex-nowrap justify-center`}
+          className={`${MODAL_FOOTER_ROW_CLASS} flex-col-reverse sm:flex-row justify-center`}
         >
           <button
             type="button"

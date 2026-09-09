@@ -48,9 +48,9 @@ export default function ScreenConsentModal({
     <ModalShell
       title={title}
       onClose={onDeny}
-      maxWidthClass="max-w-md"
+      maxWidthClass="max-w-lg"
       footer={
-        <div className={`${MODAL_FOOTER_ROW_CLASS} flex-col-reverse sm:flex-row sm:flex-nowrap sm:justify-end gap-2`}>
+        <div className={`${MODAL_FOOTER_ROW_CLASS} flex-col-reverse sm:flex-row sm:justify-end`}>
           <button
             type="button"
             onClick={onDeny}
