@@ -195,6 +195,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
 
   const {
     voice: shellVoiceSession,
+    voiceReadiness,
     briefingOffer,
     pushToTalk,
     openVoiceInteractionSettings,
@@ -369,7 +370,6 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
             suppressAssistantPermissionPrompt={suppressAssistantPermissionPrompt}
             deferAssistantPermissionPrompt={deferAssistantPermissionPrompt}
             refreshEntitlement={refreshEntitlement}
-            settingsHydrated={settingsHydrated}
             backendOnline={backendOnline}
             backendHealthProbing={backendHealthProbing}
             backendServiceStarting={backendServiceStarting}
@@ -437,6 +437,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
             infomaniakMergePrefsSnapshot={infomaniakMergePrefsSnapshot}
             infomaniakMailMergePrefsSnapshot={infomaniakMailMergePrefsSnapshot}
             shellVoiceSession={shellVoiceSession}
+            voiceReadiness={voiceReadiness}
             briefingOffer={briefingOffer}
             setVisualAnalysisSuspended={setVisualAnalysisSuspended}
             openVoiceInteractionSettings={openVoiceInteractionSettings}

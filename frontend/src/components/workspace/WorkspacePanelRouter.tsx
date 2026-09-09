@@ -10,6 +10,7 @@ import type { TodoSubTab } from "../../utils/todoUi";
 import type { TodoFeed } from "../../hooks/useTodoFeed";
 import type { SettingsNavTab } from "../../utils/settingsNav";
 import type { UseVoiceSessionReturn } from "../../hooks/useVoiceSession";
+import type { VoiceBackendReadiness } from "../../hooks/useVoiceBackendReady";
 import type { UseBriefingOfferUiReturn } from "../../hooks/useBriefingOfferUi";
 import type { WorkspaceExternalSourcesSectionProps } from "./WorkspaceExternalSourcesSection";
 import type { GmailMergePrefs } from "./GmailWorkspaceSortBlock";
@@ -67,7 +68,6 @@ interface WorkspacePanelRouterProps {
   suppressAssistantPermissionPrompt?: boolean;
   deferAssistantPermissionPrompt?: boolean;
   refreshEntitlement: () => void | Promise<void>;
-  settingsHydrated: boolean;
   backendOnline: boolean;
   backendHealthProbing: boolean;
   backendServiceStarting?: boolean;
@@ -147,6 +147,7 @@ interface WorkspacePanelRouterProps {
   infomaniakMergePrefsSnapshot: InfomaniakMergePrefs | null;
   infomaniakMailMergePrefsSnapshot: InfomaniakMailMergePrefs | null;
   shellVoiceSession: UseVoiceSessionReturn;
+  voiceReadiness: VoiceBackendReadiness;
   briefingOffer: UseBriefingOfferUiReturn;
   setVisualAnalysisSuspended?: (suspended: boolean) => void;
   openVoiceInteractionSettings: () => void;
@@ -185,7 +186,6 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
     suppressAssistantPermissionPrompt = false,
     deferAssistantPermissionPrompt = false,
     refreshEntitlement,
-    settingsHydrated,
     backendOnline,
     backendHealthProbing,
     backendServiceStarting = false,
@@ -253,6 +253,7 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
     infomaniakMergePrefsSnapshot,
     infomaniakMailMergePrefsSnapshot,
     shellVoiceSession,
+    voiceReadiness,
     briefingOffer,
     setVisualAnalysisSuspended,
     openVoiceInteractionSettings,
@@ -452,6 +453,7 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
           settings={settings}
           backendOnline={backendOnline}
           voice={shellVoiceSession}
+          voiceReadiness={voiceReadiness}
           onSettingsPatch={handleSettingsPatch}
           proAllowed={entitlement?.canUseProactive !== false}
           deferPermissionPrompt={deferAssistantPermissionPrompt}
@@ -483,6 +485,7 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
         <LazyExoPanel
         persistConversationMessages={tab !== "assistant"}
         voice={shellVoiceSession}
+        voiceReadiness={voiceReadiness}
         briefingOffer={briefingOffer}
         centerAnchorRef={exoCenterAnchorRef}
         visuallyHidden={tab !== "exo"}
@@ -492,7 +495,6 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
         layoutRevealed={exoChromeRevealed}
         deferTesseractIntro={deferTesseractIntro}
         settings={settings}
-        settingsHydrated={settingsHydrated}
         backendOnline={backendOnline}
         onSettingsPatch={handleSettingsPatch}
         onOpenAssistantSettings={() =>

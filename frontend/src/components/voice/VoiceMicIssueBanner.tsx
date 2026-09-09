@@ -27,18 +27,18 @@ export function VoiceMicIssueBanner({
 
   return (
     <div
-      className="exo-voice-error flex flex-col gap-2 rounded-lg border-2 border-[#dc2626] bg-white px-2.5 py-2 shadow-sm"
+      className="exo-voice-error flex flex-col gap-2 rounded-lg border border-error-bold bg-error-soft px-2.5 py-2"
       role="alert"
     >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1 text-2xs leading-snug">
-          <p className="font-semibold text-[#dc2626]">{detail}</p>
-          {hint ? <p className="mt-1 text-[#991b1b]">{hint}</p> : null}
+          <p className="font-semibold text-error">{detail}</p>
+          {hint ? <p className="mt-1 text-error">{hint}</p> : null}
         </div>
         <button
           type="button"
           onClick={voice.dismissError}
-          className="shrink-0 rounded p-0.5 text-[#991b1b] hover:bg-red-50 hover:text-[#dc2626]"
+          className="shrink-0 rounded p-0.5 text-error hover:bg-error-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-error/50"
           aria-label={t("assistant.dismissError")}
         >
           {"\u00d7"}
@@ -50,7 +50,7 @@ export function VoiceMicIssueBanner({
             <button
               type="button"
               onClick={onOpenAiProviderSettings}
-              className="text-2xs whitespace-nowrap rounded bg-[#dc2626] px-2 py-1 font-medium text-white hover:bg-[#b91c1c]"
+              className="text-2xs whitespace-nowrap rounded bg-error px-2 py-1 font-medium text-white hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-error/50"
             >
               {t("voice.issueOpenAiSettings")}
             </button>
@@ -59,7 +59,7 @@ export function VoiceMicIssueBanner({
             <button
               type="button"
               onClick={onRetryVoice}
-              className="text-2xs whitespace-nowrap rounded bg-[#dc2626] px-2 py-1 font-medium text-white hover:bg-[#b91c1c]"
+              className="text-2xs whitespace-nowrap rounded bg-error px-2 py-1 font-medium text-white hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-error/50"
             >
               {t("voice.issueRetryVoice")}
             </button>

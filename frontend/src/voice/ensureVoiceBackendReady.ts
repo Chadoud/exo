@@ -3,9 +3,11 @@ import type { AppSettings } from "../types/settings";
 import { isGeminiConnectedInSettings } from "../utils/geminiConnection";
 import { resolveGeminiApiKeyFromSettings, syncGeminiKeyToBackend } from "../utils/syncGeminiKeyToBackend";
 
-type VoiceBackendReadyResult =
+export type VoiceBackendReadyReason = "missing_key" | "sync_failed" | "backend_not_ready" | "offline";
+
+export type VoiceBackendReadyResult =
   | { ready: true; model: string }
-  | { ready: false; reason: "missing_key" | "sync_failed" | "backend_not_ready" | "offline" };
+  | { ready: false; reason: VoiceBackendReadyReason };
 
 /**
  * Sync Gemini credentials to the backend env and verify /voice/status before opening a session.

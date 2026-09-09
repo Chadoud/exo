@@ -5,6 +5,7 @@ import {
 } from "../constants";
 import type { AppSettings } from "../types/settings";
 import type { UseVoiceSessionReturn } from "../hooks/useVoiceSession";
+import type { VoiceBackendReadiness } from "../hooks/useVoiceBackendReady";
 import { useConversations, type ConversationMessage, type ConversationToolContext } from "../hooks/useConversations";
 import { clearConversationMemory } from "../api/memory";
 import ConversationSidebar from "./ConversationSidebar";
@@ -32,6 +33,7 @@ interface AssistantWorkspacePanelProps {
   settings: AppSettings;
   backendOnline: boolean;
   voice: UseVoiceSessionReturn;
+  voiceReadiness: VoiceBackendReadiness;
   onSettingsPatch: (patch: Partial<AppSettings>) => void;
   onOpenAssistantSettings: () => void;
   onOpenGeminiSetup?: () => void;
@@ -53,6 +55,7 @@ export default function AssistantWorkspacePanel({
   settings,
   backendOnline,
   voice,
+  voiceReadiness,
   onSettingsPatch,
   onOpenAssistantSettings,
   onOpenGeminiSetup,
@@ -144,6 +147,7 @@ export default function AssistantWorkspacePanel({
         <AssistantChatPanelWithSharedVoice
           key={activeId}
           voice={voice}
+          voiceReadiness={voiceReadiness}
           conversation={active}
           onConversationChange={handleConversationChange}
           onToolContext={handleToolContext}

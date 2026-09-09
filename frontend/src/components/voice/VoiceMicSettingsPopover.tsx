@@ -4,6 +4,8 @@ import type { CSSProperties } from "react";
 import type { AppSettings } from "../../types/settings";
 import type { VoiceSessionForSettingsSideEffects } from "../../utils/voiceSettingsSideEffects";
 import { useI18n } from "../../i18n/I18nContext";
+import { GHOST_ICON_BTN_CLASS } from "../../utils/styles";
+import type { VoiceBackendReadiness } from "../../hooks/useVoiceBackendReady";
 import { VoiceInteractionSettingsForm } from "./VoiceInteractionSettingsForm";
 
 const PANEL_WIDTH_PX = 420;
@@ -16,13 +18,14 @@ interface VoiceMicSettingsPopoverProps {
   settings: AppSettings;
   onSettingsPatch: (patch: Partial<AppSettings>) => void;
   voice?: VoiceSessionForSettingsSideEffects;
-  voiceReady?: boolean | null;
   onOpenAiProviderSettings?: () => void;
   onOpenFullVoiceSettings?: () => void;
   /** Where the panel opens relative to the trigger. */
   placement?: "above" | "below";
   /** Match mic button styling in AI Manager rail vs chat composer. */
   triggerVariant?: "rail" | "composer";
+  voiceReadiness?: VoiceBackendReadiness;
+  showWarningBadge?: boolean;
 }
 
 function SettingsGearIcon({ className }: { className?: string }) {
@@ -58,20 +61,30 @@ export function VoiceMicSettingsPopover({
   settings,
   onSettingsPatch,
   voice,
-  voiceReady,
   onOpenAiProviderSettings,
   onOpenFullVoiceSettings,
   placement = "above",
   triggerVariant = "composer",
+  voiceReadiness,
+  showWarningBadge = false,
 }: VoiceMicSettingsPopoverProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const openedViaKeyboardRef = useRef(false);
   const panelId = useId();
   const radioGroupId = useId();
   const [panelStyle, setPanelStyle] = useState<CSSProperties | null>(null);
+
+  const closePanel = (restoreTriggerFocus: boolean) => {
+    setOpen(false);
+    if (restoreTriggerFocus) {
+      triggerRef.current?.focus();
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -79,12 +92,12 @@ export function VoiceMicSettingsPopover({
       const target = event.target as Node;
       if (rootRef.current?.contains(target)) return;
       if (panelRef.current?.contains(target)) return;
-      setOpen(false);
+      closePanel(false);
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
+        event.stopPropagation();
+        closePanel(true);
       }
     };
     document.addEventListener("mousedown", onDocMouseDown);
@@ -93,6 +106,12 @@ export function VoiceMicSettingsPopover({
       document.removeEventListener("mousedown", onDocMouseDown);
       document.removeEventListener("keydown", onKeyDown);
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !openedViaKeyboardRef.current) return;
+    const checkedRadio = panelRef.current?.querySelector<HTMLInputElement>('input[type="radio"]:checked');
+    (checkedRadio ?? closeRef.current)?.focus();
   }, [open]);
 
   useLayoutEffect(() => {
@@ -153,8 +172,8 @@ export function VoiceMicSettingsPopover({
 
   const triggerClass =
     triggerVariant === "rail"
-      ? "exo-action-btn shrink-0 px-0 py-[0.55rem] min-w-[2.75rem] flex items-center justify-center"
-      : "shrink-0 rounded-xl border border-border bg-bg-secondary p-2.5 text-text-secondary transition-colors hover:bg-hover-overlay hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50";
+      ? "exo-action-btn relative shrink-0 min-h-11 min-w-11 px-0 flex items-center justify-center"
+      : "relative shrink-0 rounded-xl border border-border bg-bg-secondary min-h-11 min-w-11 p-2.5 text-text-secondary transition-colors hover:bg-hover-overlay hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50";
 
   const panelContent = (
     <div
@@ -163,47 +182,48 @@ export function VoiceMicSettingsPopover({
       role="dialog"
       aria-labelledby={`${panelId}-title`}
       style={panelStyle ?? undefined}
-      className={`overflow-y-auto rounded-xl border border-border bg-bg-card p-4 shadow-xl${
+      className={`flex flex-col overflow-hidden rounded-xl border border-border bg-bg-card shadow-xl${
         panelStyle ? "" : " invisible pointer-events-none fixed left-0 top-0 w-[26rem]"
       }`}
     >
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <h2 id={`${panelId}-title`} className="text-base font-semibold text-text-primary">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <h2 id={`${panelId}-title`} className="min-w-0 truncate text-base font-semibold text-text-primary">
           {t("voice.micSettingsTitle")}
         </h2>
         <button
+          ref={closeRef}
           type="button"
-          className="rounded p-1 text-muted hover:bg-hover-overlay hover:text-text-primary"
+          data-mic-settings-close=""
+          className={`${GHOST_ICON_BTN_CLASS} min-h-11 min-w-11 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50`}
           aria-label={t("voice.micSettingsClose")}
-          onClick={() => {
-            setOpen(false);
-            triggerRef.current?.focus();
-          }}
+          onClick={() => closePanel(true)}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      <VoiceInteractionSettingsForm
-        settings={settings}
-        onSettingsPatch={onSettingsPatch}
-        variant="compact"
-        radioGroupId={radioGroupId}
-        voice={voice}
-        voiceReady={voiceReady}
-        onOpenAiProviderSettings={() => {
-          setOpen(false);
-          onOpenAiProviderSettings?.();
-        }}
-      />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+        <VoiceInteractionSettingsForm
+          settings={settings}
+          onSettingsPatch={onSettingsPatch}
+          variant="compact"
+          radioGroupId={radioGroupId}
+          voice={voice}
+          voiceReadiness={voiceReadiness}
+          onOpenAiProviderSettings={() => {
+            setOpen(false);
+            onOpenAiProviderSettings?.();
+          }}
+        />
+      </div>
 
       {onOpenFullVoiceSettings ? (
-        <div className="mt-4 border-t border-border pt-3">
+        <div className="shrink-0 border-t border-border px-4 py-3">
           <button
             type="button"
-            className="text-sm font-medium text-accent hover:underline"
+            className="rounded text-sm font-medium text-accent underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
             onClick={() => {
               setOpen(false);
               onOpenFullVoiceSettings();
@@ -223,12 +243,20 @@ export function VoiceMicSettingsPopover({
         type="button"
         className={`${triggerClass}${open ? (triggerVariant === "rail" ? " exo-action-btn--settings-open" : " border-accent/50 bg-accent/5 text-text-primary") : ""}`}
         aria-label={t("voice.micSettingsButtonAria")}
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={panelId}
         title={t("voice.micSettingsButtonAria")}
-        onClick={() => setOpen((value) => !value)}
+        onClick={(event) => {
+          const next = !open;
+          openedViaKeyboardRef.current = next && event.detail === 0;
+          setOpen(next);
+        }}
       >
         <SettingsGearIcon className="h-4 w-4" />
+        {showWarningBadge ? (
+          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-warning" aria-hidden="true" />
+        ) : null}
       </button>
 
       {open && typeof document !== "undefined"

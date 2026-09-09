@@ -1,15 +1,19 @@
 import type { AppSettings } from "../../types/settings";
 import type { UseVoiceSessionReturn } from "../../hooks/useVoiceSession";
+import type { VoiceBackendReadiness } from "../../hooks/useVoiceBackendReady";
 import { useI18n } from "../../i18n/I18nContext";
 import { VoiceMicSettingsPopover } from "./VoiceMicSettingsPopover";
 import { VoiceMicIssueBanner } from "./VoiceMicIssueBanner";
+import { deriveVoiceReadinessView, showGearWarningBadge } from "../../voice/voiceReadiness";
 import { isPushToTalkMode, isPttVoiceUiActive } from "../../utils/voiceInteractionUi";
+
+const ICON_HIT = "min-h-11 min-w-11";
 
 interface MicControlRowProps {
   voice: UseVoiceSessionReturn;
+  voiceReadiness: VoiceBackendReadiness;
   settings: AppSettings;
   onSettingsPatch: (patch: Partial<AppSettings>) => void;
-  voiceReady?: boolean | null;
   onOpenAiProviderSettings?: () => void;
   onOpenFullVoiceSettings?: () => void;
   layout: "exo" | "composer";
@@ -25,6 +29,17 @@ function MicIcon({ className }: { className?: string }) {
       />
     </svg>
   );
+}
+
+function composerMicButtonClass(isListening: boolean, blocked: boolean): string {
+  const base = `rounded-xl border ${ICON_HIT} p-2.5 transition-colors focus:outline-none focus-visible:ring-2`;
+  if (isListening) {
+    return `${base} border-error bg-error-soft text-error hover:bg-error-strong focus-visible:ring-error/50`;
+  }
+  if (blocked) {
+    return `${base} cursor-not-allowed border-border bg-bg-secondary text-muted opacity-50`;
+  }
+  return `${base} border-border bg-bg-secondary text-text-secondary hover:bg-hover-overlay focus-visible:ring-accent/50`;
 }
 
 function RestartIcon({ className }: { className?: string }) {
@@ -44,9 +59,9 @@ function RestartIcon({ className }: { className?: string }) {
  */
 export function MicControlRow({
   voice,
+  voiceReadiness,
   settings,
   onSettingsPatch,
-  voiceReady,
   onOpenAiProviderSettings,
   onOpenFullVoiceSettings,
   layout,
@@ -55,17 +70,23 @@ export function MicControlRow({
   const isPtt = isPushToTalkMode(settings);
   const pttUiActive = isPtt && isPttVoiceUiActive(voice);
   const isExoRail = layout === "exo";
-  const notConfigured = voiceReady === false;
+  const view = deriveVoiceReadinessView(voiceReadiness);
+  const canToggleOff = voice.isListening || voice.isReconnecting;
+  const startBlocked = !view.canStart && !canToggleOff;
+  const showRestart = Boolean(voice.error || voice.isReconnecting);
+  const busy = view.busy || voice.isReconnecting;
+  const gearWarning = showGearWarningBadge(voiceReadiness, { micEntryVisible: !isPtt });
 
   const settingsPopover = (
     <VoiceMicSettingsPopover
       settings={settings}
       onSettingsPatch={onSettingsPatch}
       voice={voice}
-      voiceReady={voiceReady}
+      voiceReadiness={voiceReadiness}
+      showWarningBadge={gearWarning}
       onOpenAiProviderSettings={onOpenAiProviderSettings}
       onOpenFullVoiceSettings={onOpenFullVoiceSettings}
-      placement={isExoRail ? "above" : "above"}
+      placement="above"
       triggerVariant={isExoRail ? "rail" : "composer"}
     />
   );
@@ -96,37 +117,49 @@ export function MicControlRow({
     }
 
     return (
-      <div className="flex shrink-0 items-center gap-1">
-        {pttUiActive ? (
-          <button
-            type="button"
-            onClick={() => {
-              voice.stop();
-              voice.dismissError();
-            }}
-            className="rounded-xl border border-border bg-bg-secondary px-2.5 py-2.5 text-2xs font-medium text-text-primary transition-colors hover:bg-hover-overlay"
-          >
-            {t("voice.pttEndSession")}
-          </button>
-        ) : null}
-        {settingsPopover}
+      <div className="flex min-w-0 flex-col items-stretch gap-1.5">
+        <div className="flex shrink-0 items-center gap-1">
+          {pttUiActive ? (
+            <button
+              type="button"
+              onClick={() => {
+                voice.stop();
+                voice.dismissError();
+              }}
+              className={`rounded-xl border border-border bg-bg-secondary px-2.5 ${ICON_HIT} text-2xs font-medium text-text-primary transition-colors hover:bg-hover-overlay`}
+            >
+              {t("voice.pttEndSession")}
+            </button>
+          ) : null}
+          {settingsPopover}
+        </div>
+        <VoiceMicIssueBanner
+          voice={voice}
+          onOpenAiProviderSettings={onOpenAiProviderSettings}
+          onRetryVoice={() => {
+            voice.stop();
+            voice.dismissError();
+            void voice.start();
+          }}
+        />
       </div>
     );
   }
 
   const micTitle = voice.isListening
     ? t("voice.micStopTitle")
-    : notConfigured
-      ? t("voice.micNotConfiguredTitle")
+    : view.messageKey
+      ? t(view.messageKey)
       : t("voice.micStartTitle");
 
   const toggleMic = () => {
-    if (voice.isListening || voice.isReconnecting) {
+    if (canToggleOff) {
       voice.stop();
       voice.dismissError();
-    } else {
-      void voice.start();
+      return;
     }
+    if (!view.canStart) return;
+    void voice.start();
   };
 
   const retryVoice = () => {
@@ -135,23 +168,29 @@ export function MicControlRow({
     void voice.start();
   };
 
-  // Recovery path for a silently dead mic (e.g. macOS permission churn on
-  // reinstall): full stop + start without hunting through settings.
   const restartButton = (variant: "rail" | "composer") => (
     <button
       type="button"
       onClick={retryVoice}
-      disabled={notConfigured}
+      disabled={!view.canStart && !voice.isReconnecting}
       title={t("voice.micRestartTitle")}
       aria-label={t("voice.micRestartTitle")}
       className={
         variant === "rail"
-          ? "exo-action-btn shrink-0 px-0 py-[0.55rem] min-w-[2.75rem] flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
-          : "shrink-0 rounded-xl border border-border bg-bg-secondary p-2.5 text-text-secondary transition-colors hover:bg-hover-overlay hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:opacity-50 disabled:pointer-events-none"
+          ? `exo-action-btn ${ICON_HIT} shrink-0 px-0 flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none`
+          : `shrink-0 rounded-xl border border-border bg-bg-secondary ${ICON_HIT} p-2.5 text-text-secondary transition-colors hover:bg-hover-overlay hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:opacity-50 disabled:pointer-events-none`
       }
     >
       <RestartIcon className="h-4 w-4" />
     </button>
+  );
+
+  const issueBanner = (
+    <VoiceMicIssueBanner
+      voice={voice}
+      onOpenAiProviderSettings={onOpenAiProviderSettings}
+      onRetryVoice={retryVoice}
+    />
   );
 
   if (isExoRail) {
@@ -161,7 +200,11 @@ export function MicControlRow({
           <button
             type="button"
             onClick={toggleMic}
-            className={`exo-action-btn min-w-0 flex-1 ${voice.isListening || voice.isReconnecting ? "exo-action-btn--active" : ""}`}
+            disabled={startBlocked}
+            aria-busy={busy}
+            className={`exo-action-btn min-w-0 flex-1 disabled:pointer-events-none disabled:opacity-50 ${
+              voice.isListening || voice.isReconnecting ? "exo-action-btn--active" : ""
+            }`}
             title={t("voice.micShortcutTitle")}
           >
             {voice.isListening
@@ -170,43 +213,34 @@ export function MicControlRow({
                 ? t("voice.micReconnectingLabel")
                 : t("voice.micOffLabel")}
           </button>
-          {restartButton("rail")}
+          {showRestart ? restartButton("rail") : null}
           {settingsPopover}
         </div>
-        <VoiceMicIssueBanner
-          voice={voice}
-          onOpenAiProviderSettings={onOpenAiProviderSettings}
-          onRetryVoice={retryVoice}
-        />
+        {issueBanner}
       </div>
     );
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      <div className="relative">
-        <button
-          type="button"
-          onClick={toggleMic}
-          title={micTitle}
-          aria-label={micTitle}
-          disabled={notConfigured && !voice.isListening}
-          className={`rounded-xl border p-2.5 transition-colors ${
-            voice.isListening
-              ? "border-red-500 bg-red-950/50 text-red-400 hover:bg-red-950"
-              : notConfigured
-                ? "border-border bg-bg-secondary text-text-muted opacity-50 cursor-not-allowed"
-                : "border-border bg-bg-secondary text-text-secondary hover:bg-hover-overlay"
-          }`}
-        >
-          <MicIcon className="h-4 w-4" />
-        </button>
-        {notConfigured && !voice.isListening ? (
-          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
-        ) : null}
+    <div className="flex min-w-0 flex-col items-stretch gap-1.5">
+      <div className="flex shrink-0 items-center gap-1">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={toggleMic}
+            title={micTitle}
+            aria-label={micTitle}
+            aria-busy={busy}
+            disabled={startBlocked}
+            className={composerMicButtonClass(voice.isListening, startBlocked)}
+          >
+            <MicIcon className="h-4 w-4" />
+          </button>
+        </div>
+        {showRestart ? restartButton("composer") : null}
+        {settingsPopover}
       </div>
-      {restartButton("composer")}
-      {settingsPopover}
+      {issueBanner}
     </div>
   );
 }

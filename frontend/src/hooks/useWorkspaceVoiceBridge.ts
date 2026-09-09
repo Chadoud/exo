@@ -7,6 +7,7 @@ import { voicePaidAllowed } from "../utils/voicePaidAccess";
 import { CLAP_WAKE_VOICE_EVENT } from "../constants";
 import { openPrimarySettingsSection } from "../utils/settingsNav";
 import { assertVoiceBackendReady } from "../voice/ensureVoiceBackendReady";
+import { useVoiceBackendReadiness, type VoiceBackendReadiness } from "./useVoiceBackendReady";
 import {
   CONVERSATION_LAND_UNMUTE_GRACE_MS,
   conversationLandMicAction,
@@ -52,6 +53,7 @@ type UseWorkspaceVoiceBridgeOptions = {
 
 type UseWorkspaceVoiceBridgeReturn = {
   voice: UseVoiceSessionReturn;
+  voiceReadiness: VoiceBackendReadiness;
   briefingOffer: UseBriefingOfferUiReturn;
   pushToTalk: ReturnType<typeof usePushToTalk>;
   isConversationVoiceMode: boolean;
@@ -97,13 +99,7 @@ export function useWorkspaceVoiceBridge({
     }
   }, [activeTab]);
 
-  useEffect(() => {
-    if (!settingsHydrated || !backendOnline) return;
-    const handle = window.setTimeout(() => {
-      void assertVoiceBackendReady(settings, { backendOnline }).catch(() => {});
-    }, 400);
-    return () => window.clearTimeout(handle);
-  }, [settingsHydrated, backendOnline, settings.geminiApiKey, settings.chatProviders?.gemini?.apiKey]);
+  const voiceReadiness = useVoiceBackendReadiness(settings, backendOnline, settingsHydrated);
 
   const voice = useVoiceSession({
     memoryEnabled: settings.assistantMemoryEnabled,
@@ -394,6 +390,7 @@ export function useWorkspaceVoiceBridge({
 
   return {
     voice: gatedVoice,
+    voiceReadiness,
     briefingOffer,
     pushToTalk,
     isConversationVoiceMode,

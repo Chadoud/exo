@@ -8,7 +8,6 @@ import type { UseVoiceSessionReturn } from "../../../hooks/useVoiceSession";
 import { isChatReady } from "../../../utils/chatReadiness";
 import { messageNeedsLocalAppService } from "../../../utils/messageNeedsLocalAppService";
 import { runCloudOnlyAssistantMessage } from "./runCloudOnlyAssistantMessage";
-import { useVoiceBackendReady } from "../../../hooks/useVoiceBackendReady";
 import { setActiveConversationId } from "../../../systemCommands/activeConversationRef";
 import { setActivePlanTask } from "../plan/planStore";
 import {
@@ -84,7 +83,6 @@ export function useAssistantChatController({
   );
   const [isStreaming, setIsStreaming] = useState(false);
   const [codegenConsentOpen, setCodegenConsentOpen] = useState(false);
-  const voiceReady = useVoiceBackendReady(settings, backendOnline);
   const memoryBlock = useAssistantChatMemory(conversation.id, settings, backendOnline);
   const pendingCodegenRef = useRef<PendingCodegen | null>(null);
   const pendingVoiceDeleteDraftRef = useRef<CalendarDeleteDraft | null>(null);
@@ -507,7 +505,6 @@ export function useAssistantChatController({
   return {
     localMessages,
     isStreaming,
-    voiceReady,
     memoryBlock,
     outboundRingRef,
     sendMessage,

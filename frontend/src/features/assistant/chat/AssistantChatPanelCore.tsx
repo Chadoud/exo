@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent, KeyboardEvent } from "react";
 import type { AppSettings } from "../../../types/settings";
 import type { UseVoiceSessionReturn } from "../../../hooks/useVoiceSession";
+import type { VoiceBackendReadiness } from "../../../hooks/useVoiceBackendReady";
 import TaskProgressCard from "../../../components/TaskProgressCard";
 import CodegenSessionCard from "../../../components/CodegenSessionCard";
 import CodegenConsentModal from "../../../components/CodegenConsentModal";
@@ -118,6 +119,7 @@ interface AssistantChatPanelProps {
 
 type AssistantChatPanelBodyProps = AssistantChatPanelProps & {
   voice: UseVoiceSessionReturn;
+  voiceReadiness: VoiceBackendReadiness;
 };
 
 /** Chat UI wired to an existing voice session — use inside AI Manager next to Exo's `useVoiceSession`. */
@@ -127,6 +129,7 @@ export function AssistantChatPanelWithSharedVoice(props: AssistantChatPanelBodyP
 
 export function AssistantChatPanelBody({
   voice,
+  voiceReadiness,
   conversation,
   onConversationChange,
   onToolContext,
@@ -199,7 +202,6 @@ export function AssistantChatPanelBody({
   const {
     localMessages,
     isStreaming,
-    voiceReady,
     sendMessage,
     handleStop,
     handleDebugExport,
@@ -829,9 +831,9 @@ export function AssistantChatPanelBody({
               {showComposerVoiceAccessories ? (
                 <MicControlRow
                   voice={voice}
+                  voiceReadiness={voiceReadiness}
                   settings={settings}
                   onSettingsPatch={onSettingsPatch!}
-                  voiceReady={voiceReady}
                   onOpenAiProviderSettings={onOpenGeminiSetup ?? onOpenAiProviderSettings}
                   onOpenFullVoiceSettings={onOpenVoiceInteractionSettings}
                   layout="composer"

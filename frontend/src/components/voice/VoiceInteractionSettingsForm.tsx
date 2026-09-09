@@ -7,6 +7,9 @@ import {
 import { SECTION_LABEL_CLASS } from "../../utils/styles";
 import { patchVoiceSettings, type VoiceSessionForSettingsSideEffects } from "../../utils/voiceSettingsSideEffects";
 import { useI18n } from "../../i18n/I18nContext";
+import type { VoiceBackendReadiness } from "../../hooks/useVoiceBackendReady";
+import { deriveVoiceReadinessView } from "../../voice/voiceReadiness";
+import { VoiceReadinessNotice } from "./VoiceReadinessNotice";
 
 const MODE_OPTIONS: { id: VoiceInteractionMode; titleKey: string; hintKey: string }[] = [
   {
@@ -28,8 +31,9 @@ interface VoiceInteractionSettingsFormProps {
   /** Unique suffix so radio groups do not clash when popover + settings are both mounted. */
   radioGroupId?: string;
   voice?: VoiceSessionForSettingsSideEffects;
-  voiceReady?: boolean | null;
   onOpenAiProviderSettings?: () => void;
+  /** When omitted (Settings page), readiness banners stay off this form. */
+  voiceReadiness?: VoiceBackendReadiness;
 }
 
 /**
@@ -41,14 +45,15 @@ export function VoiceInteractionSettingsForm({
   variant,
   radioGroupId = "default",
   voice,
-  voiceReady,
   onOpenAiProviderSettings,
+  voiceReadiness,
 }: VoiceInteractionSettingsFormProps) {
   const { t } = useI18n();
   const isPtt = settings.voiceInteractionMode === "pushToTalk";
   const shortcut = settings.pttShortcut;
   const compact = variant === "compact";
   const supportsGlobalPtt = Boolean(window.electronAPI?.setPushToTalkConfig);
+  const readinessView = voiceReadiness ? deriveVoiceReadinessView(voiceReadiness) : null;
 
   const applyPatch = (patch: Partial<AppSettings>) => {
     patchVoiceSettings(settings, patch, onSettingsPatch, voice);
@@ -63,8 +68,8 @@ export function VoiceInteractionSettingsForm({
   };
 
   const modeCardClass = compact
-    ? "flex cursor-pointer flex-col rounded-lg border border-border bg-bg-secondary/40 px-2.5 py-2 has-[:checked]:border-accent has-[:checked]:bg-accent/5"
-    : "flex cursor-pointer flex-col rounded-xl border border-border bg-bg-secondary/40 px-3 py-3 has-[:checked]:border-accent has-[:checked]:bg-accent/5";
+    ? "flex cursor-pointer flex-col rounded-lg border border-border bg-bg-secondary/40 px-2.5 py-2 has-[:checked]:border-accent has-[:checked]:bg-accent/5 focus-within:ring-2 focus-within:ring-accent/50"
+    : "flex cursor-pointer flex-col rounded-xl border border-border bg-bg-secondary/40 px-3 py-3 has-[:checked]:border-accent has-[:checked]:bg-accent/5 focus-within:ring-2 focus-within:ring-accent/50";
 
   const checkboxRowClass = compact
     ? "flex cursor-pointer items-start gap-2.5 py-1"
@@ -72,26 +77,19 @@ export function VoiceInteractionSettingsForm({
 
   return (
     <div className={compact ? "space-y-3" : "space-y-5"}>
-      {voiceReady === false && onOpenAiProviderSettings ? (
-        <div
-          className={`rounded-lg border border-amber-500/40 bg-amber-500/10 ${compact ? "px-2.5 py-2" : "px-3 py-2.5"}`}
-          role="status"
-        >
-          <p className="text-xs leading-snug text-amber-200/90">{t("voice.micSettingsNotConfigured")}</p>
-          <button
-            type="button"
-            className="mt-1.5 text-xs font-medium text-accent hover:underline"
-            onClick={onOpenAiProviderSettings}
-          >
-            {t("voice.micSettingsFixInSettings")}
-          </button>
-        </div>
+      {readinessView ? (
+        <VoiceReadinessNotice
+          compact={compact}
+          view={readinessView}
+          onOpenSettings={onOpenAiProviderSettings}
+          onRefresh={voiceReadiness?.refresh}
+        />
       ) : null}
 
-      <div>
-        <p className={`${SECTION_LABEL_CLASS} ${compact ? "mb-1.5" : "mb-2"}`}>
+      <fieldset className="min-w-0">
+        <legend className={`${SECTION_LABEL_CLASS} ${compact ? "mb-1.5" : "mb-2"}`}>
           {t("settings.voiceInteractionLegend")}
-        </p>
+        </legend>
         <div className={`grid gap-2 ${compact ? "grid-cols-1" : "sm:grid-cols-2"}`}>
           {MODE_OPTIONS.map((opt) => (
             <label key={opt.id} className={modeCardClass}>
@@ -107,15 +105,13 @@ export function VoiceInteractionSettingsForm({
                   <span className={`block font-medium text-text-primary ${compact ? "text-xs" : "text-sm"}`}>
                     {t(opt.titleKey)}
                   </span>
-                  <span className={`mt-0.5 block leading-snug text-muted ${compact ? "text-2xs" : "text-xs"}`}>
-                    {t(opt.hintKey)}
-                  </span>
+                  <span className="mt-0.5 block text-xs leading-snug text-muted">{t(opt.hintKey)}</span>
                 </span>
               </span>
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       <label className={checkboxRowClass}>
         <input
@@ -126,7 +122,7 @@ export function VoiceInteractionSettingsForm({
         />
         <span>
           <span className={`${SECTION_LABEL_CLASS} mb-0`}>{t("settings.voiceControlClapToWakeLabel")}</span>
-          <span className={`mt-0.5 block leading-snug text-muted ${compact ? "text-2xs" : "text-xs"}`}>
+          <span className="mt-0.5 block text-xs leading-snug text-muted">
             {t("settings.voiceControlClapToWakeHint")}
           </span>
         </span>
@@ -142,7 +138,7 @@ export function VoiceInteractionSettingsForm({
           />
           <span>
             <span className={`${SECTION_LABEL_CLASS} mb-0`}>{t("settings.voiceAutoStartLabel")}</span>
-            <span className={`mt-0.5 block leading-snug text-muted ${compact ? "text-2xs" : "text-xs"}`}>
+            <span className="mt-0.5 block text-xs leading-snug text-muted">
               {t("settings.voiceAutoStartHint")}
             </span>
           </span>
@@ -166,7 +162,7 @@ export function VoiceInteractionSettingsForm({
               </span>
               <button
                 type="button"
-                className="rounded-lg border border-border px-2.5 py-1 text-2xs font-medium text-text-primary hover:bg-bg-secondary"
+                className="rounded-lg border border-border px-2.5 py-1 text-2xs font-medium text-text-primary hover:bg-bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
                 onClick={resetShortcut}
               >
                 {t("settings.pttShortcutReset")}
@@ -174,7 +170,7 @@ export function VoiceInteractionSettingsForm({
             </div>
           </div>
 
-          <label className={compact ? "flex cursor-pointer items-start gap-2.5 py-0.5" : checkboxRowClass}>
+          <label className={checkboxRowClass}>
             <input
               type="checkbox"
               className="mt-0.5 rounded border-border text-accent focus:ring-accent"
@@ -183,13 +179,13 @@ export function VoiceInteractionSettingsForm({
             />
             <span>
               <span className={`${SECTION_LABEL_CLASS} mb-0`}>{t("settings.pttDoubleTapLabel")}</span>
-              <span className={`mt-0.5 block leading-snug text-muted ${compact ? "text-2xs" : "text-xs"}`}>
+              <span className="mt-0.5 block text-xs leading-snug text-muted">
                 {t("settings.pttDoubleTapHint")}
               </span>
             </span>
           </label>
 
-          <label className={compact ? "flex cursor-pointer items-start gap-2.5 py-0.5" : checkboxRowClass}>
+          <label className={checkboxRowClass}>
             <input
               type="checkbox"
               className="mt-0.5 rounded border-border text-accent focus:ring-accent"
@@ -198,13 +194,13 @@ export function VoiceInteractionSettingsForm({
             />
             <span>
               <span className={`${SECTION_LABEL_CLASS} mb-0`}>{t("settings.pttOverlayLabel")}</span>
-              <span className={`mt-0.5 block leading-snug text-muted ${compact ? "text-2xs" : "text-xs"}`}>
+              <span className="mt-0.5 block text-xs leading-snug text-muted">
                 {t("settings.pttOverlayHint")}
               </span>
             </span>
           </label>
 
-          <label className={compact ? "flex cursor-pointer items-start gap-2.5 py-0.5" : checkboxRowClass}>
+          <label className={checkboxRowClass}>
             <input
               type="checkbox"
               className="mt-0.5 rounded border-border text-accent focus:ring-accent"
@@ -213,14 +209,14 @@ export function VoiceInteractionSettingsForm({
             />
             <span>
               <span className={`${SECTION_LABEL_CLASS} mb-0`}>{t("settings.pttSoundsLabel")}</span>
-              <span className={`mt-0.5 block leading-snug text-muted ${compact ? "text-2xs" : "text-xs"}`}>
+              <span className="mt-0.5 block text-xs leading-snug text-muted">
                 {t("settings.pttSoundsHint")}
               </span>
             </span>
           </label>
 
           {supportsGlobalPtt ? (
-            <label className={compact ? "flex cursor-pointer items-start gap-2.5 py-0.5" : checkboxRowClass}>
+            <label className={checkboxRowClass}>
               <input
                 type="checkbox"
                 className="mt-0.5 rounded border-border text-accent focus:ring-accent"
@@ -229,16 +225,16 @@ export function VoiceInteractionSettingsForm({
               />
               <span>
                 <span className={`${SECTION_LABEL_CLASS} mb-0`}>{t("settings.pttGlobalLabel")}</span>
-                <span className={`mt-0.5 block leading-snug text-muted ${compact ? "text-2xs" : "text-xs"}`}>
+                <span className="mt-0.5 block text-xs leading-snug text-muted">
                   {t("settings.pttGlobalHint")}
                 </span>
               </span>
             </label>
           ) : (
-            <p className="text-2xs leading-snug text-muted">{t("voice.micSettingsDesktopOnly")}</p>
+            <p className="text-xs leading-snug text-muted">{t("voice.micSettingsDesktopOnly")}</p>
           )}
 
-          <label className={compact ? "flex cursor-pointer items-center gap-2.5 py-0.5" : "flex cursor-pointer items-center gap-3"}>
+          <label className={checkboxRowClass}>
             <input
               type="checkbox"
               className="rounded border-border text-accent focus:ring-accent"
@@ -263,7 +259,7 @@ export function VoiceInteractionSettingsForm({
             />
             <span>
               <span className={`${SECTION_LABEL_CLASS} mb-0`}>{t("voice.assistantDebugUiLabel")}</span>
-              <span className={`mt-0.5 block leading-snug text-muted ${compact ? "text-2xs" : "text-xs"}`}>
+              <span className="mt-0.5 block text-xs leading-snug text-muted">
                 {t("voice.assistantDebugUiHint")}
               </span>
             </span>

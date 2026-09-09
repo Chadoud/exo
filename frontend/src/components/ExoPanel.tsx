@@ -23,7 +23,7 @@ import {
 } from "../constants";
 import type { UseVoiceSessionReturn } from "../hooks/useVoiceSession";
 import type { UseBriefingOfferUiReturn } from "../hooks/useBriefingOfferUi";
-import { useVoiceBackendReady } from "../hooks/useVoiceBackendReady";
+import type { VoiceBackendReadiness } from "../hooks/useVoiceBackendReady";
 import { AssistantChatPanelWithSharedVoice } from "./AssistantChatPanel";
 import ExoConversationTabBar from "./ExoConversationTabBar";
 import ExoRailTabBar from "./ExoRailTabBar";
@@ -79,10 +79,10 @@ function readStoredExoRailWidthPx(): number {
 interface ExoPanelProps {
   /** Shared Gemini Live voice session owned by {@link AppMainWorkspace} â€” persists across workspace tabs. */
   voice: UseVoiceSessionReturn;
+  voiceReadiness: VoiceBackendReadiness;
   /** Startup BriefingOffer chrome state (shared with AmbientVoiceHud). */
   briefingOffer: UseBriefingOfferUiReturn;
   settings: AppSettings;
-  settingsHydrated: boolean;
   backendOnline: boolean;
   onSettingsPatch: (patch: Partial<AppSettings>) => void;
   onOpenAssistantSettings: () => void;
@@ -131,9 +131,9 @@ type ExoChromePhase = "intro" | "phase1_right" | "full";
 
 export default function ExoPanel({
   voice,
+  voiceReadiness,
   briefingOffer,
   settings,
-  settingsHydrated,
   backendOnline,
   onSettingsPatch,
   onOpenAssistantSettings,
@@ -190,7 +190,6 @@ export default function ExoPanel({
       : agentPlanState?.phase ?? null;
   const railTab = useAssistantRailTab();
 
-  const voiceReady = useVoiceBackendReady(settings, backendOnline, settingsHydrated);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("IDLE");
   // fileKey forces AssistantChatPanel to remount after each file injection
   const [fileKey, setFileKey] = useState(0);
@@ -333,7 +332,7 @@ export default function ExoPanel({
     if (visuallyHidden) return;
     if (settings.voiceInteractionMode !== "conversation") return;
     if (!settings.voiceAutoStart) return;
-    if (!voiceReady || !backendOnline) return;
+    if (voiceReadiness.state !== "ready" || !backendOnline) return;
     if (voice.micAutostartSuppressed) return;
     if (voice.isListening || voice.isReconnecting) return;
     void voice.start();
@@ -341,7 +340,7 @@ export default function ExoPanel({
     settings.voiceInteractionMode,
     settings.voiceAutoStart,
     backendOnline,
-    voiceReady,
+    voiceReadiness.state,
     voice.micAutostartSuppressed,
     voice.isListening,
     voice.isReconnecting,
@@ -541,6 +540,7 @@ export default function ExoPanel({
                         <AssistantChatPanelWithSharedVoice
                           key={`${activeId}-${fileKey}`}
                           voice={voice}
+                          voiceReadiness={voiceReadiness}
                           conversation={active}
                           onConversationChange={handleConversationChange}
                           onToolContext={handleToolContext}
@@ -566,9 +566,9 @@ export default function ExoPanel({
                       <div className="flex-shrink-0 space-y-1.5 border-t border-border px-3 py-2">
                         <MicControlRow
                           voice={voice}
+                          voiceReadiness={voiceReadiness}
                           settings={settings}
                           onSettingsPatch={onSettingsPatch}
-                          voiceReady={voiceReady}
                           onOpenAiProviderSettings={onGoToAiSettings ?? onOpenGeminiSetup}
                           onOpenFullVoiceSettings={onOpenVoiceInteractionSettings ?? onOpenAssistantSettings}
                           layout="exo"
