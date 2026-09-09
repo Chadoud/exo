@@ -27,6 +27,7 @@ async def run_incoming_audio_send_loop(
     state: AudioSendLoopState,
     *,
     user_spoke: asyncio.Event | None = None,
+    meeting_id: str | None = None,
 ) -> None:
     """Pull PCM blobs (or text commands) from the queue and forward to Gemini."""
     while True:
@@ -73,6 +74,13 @@ async def run_incoming_audio_send_loop(
                 incoming_audio.put_nowait(chunk)
                 break
         else:
+            if meeting_id:
+                try:
+                    from meeting_audio import append_pcm
+
+                    append_pcm(meeting_id, chunk)
+                except Exception:
+                    logger.debug("meeting pcm buffer failed", exc_info=True)
             await session.send_realtime_input(
                 audio=genai_types.Blob(
                     mime_type="audio/pcm;rate=16000",

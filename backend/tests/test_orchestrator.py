@@ -506,6 +506,36 @@ def test_orchestrate_consults_and_stores_memory():
     assert any("weather_report needed a city" in ctx for ctx in seen_context)
 
 
+def test_orchestrate_seeds_person_memory_into_planner(monkeypatch):
+    """Second-brain facts reach the planner so tasks do not re-ask known details."""
+    monkeypatch.setattr(
+        "assistant_memory.format_memory_for_prompt",
+        lambda: (
+            "=== What you know about this person — use naturally, never recite like a list ===\n"
+            "[IDENTITY]\n"
+            "  job: product designer\n"
+            "  city: Geneva\n"
+            "=== End of memory ==="
+        ),
+    )
+    seen_context: list[str] = []
+
+    def reason(capability, system, user):
+        seen_context.append(user)
+        return _fake_reason(capability, system, user)
+
+    result = agents.orchestrate(
+        "find a job",
+        reason_fn=reason,
+        dispatch_fn=lambda t, a: {"ok": True, "data": {}},
+    )
+    assert result["ok"] is True
+    planner = seen_context[0]
+    assert "product designer" in planner
+    assert "Geneva" in planner
+    assert "person_memory" in planner
+
+
 # ── procedural skills ───────────────────────────────────────────────────────────
 @pytest.fixture
 def _temp_skills(tmp_path, monkeypatch):

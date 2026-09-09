@@ -60,7 +60,7 @@ class TestMeetingTranscription(unittest.TestCase):
         self.assertEqual(captured.get("meeting_id"), "transcribe-meeting")
 
     def test_transcription_config_has_no_tools(self) -> None:
-        """The transcription-only Live config must omit tools and audio reply."""
+        """The transcription-only Live config must omit tools (AUDIO modality is required)."""
         import asyncio
 
         import voice_session
@@ -119,6 +119,41 @@ class TestMeetingTranscription(unittest.TestCase):
             # tools must be unset/empty in transcription-only mode
             tools = getattr(config, "tools", None)
             self.assertIn(tools, (None, [], ()))
+
+
+class _FakeGenaiTypes:
+    class LiveConnectConfig:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+    class AudioTranscriptionConfig:
+        pass
+
+    class SessionResumptionConfig:
+        def __init__(self, handle=None):
+            self.handle = handle
+
+    class ContextWindowCompressionConfig:
+        def __init__(self, sliding_window=None):
+            self.sliding_window = sliding_window
+
+    class SlidingWindow:
+        pass
+
+
+class TestTranscriptionLiveConfig(unittest.TestCase):
+    def test_transcription_only_uses_audio_modality(self):
+        from voice.gemini_session import build_live_connect_config
+
+        config = build_live_connect_config(
+            _FakeGenaiTypes,
+            system_instruction="transcribe",
+            voice_history=[],
+            transcription_only=True,
+            memory_enabled=False,
+        )
+        self.assertEqual(config.response_modalities, ["AUDIO"])
+        self.assertFalse(hasattr(config, "tools") and config.tools)
 
 
 if __name__ == "__main__":

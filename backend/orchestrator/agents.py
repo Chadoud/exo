@@ -36,7 +36,9 @@ _PLANNER_SYSTEM_PREFIX = (
     "- kind 'tool': a single tool call (give 'tool' name and 'args' object), or\n"
     "- kind 'reason': a thinking/synthesis step (no tool).\n"
     "Give each step a one-line 'description' and a 'success_check' (how to tell it "
-    "worked). Prefer the fewest steps. Respond with ONLY JSON: "
+    "worked). Prefer the fewest steps. When Known facts include what we already "
+    "know about this person, use those details — do not ask for them again. "
+    "Respond with ONLY JSON: "
     '{"steps": [{"id": 1, "kind": "tool"|"reason", "tool": <name|null>, '
     '"args": {...}, "description": "...", "success_check": "..."}]}'
 )
@@ -188,6 +190,19 @@ def _gate_tool_step(step: Step, policy: Any | None, audit: Any | None) -> StepRe
     return _blocked_result(step, decision.reason)
 
 
+def _seed_person_memory(board: Blackboard) -> None:
+    """Attach the Chat/voice memory snapshot so tasks reuse known facts."""
+    try:
+        from assistant_memory import format_memory_for_prompt
+
+        block = (format_memory_for_prompt() or "").strip()
+    except Exception as exc:  # noqa: BLE001
+        board.note(f"person memory failed: {exc}")
+        return
+    if block:
+        board.add_fact("person_memory", block)
+
+
 def _audit_tool_result(audit: Any | None, step: Step, result: StepResult) -> None:
     if audit is None or step.kind != "tool" or not step.tool:
         return
@@ -219,6 +234,7 @@ def orchestrate(
     :param max_steps: hard ceiling on executed steps (bounds cost/latency).
     :param memory: optional episodic-memory adapter (``recall``/``remember_outcome``).
         When provided, relevant past episodes seed the plan and the outcome is stored.
+        Persistent second-brain facts (Chat/voice memory block) are always seeded.
     :param skills: optional procedural-skill adapter (``recall_plan``/``learn``).
         When provided, a proven plan for a similar goal seeds the planner and a
         successful run is cached as a reusable skill.
@@ -229,6 +245,7 @@ def orchestrate(
     reason_fn = reason_fn or _default_reason_fn()
     dispatch_fn = dispatch_fn or _default_dispatch_fn()
     board = Blackboard(goal)
+    _seed_person_memory(board)
 
     if memory is not None:
         try:

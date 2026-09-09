@@ -2,10 +2,9 @@
 Meeting mode: capture a live transcript, show running notes, and on end produce a
 structured summary with extracted action items and memories.
 
-Audio capture + speech-to-text happen client-side (the renderer feeds transcript
-lines here, reusing the existing voice/STT plumbing). This module owns the
-session lifecycle and the end-of-meeting distillation, persisting the result as a
-durable conversation so it shows up in search/recall like any other.
+Live notes come from the voice WS. Speaker labels come from a file
+diarization pass on buffered meeting PCM (Live STT cannot name speakers).
+This module owns session lifecycle and end-of-meeting distillation.
 
 Active sessions live in memory (transcript can be large and is transient until the
 meeting ends); the final summary + transcript are persisted via conversation_store.
@@ -35,8 +34,11 @@ _SUMMARY_INSTRUCTION = """Return a single JSON object with EXACTLY these keys:
   "overview": "2-3 sentence summary",
   "highlights": ["key point", "..."],
   "decisions": ["decision made", "..."],
-  "action_items": ["concrete follow-up task", "..."]
+  "action_items": ["Alex — Send the deck", "Send the invoice"]
 }
+When a speaker is labeled (Alex or Speaker 1) and they take a follow-up,
+start that item with "Alex — " or "Speaker 1 — ". If the words name an
+owner, use that name. Never invent a person who is not in the transcript.
 Use empty arrays where nothing applies. Output JSON ONLY.
 
 Transcript:
@@ -47,8 +49,27 @@ class _Meeting:
     def __init__(self, meeting_id: str, title: str) -> None:
         self.id = meeting_id
         self.title = title
-        self.lines: list[str] = []
+        self.lines: list[dict[str, str | None]] = []
         self.started_at = datetime.now(UTC).isoformat()
+
+
+def _format_line(line: dict[str, str | None]) -> str:
+    speaker = (line.get("speaker") or "").strip()
+    text = (line.get("text") or "").strip()
+    return f"{speaker}: {text}" if speaker else text
+
+
+def _parse_stored_line(raw: str) -> dict[str, str | None]:
+    text = (raw or "").strip()
+    if ": " in text[:82]:
+        speaker, body = text.split(": ", 1)
+        if 0 < len(speaker) <= 80 and body.strip():
+            return {"text": body.strip(), "speaker": speaker, "source": "stt"}
+    return {"text": text, "speaker": None, "source": "stt"}
+
+
+def _formatted_lines(lines: list[dict[str, str | None]]) -> list[str]:
+    return [_format_line(line) for line in lines if (line.get("text") or "").strip()]
 
 
 _lock = threading.Lock()
@@ -56,34 +77,49 @@ _active: dict[str, _Meeting] = {}
 
 
 def start_meeting(meeting_id: str, title: str = "") -> dict[str, Any]:
+    try:
+        from meeting_audio import discard
+        from meeting_diarize import forget_live_state
+
+        discard(meeting_id)
+        forget_live_state(meeting_id)
+    except Exception:
+        logger.debug("failed to reset meeting audio on start", exc_info=True)
     with _lock:
         _active[meeting_id] = _Meeting(meeting_id, title or "Meeting")
         m = _active[meeting_id]
     try:
         from meeting_persistence import upsert_draft
 
-        upsert_draft(m.id, m.title, m.lines, m.started_at, m.started_at)
+        upsert_draft(m.id, m.title, _formatted_lines(m.lines), m.started_at, m.started_at)
     except Exception:
         logger.exception("failed to persist meeting draft on start")
     return {"ok": True, "id": m.id, "title": m.title, "started_at": m.started_at}
 
 
-def append_line(meeting_id: str, text: str, speaker: str | None = None) -> dict[str, Any]:
+def append_line(
+    meeting_id: str,
+    text: str,
+    speaker: str | None = None,
+    source: str = "stt",
+) -> dict[str, Any]:
     line = (text or "").strip()
     if not line:
         return {"ok": False, "error": "empty line"}
+    origin = source if source in {"stt", "manual", "diarize"} else "stt"
     with _lock:
         m = _active.get(meeting_id)
         if not m:
             return {"ok": False, "error": "meeting_not_found"}
-        prefix = f"{speaker}: " if speaker else ""
-        m.lines.append(f"{prefix}{line}")
+        m.lines.append(
+            {"text": line, "speaker": (speaker or "").strip() or None, "source": origin}
+        )
         if len(m.lines) > _MAX_LINES:
             m.lines = m.lines[-_MAX_LINES:]
         count = len(m.lines)
         title = m.title
         started_at = m.started_at
-        lines_copy = list(m.lines)
+        lines_copy = _formatted_lines(m.lines)
     try:
         from datetime import UTC, datetime
 
@@ -120,7 +156,7 @@ def get_live_notes(meeting_id: str, tail: int = 50) -> dict[str, Any]:
                     "id": draft["id"],
                     "title": draft["title"],
                     "line_count": len(lines),
-                    "lines": lines[-max(1, tail):],
+                    "lines": lines[-max(1, tail) :],
                     "recovered": True,
                 }
             return {"ok": False, "error": "meeting_not_found"}
@@ -129,8 +165,42 @@ def get_live_notes(meeting_id: str, tail: int = 50) -> dict[str, Any]:
             "id": m.id,
             "title": m.title,
             "line_count": len(m.lines),
-            "lines": m.lines[-max(1, tail):],
+            "lines": _formatted_lines(m.lines)[-max(1, tail) :],
         }
+
+
+def replace_spoken_lines(meeting_id: str, labeled: list[str]) -> None:
+    """Swap STT/diarize lines for speaker-labeled ones; keep typed notes."""
+    incoming = [_parse_stored_line(item) for item in labeled if (item or "").strip()]
+    for item in incoming:
+        item["source"] = "diarize"
+    if not incoming:
+        return
+    with _lock:
+        m = _active.get(meeting_id)
+        if not m:
+            return
+        manual = [line for line in m.lines if line.get("source") == "manual"]
+        m.lines = incoming + manual
+        if len(m.lines) > _MAX_LINES:
+            m.lines = m.lines[-_MAX_LINES:]
+        title = m.title
+        started_at = m.started_at
+        lines_copy = _formatted_lines(m.lines)
+    try:
+        from datetime import UTC, datetime
+
+        from meeting_persistence import upsert_draft
+
+        upsert_draft(
+            meeting_id,
+            title,
+            lines_copy,
+            started_at,
+            datetime.now(UTC).isoformat(),
+        )
+    except Exception:
+        logger.exception("failed to persist diarized meeting lines")
 
 
 def _parse_json(raw: str) -> dict[str, Any] | None:
@@ -146,7 +216,8 @@ def end_meeting(meeting_id: str) -> dict[str, Any]:
     if not m:
         return {"ok": False, "error": "meeting_not_found"}
 
-    transcript = "\n".join(m.lines).strip()
+    transcript_lines = _apply_end_diarize(meeting_id, m.lines)
+    transcript = "\n".join(transcript_lines).strip()
     if len(transcript) < 40:
         return {"ok": True, "skipped": "too_short", "id": meeting_id}
 
@@ -250,7 +321,12 @@ def end_meeting(meeting_id: str) -> dict[str, Any]:
 def list_active() -> list[dict[str, Any]]:
     with _lock:
         return [
-            {"id": m.id, "title": m.title, "started_at": m.started_at, "line_count": len(m.lines)}
+            {
+                "id": m.id,
+                "title": m.title,
+                "started_at": m.started_at,
+                "line_count": len(m.lines),
+            }
             for m in _active.values()
         ]
 
@@ -264,6 +340,43 @@ def has_active(meeting_id: str) -> bool:
 def clear_all_active_meetings() -> int:
     """Drop in-memory active meeting sessions (privacy wipe)."""
     with _lock:
-        count = len(_active)
+        ids = list(_active.keys())
+        count = len(ids)
         _active.clear()
+    try:
+        from meeting_audio import discard_all
+        from meeting_diarize import forget_live_state
+
+        discard_all()
+        for leftover in ids:
+            forget_live_state(leftover)
+    except Exception:
+        logger.debug("failed to discard meeting audio on wipe", exc_info=True)
     return count
+
+
+def _apply_end_diarize(
+    meeting_id: str,
+    stored: list[dict[str, str | None]],
+) -> list[str]:
+    """Prefer file diarization when we have audio; keep typed notes."""
+    try:
+        from meeting_audio import pcm16_mono_to_wav, snapshot_and_clear
+        from meeting_diarize import forget_live_state, labeled_lines_from_wav
+
+        forget_live_state(meeting_id)
+        pcm = snapshot_and_clear(meeting_id)
+    except Exception:
+        logger.debug("meeting audio snapshot failed", exc_info=True)
+        return _formatted_lines(stored)
+    if not pcm:
+        return _formatted_lines(stored)
+    try:
+        labeled = labeled_lines_from_wav(pcm16_mono_to_wav(pcm))
+    except Exception:
+        logger.exception("end-of-meeting diarize failed")
+        return _formatted_lines(stored)
+    if not labeled:
+        return _formatted_lines(stored)
+    manual = [_format_line(line) for line in stored if line.get("source") == "manual"]
+    return labeled + manual

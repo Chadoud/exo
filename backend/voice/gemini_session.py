@@ -78,8 +78,10 @@ def build_live_connect_config(
 ) -> Any:
     """Build a ``LiveConnectConfig`` for transcription-only or full voice mode."""
     if transcription_only:
+        # Native-audio Live models reject TEXT-only output (WS 1007). AUDIO
+        # is required; meeting clients discard spoken frames and keep STT.
         return genai_types.LiveConnectConfig(
-            response_modalities=["TEXT"],
+            response_modalities=["AUDIO"],
             input_audio_transcription=genai_types.AudioTranscriptionConfig(),
             system_instruction=system_instruction,
             session_resumption=genai_types.SessionResumptionConfig(
@@ -189,6 +191,7 @@ async def run_gemini_live_session(
                         genai_types,
                         audio_send_state,
                         user_spoke=user_spoke,
+                        meeting_id=meeting_id if transcription_only else None,
                     )
 
                 send_task = asyncio.create_task(_send_loop())
@@ -284,6 +287,8 @@ async def run_gemini_live_session(
                                 if hasattr(sc, "model_turn") and sc.model_turn:
                                     for part in (sc.model_turn.parts or []):
                                         if hasattr(part, "inline_data") and part.inline_data:
+                                            if transcription_only:
+                                                continue
                                             if not speaking:
                                                 speaking = True
                                                 logger.info(
@@ -376,8 +381,10 @@ async def run_gemini_live_session(
                                     if transcription_only and meeting_id and user_text:
                                         try:
                                             import meeting_store
+                                            from meeting_diarize import maybe_schedule_live_diarize
 
                                             meeting_store.append_line(meeting_id, user_text)
+                                            maybe_schedule_live_diarize(meeting_id)
                                         except Exception:
                                             logger.debug(
                                                 "meeting transcript append failed", exc_info=True

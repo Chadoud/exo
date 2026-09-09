@@ -45,7 +45,9 @@ def start(body: StartBody) -> dict[str, Any]:
 
 @router.post("/{meeting_id}/note")
 def add_note(meeting_id: str, body: NoteBody) -> dict[str, Any]:
-    result = meeting_store.append_line(meeting_id, body.text, body.speaker)
+    result = meeting_store.append_line(
+        meeting_id, body.text, body.speaker, source="manual"
+    )
     if not result.get("ok"):
         raise HTTPException(status_code=404, detail=result.get("error", "error"))
     return result
