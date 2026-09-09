@@ -1,5 +1,6 @@
 const express = require("express");
 const config = require("../lib/config");
+const { brandedShell, escapeHtml } = require("../lib/oauthHandoffHtml");
 
 const router = express.Router();
 
@@ -20,22 +21,18 @@ router.get("/oauth/whatsapp-embedded-signup/callback", (req, res) => {
 
   res.set("Content-Type", "text/html; charset=utf-8");
   if (error) {
-    res.status(400).send(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"/><title>Meta connect failed</title></head>
-<body style="font-family:sans-serif;padding:24px;max-width:32rem;margin:auto">
-  <h1>Meta connect failed</h1>
-  <p>${escapeHtml(errorDescription || error)}</p>
-  <p>You can close this window and try again in Exo.</p>
-</body></html>`);
+    res.status(400).send(
+      brandedShell({
+        variant: "error",
+        headline: "Meta connect failed",
+        bodyHtml: `<p>${escapeHtml(errorDescription || error)}</p>
+<p>You can close this window and try again in Exo.</p>`,
+      }),
+    );
     return;
   }
 
-  res.send(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"/><title>WhatsApp connected</title></head>
-<body style="font-family:sans-serif;padding:24px;max-width:32rem;margin:auto">
-  <h1>${code ? "Almost done" : "Missing authorization code"}</h1>
-  <p>${code ? "Finishing WhatsApp setup in Exo…" : "Meta did not return a code. Close this window and try Connect with Meta again."}</p>
-  <script>
+  const completeScript = `<script>
     (function () {
       var code = ${JSON.stringify(code)};
       if (!code) return;
@@ -43,16 +40,18 @@ router.get("/oauth/whatsapp-embedded-signup/callback", (req, res) => {
         window.whatsappSignupApi.complete({ code: code, status: "connected", codeSource: "oauth_callback" });
       }
     })();
-  </script>
-</body></html>`);
+  </script>`;
+  res.send(
+    brandedShell({
+      variant: code ? "success" : "error",
+      headline: code ? "Almost done" : "Missing authorization code",
+      bodyHtml: `<p>${
+        code
+          ? "Finishing WhatsApp setup in Exo…"
+          : "Meta did not return a code. Close this window and try Connect with Meta again."
+      }</p>${completeScript}`,
+    }),
+  );
 });
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 module.exports = { router, embeddedSignupRedirectUri };

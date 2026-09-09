@@ -180,7 +180,7 @@ fi
 done_ok_html="$(curl -fsS "${BASE}/auth/done?exo_code=probe" 2>/dev/null || echo '')"
 if echo "$done_ok_html" | grep -qi 'Open Exo' \
   && echo "$done_ok_html" | grep -q 'exo://auth/callback' \
-  && echo "$done_ok_html" | grep -q 'color-scheme.*dark\|--bg: #0f1117'; then
+  && echo "$done_ok_html" | grep -q 'color-scheme.*light\|--bg: #f0f2f8'; then
   check "GET /auth/done (success) → branded handoff + Open Exo button" 1
 else
   check "GET /auth/done (success) → branded handoff (restart Node app)" 0

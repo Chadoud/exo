@@ -3,22 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
   <title>Exo — Setup</title>
   <script src="setup-ui.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Desktop tokens.css [data-theme="light"] */
     :root {
-      --bg: #0f0b2e;
-      --card: color-mix(in srgb, #0f0b2e 88%, #2a2554 12%);
-      --accent: color-mix(in srgb, #ffffff 62%, #0f0b2e 38%);
+      --bg: #f0f2f8;
+      --card: #ffffff;
+      --accent: #0f0b2e;
       --accent-hover: #2a2554;
-      --accent-light: color-mix(in srgb, #0f0b2e 15%, transparent);
-      --text: #eef2ff;
-      --muted: color-mix(in srgb, #eef2ff 55%, #2a2554 45%);
-      --border: color-mix(in srgb, #2a2554 70%, #0f0b2e 30%);
-      --success: #4caf7d;
-      --error: #ef5350;
+      --accent-light: color-mix(in srgb, #0f0b2e 10%, transparent);
+      --on-accent: #eef2ff;
+      --text: #0f0b2e;
+      --muted: #4a4e5c;
+      --border: #dde1f0;
+      --success: #2e9e5e;
+      --error: #dc2626;
     }
 
     html {
@@ -122,9 +125,9 @@
       transition: all 0.3s;
     }
 
-    .step.active  { border-color: rgba(108,99,255,0.5); background: var(--accent-light); }
-    .step.done    { border-color: rgba(76,175,125,0.4); background: rgba(76,175,125,0.07); }
-    .step.error   { border-color: rgba(239,83,80,0.4);  background: rgba(239,83,80,0.07); }
+    .step.active  { border-color: rgba(15,11,46,0.35);  background: var(--accent-light); }
+    .step.done    { border-color: rgba(46,158,94,0.45); background: rgba(46,158,94,0.09); }
+    .step.error   { border-color: rgba(220,38,38,0.45); background: rgba(220,38,38,0.07); }
 
     .step-icon {
       width: 28px; height: 28px;
@@ -135,9 +138,9 @@
       background: var(--border);
       color: var(--muted);
     }
-    .step.active .step-icon  { background: var(--accent); color: white; }
-    .step.done   .step-icon  { background: var(--success); color: white; }
-    .step.error  .step-icon  { background: var(--error); color: white; }
+    .step.active .step-icon  { background: var(--accent); color: var(--on-accent); }
+    .step.done   .step-icon  { background: var(--success); color: #ffffff; }
+    .step.error  .step-icon  { background: var(--error); color: #ffffff; }
 
     .step-body { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
     .step-label { font-size: 13px; font-weight: 500; }
@@ -150,7 +153,7 @@
       display: none;
       height: 3px;
       border-radius: 2px;
-      background: rgba(255,255,255,0.08);
+      background: rgba(15,11,46,0.10);
       overflow: hidden;
       position: relative;
     }
@@ -176,8 +179,8 @@
 
     .spinner {
       width: 16px; height: 16px;
-      border: 2px solid rgba(255,255,255,0.2);
-      border-top-color: white;
+      border: 2px solid rgba(15,11,46,0.18);
+      border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
       flex-shrink: 0;
@@ -206,8 +209,8 @@
       display: none;
       padding: 10px 32px;
       border-radius: 10px;
-      background: #0f0b2e;
-      color: white;
+      background: var(--accent);
+      color: var(--on-accent);
       font-size: 14px;
       font-weight: 600;
       border: none;
@@ -223,7 +226,7 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(15, 11, 46, 0.82);
+      background: rgba(15, 11, 46, 0.45);
       backdrop-filter: blur(4px);
       z-index: 100;
       align-items: center;
@@ -254,9 +257,9 @@
       padding: 8px 20px; border-radius: 8px; font-size: 13px;
       font-weight: 600; border: none; cursor: pointer; transition: background 0.2s;
     }
-    .ocr-btn.skip    { background: var(--border); color: var(--muted); }
-    .ocr-btn.skip:hover { background: color-mix(in srgb, #2a2554 40%, #0f0b2e 60%); color: var(--text); }
-    .ocr-btn.install { background: #0f0b2e; color: white; }
+    .ocr-btn.skip    { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .ocr-btn.skip:hover { background: var(--border); color: var(--text); }
+    .ocr-btn.install { background: var(--accent); color: var(--on-accent); }
     .ocr-btn.install:hover { background: var(--accent-hover); }
   </style>
 </head>
@@ -313,7 +316,7 @@
           <div class="step-bar-wrap"><div class="step-bar indeterminate" id="step-ocr-bar"></div></div>
         </div>
         <div class="spinner" id="step-ocr-spinner" style="display:none"></div>
-        <button id="ocr-retry-btn" type="button" style="display:none; padding:5px 12px; border-radius:7px; background:var(--accent); color:white; font-size:12px; font-weight:600; border:none; cursor:pointer; flex-shrink:0;">Retry</button>
+        <button id="ocr-retry-btn" type="button" style="display:none; padding:5px 12px; border-radius:7px; background:var(--accent); color:var(--on-accent); font-size:12px; font-weight:600; border:none; cursor:pointer; flex-shrink:0;">Retry</button>
       </div>
     </div>
 

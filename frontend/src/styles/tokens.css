@@ -104,7 +104,7 @@
     --accent-light: color-mix(in srgb, var(--color-brand-primary) 10%, transparent);
     --button-primary: var(--color-button-primary);
     --button-primary-hover: var(--color-button-primary-hover);
-    --text-primary: #1a1d27;
+    --text-primary: #0f0b2e;
     --text-muted: #6b7280;
     --border: #dde1f0;
     --success: #2e9e5e;

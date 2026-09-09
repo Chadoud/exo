@@ -2,7 +2,7 @@
  * Hosted password-reset pages: the "request a reset link" page (linked from
  * the desktop app's "Forgot password?") and the "set new password" page
  * (linked from the reset email). Self-contained, no client bundle — same
- * dark-theme shell as oauthHandoffHtml.js so every server-rendered auth page
+ * branded shell as oauthHandoffHtml.js so every server-rendered auth page
  * looks consistent.
  *
  * The reset token is only ever validated server-side on submit (POST
@@ -75,10 +75,10 @@ const FIELD_STYLES = `<style>
   .field-label { display: block; text-align: left; font-size: 0.85rem; color: var(--muted); margin: 14px 0 6px; }
   .field-input {
     width: 100%; padding: 0.6rem 0.8rem; border-radius: 10px;
-    border: 1px solid var(--border); background: #11131c; color: var(--text);
+    border: 1px solid var(--border); background: #f0f2f8; color: var(--text);
     font-family: inherit; font-size: 0.95rem;
   }
-  .field-input:focus-visible { outline: 2px solid rgba(108, 99, 255, 0.55); outline-offset: 1px; }
+  .field-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .field-error { color: var(--error); font-size: 0.85rem; text-align: left; margin-top: 10px; }
   .field-error.hidden { display: none; }
   #forgot-submit, #reset-submit { width: 100%; }

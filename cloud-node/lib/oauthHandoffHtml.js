@@ -85,20 +85,23 @@ function brandedShell({ variant, headline, bodyHtml, footerHtml = "" }) {
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta name="color-scheme" content="dark"/>
+  <meta name="color-scheme" content="light"/>
   <title>${escapeHtml(headline)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --accent: #6c63ff;
-      --accent-hover: #5a52e0;
-      --text: #e8eaf6;
-      --muted: #8b8fa8;
-      --border: #2e3248;
-      --success: #4caf7d;
-      --error: #ef5350;
+      /* Desktop tokens.css [data-theme="light"] — keep in sync with electron/oauthCallbackHtml.js */
+      --bg: #f0f2f8;
+      --surface: #ffffff;
+      --accent: #0f0b2e;
+      --accent-hover: #2a2554;
+      --button: #0f0b2e;
+      --button-text: #eef2ff;
+      --text: #0f0b2e;
+      --muted: #4a4e5c;
+      --border: #dde1f0;
+      --success: #2e9e5e;
+      --error: #dc2626;
     }
     body {
       min-height: 100vh;
@@ -116,8 +119,8 @@ function brandedShell({ variant, headline, bodyHtml, footerHtml = "" }) {
       inset: 0;
       pointer-events: none;
       background:
-        radial-gradient(ellipse 85% 55% at 50% -15%, rgba(108, 99, 255, 0.2), transparent 55%),
-        radial-gradient(ellipse 50% 35% at 100% 100%, rgba(76, 175, 125, 0.09), transparent 50%);
+        radial-gradient(ellipse 85% 55% at 50% -15%, rgba(15, 11, 46, 0.06), transparent 55%),
+        radial-gradient(ellipse 50% 35% at 100% 100%, rgba(42, 37, 84, 0.05), transparent 50%);
     }
     .card {
       position: relative;
@@ -127,9 +130,7 @@ function brandedShell({ variant, headline, bodyHtml, footerHtml = "" }) {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 20px;
-      box-shadow:
-        0 24px 56px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+      box-shadow: 0 18px 40px rgba(15, 11, 46, 0.10);
       text-align: center;
     }
     .icon-wrap {
@@ -141,9 +142,9 @@ function brandedShell({ variant, headline, bodyHtml, footerHtml = "" }) {
       margin: 0 auto 20px;
       border-radius: 50%;
     }
-    .icon-wrap--ok { color: var(--success); background: rgba(76, 175, 125, 0.12); }
-    .icon-wrap--err { color: var(--error); background: rgba(239, 83, 80, 0.12); }
-    .icon-wrap--neutral { color: var(--accent); background: rgba(108, 99, 255, 0.12); }
+    .icon-wrap--ok { color: var(--success); background: rgba(46, 158, 94, 0.12); }
+    .icon-wrap--err { color: var(--error); background: rgba(220, 38, 38, 0.10); }
+    .icon-wrap--neutral { color: var(--accent); background: rgba(15, 11, 46, 0.08); }
     .icon { display: block; }
     h1 {
       font-size: 1.35rem;
@@ -166,18 +167,18 @@ function brandedShell({ variant, headline, bodyHtml, footerHtml = "" }) {
       padding: 0.65rem 1.5rem;
       border: none;
       border-radius: 12px;
-      background: var(--accent);
-      color: #fff;
+      background: var(--button);
+      color: var(--button-text);
       font-family: inherit;
       font-size: 0.95rem;
       font-weight: 600;
       text-decoration: none;
       cursor: pointer;
-      box-shadow: 0 4px 14px rgba(108, 99, 255, 0.35);
+      box-shadow: 0 4px 12px rgba(15, 11, 46, 0.18);
     }
     .cta-btn:hover { background: var(--accent-hover); }
     .cta-btn:focus-visible {
-      outline: 2px solid rgba(108, 99, 255, 0.55);
+      outline: 2px solid var(--accent);
       outline-offset: 3px;
     }
     .close-hint {

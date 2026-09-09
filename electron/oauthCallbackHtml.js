@@ -30,20 +30,21 @@ function brandedShell({ variant, headline, bodyHtml }) {
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta name="color-scheme" content="dark"/>
+  <meta name="color-scheme" content="light"/>
   <title>${escapeHtml(headline)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0f0b2e;
-      --surface: color-mix(in srgb, #0f0b2e 88%, #2a2554 12%);
-      --accent: color-mix(in srgb, #ffffff 62%, #0f0b2e 38%);
+      /* Desktop tokens.css [data-theme="light"] — keep in sync with cloud-node/lib/oauthHandoffHtml.js */
+      --bg: #f0f2f8;
+      --surface: #ffffff;
+      --accent: #0f0b2e;
       --accent-hover: #2a2554;
-      --text: #eef2ff;
-      --muted: color-mix(in srgb, #eef2ff 55%, #2a2554 45%);
-      --border: color-mix(in srgb, #2a2554 70%, #0f0b2e 30%);
-      --success: #4caf7d;
-      --error: #ef5350;
+      --text: #0f0b2e;
+      --muted: #4a4e5c;
+      --border: #dde1f0;
+      --success: #2e9e5e;
+      --error: #dc2626;
     }
     body {
       min-height: 100vh;
@@ -61,8 +62,8 @@ function brandedShell({ variant, headline, bodyHtml }) {
       inset: 0;
       pointer-events: none;
       background:
-        radial-gradient(ellipse 85% 55% at 50% -15%, rgba(108, 99, 255, 0.2), transparent 55%),
-        radial-gradient(ellipse 50% 35% at 100% 100%, rgba(76, 175, 125, 0.09), transparent 50%);
+        radial-gradient(ellipse 85% 55% at 50% -15%, rgba(15, 11, 46, 0.06), transparent 55%),
+        radial-gradient(ellipse 50% 35% at 100% 100%, rgba(42, 37, 84, 0.05), transparent 50%);
     }
     .card {
       position: relative;
@@ -72,9 +73,7 @@ function brandedShell({ variant, headline, bodyHtml }) {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 20px;
-      box-shadow:
-        0 24px 56px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+      box-shadow: 0 18px 40px rgba(15, 11, 46, 0.10);
       text-align: center;
     }
     .icon-wrap {
@@ -88,11 +87,11 @@ function brandedShell({ variant, headline, bodyHtml }) {
     }
     .icon-wrap--ok {
       color: var(--success);
-      background: rgba(76, 175, 125, 0.12);
+      background: rgba(46, 158, 94, 0.12);
     }
     .icon-wrap--err {
       color: var(--error);
-      background: rgba(239, 83, 80, 0.12);
+      background: rgba(220, 38, 38, 0.10);
     }
     .icon { display: block; }
     h1 {

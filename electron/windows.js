@@ -109,7 +109,8 @@ async function createSetupWindow() {
     resizable: false,
     frame: false,
     transparent: false,
-    backgroundColor: "#120e32",
+    // Matches setup.html's card so the frameless chrome reads as one surface.
+    backgroundColor: "#ffffff",
     center: true,
     ...(IS_MAC ? { titleBarStyle: "hiddenInset" } : {}),
     webPreferences: {
@@ -189,7 +190,8 @@ async function createMainWindow(options = {}) {
     show: !startHidden && !deferShow,
     skipTaskbar: startHidden,
     ...(IS_MAC ? { titleBarStyle: "hiddenInset" } : {}),
-    backgroundColor: "#0f0b2e",
+    // Light canvas — matches --bg-primary so there is no navy flash before paint.
+    backgroundColor: "#f0f2f8",
     webPreferences: {
       preload: getPreloadPath("preload.js"),
       contextIsolation: true,
