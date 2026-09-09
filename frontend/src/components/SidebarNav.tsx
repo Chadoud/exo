@@ -1,6 +1,7 @@
 import type { UiLocale } from "../i18n/locale";
 import { translate } from "../i18n/translate";
 import { modShortcutLabel } from "../utils/platform";
+import type { CaptureSubTab } from "../utils/captureUi";
 import type { MemorySubTab } from "../utils/memoryUi";
 import type { TodoSubTab } from "../utils/todoUi";
 import type { SettingsNavTab } from "../utils/settingsNav";
@@ -16,6 +17,7 @@ type SidebarNavProps = {
   activeTab: MainNavTab;
   memorySubTab: MemorySubTab;
   memoryShowAllSections: boolean;
+  captureSubTab: CaptureSubTab;
   todoSubTab: TodoSubTab;
   todoShowAllSections: boolean;
   settingsSubTab: SettingsNavTab;
@@ -29,6 +31,7 @@ type SidebarNavProps = {
     settingsSubTab?: SettingsNavTab,
     todoSubTab?: TodoSubTab,
     openAllSections?: boolean,
+    captureSubTab?: CaptureSubTab,
   ) => void;
   uiLocale: UiLocale;
   isAwaitingApproval: boolean;
@@ -40,6 +43,7 @@ type NavButtonProps = {
   activeTab: MainNavTab;
   memorySubTab: MemorySubTab;
   memoryShowAllSections: boolean;
+  captureSubTab: CaptureSubTab;
   todoSubTab: TodoSubTab;
   todoShowAllSections: boolean;
   settingsSubTab: SettingsNavTab;
@@ -69,8 +73,12 @@ function isNavItemActive(
   settingsSubTab: SettingsNavTab,
   settingsShowAllSections: boolean,
   settingsHighlightedSubTab: SettingsNavTab | null | undefined,
+  captureSubTab: CaptureSubTab,
 ): boolean {
   if (activeTab !== item.id) return false;
+  if (item.captureSubTab !== undefined) {
+    return captureSubTab === item.captureSubTab;
+  }
   if (item.settingsSubTab !== undefined) {
     if (settingsShowAllSections) {
       return settingsHighlightedSubTab === item.settingsSubTab;
@@ -106,6 +114,7 @@ function NavButton({
   activeTab,
   memorySubTab,
   memoryShowAllSections,
+  captureSubTab,
   todoSubTab,
   todoShowAllSections,
   settingsSubTab,
@@ -121,7 +130,7 @@ function NavButton({
   hasDropdown = false,
   dropdownOpen = false,
 }: NavButtonProps) {
-  const { id, label, icon, badge, shortcutKey, memorySubTab: itemMemorySubTab, todoSubTab: itemTodoSubTab, settingsSubTab: itemSettingsSubTab } =
+  const { id, label, icon, badge, shortcutKey, memorySubTab: itemMemorySubTab, todoSubTab: itemTodoSubTab, settingsSubTab: itemSettingsSubTab, captureSubTab: itemCaptureSubTab } =
     item;
   const childActive = isNavItemActive(
     item,
@@ -135,6 +144,7 @@ function NavButton({
     settingsSubTab,
     settingsShowAllSections,
     settingsHighlightedSubTab,
+    captureSubTab,
   );
   const ownsCollapsedRoute =
     !isChild &&
@@ -145,6 +155,7 @@ function NavButton({
   const isParentWithChildren =
     !isChild &&
     ((id === "memories" && item.children?.some((c) => c.memorySubTab !== undefined)) ||
+      (id === "capture" && item.children?.some((c) => c.captureSubTab !== undefined)) ||
       (id === "tasks" && item.children?.some((c) => c.todoSubTab !== undefined)) ||
       (id === "settings" && item.children?.some((c) => c.settingsSubTab !== undefined)));
 
@@ -165,6 +176,7 @@ function NavButton({
           itemSettingsSubTab,
           itemTodoSubTab,
           isParentWithChildren,
+          itemCaptureSubTab,
         );
       }}
       className={`sidebar-nav-btn relative group flex w-full min-w-0 select-none flex-row items-center justify-start gap-2 rounded-xl transition-all font-medium
@@ -246,6 +258,7 @@ export default function SidebarNav({
   activeTab,
   memorySubTab,
   memoryShowAllSections,
+  captureSubTab,
   todoSubTab,
   todoShowAllSections,
   settingsSubTab,
@@ -279,6 +292,7 @@ export default function SidebarNav({
               activeTab={activeTab}
               memorySubTab={memorySubTab}
               memoryShowAllSections={memoryShowAllSections}
+              captureSubTab={captureSubTab}
               todoSubTab={todoSubTab}
               todoShowAllSections={todoShowAllSections}
               settingsSubTab={settingsSubTab}
@@ -286,9 +300,9 @@ export default function SidebarNav({
               settingsHighlightedSubTab={settingsHighlightedSubTab}
               memoryHighlightedSubTab={memoryHighlightedSubTab}
               todoHighlightedSubTab={todoHighlightedSubTab}
-              onSelect={(id, memory, settings, todo, openAll) => {
+              onSelect={(id, memory, settings, todo, openAll, capture) => {
                 if (dropdown && onParentActivate(item.id) === "collapse") return;
-                onSelect(id, memory, settings, todo, openAll);
+                onSelect(id, memory, settings, todo, openAll, capture);
               }}
               uiLocale={uiLocale}
               isAwaitingApproval={isAwaitingApproval}
@@ -305,6 +319,7 @@ export default function SidebarNav({
                     activeTab={activeTab}
                     memorySubTab={memorySubTab}
                     memoryShowAllSections={memoryShowAllSections}
+                    captureSubTab={captureSubTab}
                     todoSubTab={todoSubTab}
                     todoShowAllSections={todoShowAllSections}
                     settingsSubTab={settingsSubTab}

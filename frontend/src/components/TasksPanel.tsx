@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import { announceTaskSync } from "../utils/taskSyncToast";
-import TaskMeetingFab from "./tasks/TaskMeetingFab";
 import TaskPromoCleanupBanner from "./tasks/TaskPromoCleanupBanner";
 import TasksPanelModals from "./tasks/TasksPanelModals";
 import TaskSelectBar from "./tasks/TaskSelectBar";
@@ -21,7 +20,6 @@ import { fetchTasks, fetchTaskOpenTarget, setTaskCompleted, syncTasksFromIntegra
 import MailReplyInboxSection from "./tasks/MailReplyInboxSection";
 import { useTasksPanelMail } from "../hooks/useTasksPanelMail";
 import { useSecondBrainNoiseCleanup } from "../hooks/useSecondBrainNoiseCleanup";
-import { consumeOpenMeetingModal } from "../utils/deferredPanelActions";
 import { useOpenTarget } from "../hooks/useOpenTarget";
 import { useInboxDismiss } from "../hooks/useInboxDismiss";
 import { useInboxSelection } from "../hooks/useInboxSelection";
@@ -117,8 +115,6 @@ export default function TasksPanel({
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proBlocked, setProBlocked] = useState(false);
-  const [meetingOpen, setMeetingOpen] = useState(false);
-  const [pendingMeetingOpen, setPendingMeetingOpen] = useState(() => consumeOpenMeetingModal());
   const [laterOpen, setLaterOpen] = useState(true);
   const selection = useTaskSelection();
   const inboxSelection = useInboxSelection();
@@ -136,12 +132,6 @@ export default function TasksPanel({
   });
 
   const proLocked = !proAllowed || proBlocked;
-
-  useEffect(() => {
-    if (!pendingMeetingOpen || !backendOnline || proLocked) return;
-    setPendingMeetingOpen(false);
-    setMeetingOpen(true);
-  }, [pendingMeetingOpen, backendOnline, proLocked]);
 
   const load = useCallback(async () => {
     if (!backendOnline) return;
@@ -273,7 +263,6 @@ export default function TasksPanel({
   const hasAnyOpenTasks = todayHasTasks || hasUpcomingContent || unmatchedReplies.length > 0;
   const showSubNav = !proLocked && sidebarCompact && !showAllSections;
   const showSyncAction = !proLocked && (showAllSections || subTab !== "inbox");
-  const showMeetingFab = !proLocked && showTasks;
   const sectionHeading = (titleKey: string) =>
     showAllSections ? (
       <h2 className="border-b border-border pb-2 text-base font-semibold text-text-primary">{t(titleKey)}</h2>
@@ -474,23 +463,8 @@ export default function TasksPanel({
         )}
       </PanelShell>
 
-      {showMeetingFab ? (
-        <TaskMeetingFab
-          disabled={!backendOnline}
-          label={t("tasks.recordMeeting")}
-          onClick={() => setMeetingOpen(true)}
-        />
-      ) : null}
-
       <TasksPanelModals
         cleanup={noiseCleanup}
-        meetingOpen={meetingOpen}
-        onCloseMeeting={() => setMeetingOpen(false)}
-        backendOnline={backendOnline}
-        onMeetingEnded={() => void load()}
-        onOpenConversation={onOpenConversation}
-        proAllowed={proAllowed}
-        onUpgrade={onUpgrade}
         removeOpen={selectActions.removeOpen}
         removeCount={selection.selectedIds.length}
         onCloseRemove={selectActions.closeRemove}

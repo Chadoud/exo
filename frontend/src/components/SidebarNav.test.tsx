@@ -33,6 +33,7 @@ const baseProps = {
   items,
   memorySubTab: "overview" as const,
   memoryShowAllSections: false,
+  captureSubTab: "meeting" as const,
   todoSubTab: "today" as const,
   todoShowAllSections: false,
   settingsSubTab: "features" as const,

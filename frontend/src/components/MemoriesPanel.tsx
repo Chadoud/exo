@@ -1,10 +1,9 @@
 /**
- * MemoriesPanel — Memory tab; Overview | Activity | Map live in the sidebar under Memory.
+ * MemoriesPanel — Memory tab; Overview | Map live in the sidebar under Memory.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { toast } from "sonner";
-import ActivityTimeline from "./ActivityTimeline";
 import MemoryAddForm from "./memory/MemoryAddForm";
 import MemoryBulkActionBar from "./memory/MemoryBulkActionBar";
 import MemoryFactsList from "./memory/MemoryFactsList";
@@ -102,7 +101,6 @@ export default function MemoriesPanel({
     onActiveIdChange: onScrollSectionReport,
   });
   const showOverview = showAllSections || subTab === "overview";
-  const showActivity = showAllSections || subTab === "activity";
   const showMap = showAllSections || subTab === "map";
   const mapFullHeight = subTab === "map" && !showAllSections;
   const { openTarget } = useOpenTarget(onOpenConversation);
@@ -931,24 +929,6 @@ export default function MemoriesPanel({
           </div>
         )}
 
-        {showActivity && (
-          <div
-            id="memory-section-activity"
-            className={showAllSections ? "space-y-4 border-t border-border pt-10" : undefined}
-          >
-            {showAllSections ? (
-              <h2 className="border-b border-border pb-2 text-base font-semibold text-text-primary">
-                {t("memories.tabs.activity")}
-              </h2>
-            ) : null}
-            <ActivityTimeline
-              backendOnline={backendOnline}
-              proAllowed={proAllowed}
-              onUpgrade={onUpgrade}
-              hideProCard={proLocked}
-            />
-          </div>
-        )}
       </PanelShell>
 
       <NoiseCleanupDialog

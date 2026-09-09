@@ -3,7 +3,7 @@ import { memoryOriginProviderKey } from "./memoryOrigin";
 import { MEMORY_SUB_TAB_STORAGE_KEY, MEMORY_LIST_EXPANDED_STORAGE_KEY } from "../constants";
 import { HIDDEN_INTERNAL_MEMORY_KEYS } from "./memoryInternalKeys";
 
-export type MemorySubTab = "overview" | "activity" | "map";
+export type MemorySubTab = "overview" | "map";
 
 /** Align with backend/signal_quality/constants.py — keep in sync when thresholds change. */
 export const AUTO_MEMORY_HIDDEN_NOISE_THRESHOLD = 0.35;
@@ -14,7 +14,8 @@ const AUTO_MEMORY_TRIAGE_MAX_NOISE = 0.35;
 export function loadMemorySubTab(): MemorySubTab {
   try {
     const v = localStorage.getItem(MEMORY_SUB_TAB_STORAGE_KEY);
-    if (v === "activity" || v === "map" || v === "overview") return v;
+    if (v === "activity") return "overview";
+    if (v === "map" || v === "overview") return v;
     if (v === "facts") return "overview";
   } catch {
     /* ignore */
@@ -249,15 +250,12 @@ export function promotionalCandidateIds(
 export const MEMORY_SCROLL_SECTION_IDS = [
   "memory-section-overview",
   "memory-section-map",
-  "memory-section-activity",
 ] as const;
 
 export function memorySubTabForScrollSection(sectionId: string): MemorySubTab | null {
   switch (sectionId) {
     case "memory-section-overview":
       return "overview";
-    case "memory-section-activity":
-      return "activity";
     case "memory-section-map":
       return "map";
     default:

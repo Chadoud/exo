@@ -17,6 +17,7 @@ import {
 import { useConversations } from "../hooks/useConversations";
 import { useMeetingTranscription } from "../hooks/useMeetingTranscription";
 import { useI18n } from "../i18n/I18nContext";
+import { splitMeetingNoteLine } from "../utils/meetingNoteLine";
 import { randomHexId } from "../utils/randomHexId";
 import { EntitlementBlockedError } from "../api/client";
 import MeetingLiveStatus from "./MeetingLiveStatus";
@@ -30,7 +31,7 @@ interface Props {
   proAllowed?: boolean;
   onUpgrade?: () => void;
   hideProCard?: boolean;
-  /** Drop the inner card chrome when this panel already sits in a modal. */
+  /** Drop the inner card chrome when Capture already wraps this in PanelShell. */
   plain?: boolean;
   onSessionActiveChange?: (active: boolean) => void;
   bindEndSession?: (end: () => Promise<void>) => void;
@@ -179,7 +180,7 @@ export default function MeetingModePanel({
 
   return (
     <section className={plain ? "space-y-3" : "rounded-xl border border-border bg-bg-secondary p-4"}>
-      <p className="max-w-md text-xs text-muted">{t("meeting.desc")}</p>
+      {plain ? null : <p className="max-w-md text-xs text-muted">{t("meeting.desc")}</p>}
 
       {proLocked && !hideProCard ? (
         <div className="mt-3">
@@ -255,11 +256,18 @@ export default function MeetingModePanel({
           {lines.length > 0 && (
             <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-bg-primary p-3">
               <ul className="space-y-1.5 text-xs text-text-secondary">
-                {lines.slice(-20).map((line, i) => (
-                  <li key={`${i}-${line.slice(0, 24)}`} className="leading-relaxed">
-                    {line}
-                  </li>
-                ))}
+                {lines.slice(-20).map((line, i) => {
+                  const { speaker, text } = splitMeetingNoteLine(line);
+                  return (
+                    <li key={`${i}-${line.slice(0, 24)}`} className="leading-relaxed">
+                      {speaker ? (
+                        <span className="font-medium text-text-primary">{speaker}</span>
+                      ) : null}
+                      {speaker ? " — " : null}
+                      {text}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}

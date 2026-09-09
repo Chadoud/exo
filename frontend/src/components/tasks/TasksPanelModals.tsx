@@ -1,4 +1,3 @@
-import MeetingModeModal from "./MeetingModeModal";
 import NoiseCleanupDialog from "../secondBrain/NoiseCleanupDialog";
 import ConfirmDialog from "../ConfirmDialog";
 import { useI18n } from "../../i18n/I18nContext";
@@ -13,13 +12,6 @@ interface TasksPanelModalsProps {
     closeDialog: () => void;
     execute: () => void;
   };
-  meetingOpen: boolean;
-  onCloseMeeting: () => void;
-  backendOnline: boolean;
-  onMeetingEnded: () => void;
-  onOpenConversation?: () => void;
-  proAllowed?: boolean;
-  onUpgrade?: () => void;
   removeOpen: boolean;
   removeCount: number;
   onCloseRemove: () => void;
@@ -28,13 +20,6 @@ interface TasksPanelModalsProps {
 
 export default function TasksPanelModals({
   cleanup,
-  meetingOpen,
-  onCloseMeeting,
-  backendOnline,
-  onMeetingEnded,
-  onOpenConversation,
-  proAllowed,
-  onUpgrade,
   removeOpen,
   removeCount,
   onCloseRemove,
@@ -50,15 +35,6 @@ export default function TasksPanelModals({
         isRunning={cleanup.isRunning}
         onClose={cleanup.closeDialog}
         onConfirm={cleanup.execute}
-      />
-      <MeetingModeModal
-        open={meetingOpen}
-        onClose={onCloseMeeting}
-        backendOnline={backendOnline}
-        onMeetingEnded={onMeetingEnded}
-        onOpenConversation={onOpenConversation}
-        proAllowed={proAllowed}
-        onUpgrade={onUpgrade}
       />
       {removeOpen ? (
         <ConfirmDialog

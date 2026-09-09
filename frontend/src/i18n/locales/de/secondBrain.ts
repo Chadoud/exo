@@ -34,7 +34,7 @@ export const deSecondBrainLocaleSlice = {
       activitySubtitle:
         "Opt-in-Bildschirmzusammenfassungen — Bilder werden nach der Verarbeitung gelöscht.",
     },
-    allSectionsSubtitle: "Übersicht, Aktivität und Brain-Map — alles auf einer Seite.",
+    allSectionsSubtitle: "Übersicht und Brain-Map — alles auf einer Seite.",
     overview: {
       metrics: {
         total: "Erinnerungen gesamt",
@@ -375,7 +375,8 @@ export const deSecondBrainLocaleSlice = {
   },
   meeting: {
     heading: "Meeting-Modus",
-    desc: "Erfasse, was in einem Gespräch gesagt wurde. Beim Beenden fasst der Assistent es zusammen und extrahiert automatisch Aufgaben.",
+    desc: "Erfasse, was in einem Gespräch gesagt wurde. Notizen zeigen, wer spricht. Am Ende gibt es eine Zusammenfassung und Aufgaben für die richtige Person.",
+    placeLead: "Wer was gesagt hat — Notizen beim Sprechen, Zusammenfassung und Aufgaben am Ende.",
     listening: "Hört zu",
     recording: "Nimmt auf",
     titlePlaceholder: "Meeting-Titel (optional)",
@@ -387,7 +388,7 @@ export const deSecondBrainLocaleSlice = {
     transcribeUnavailable:
       "Sprache konnte nicht in Notizen umgewandelt werden. Du kannst unten tippen.",
     notesOnly: "Nur Notizen",
-    notesEmptyListening: "Sprich — Notizen erscheinen hier.",
+    notesEmptyListening: "Sprich — Notizen zeigen, wer was gesagt hat.",
     retryListening: "Erneut zuhören",
     closeConfirm: "Meeting beenden und Notizen speichern?",
     closeConfirmBody: "Beenden stoppt das Mikrofon und speichert deine Notizen.",
@@ -622,9 +623,8 @@ export const deSecondBrainLocaleSlice = {
     pairCopied: "Kopiert — am Telefon einfügen",
     pairCopyError: "Code konnte nicht kopiert werden. Erneut versuchen.",
     pairSessionExpired:
-      "Ihre Exo-Anmeldung ist abgelaufen. Melden Sie sich erneut an (Profilmenü), tippen Sie auf QR erneut und kopieren Sie einen neuen Code.",
+      "Ihre Exo-Anmeldung ist abgelaufen. Melden Sie sich erneut an (Profilmenü) — der Kopplungscode wird automatisch aktualisiert.",
     pairKeyUnreadable:
       "Sync-Schlüssel im Schlüsselbund nicht lesbar. Schlüsselbund entsperren oder eine signierte Exo-Version installieren (gleiche Developer ID). Lokale Daten nicht löschen.",
-    pairRetry: "QR erneut laden",
   },
 } as const;

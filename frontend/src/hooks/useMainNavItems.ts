@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { UiLocale } from "../i18n/locale";
 import { translate } from "../i18n/translate";
+import type { CaptureSubTab } from "../utils/captureUi";
 import type { MemorySubTab } from "../utils/memoryUi";
 import type { TodoSubTab } from "../utils/todoUi";
 import {
@@ -20,6 +21,7 @@ export type MainNavTab =
   | "assistant"
   | "exo"
   | "memories"
+  | "capture"
   | "tasks"
   | "sources"
   | "settings";
@@ -32,6 +34,8 @@ export type MainNavItem = {
   icon: string;
   /** Stable React key when several items share the same `id` (e.g. Memory sub-views). */
   navKey?: string;
+  /** Capture tab sub-view — sidebar child under Capture; route stays `capture`. */
+  captureSubTab?: CaptureSubTab;
   /** Memory tab sub-view — sidebar child under Memory; route stays `memories`. */
   memorySubTab?: MemorySubTab;
   /** To Do sub-view — sidebar child under To Do; route stays `tasks`. */
@@ -58,9 +62,8 @@ export type MainNavItem = {
  * Assistant zone first (voice, chat, memory, today), then Files (sort + settings).
  * Every id remains an independent `MainNavTab` route.
  */
-export function useMainNavItems(uiLocale: UiLocale): MainNavItem[] {
-  return useMemo(
-    () => [
+export function buildMainNavItems(uiLocale: UiLocale): MainNavItem[] {
+  return [
       {
         id: "exo",
         group: "assistant",
@@ -73,6 +76,28 @@ export function useMainNavItems(uiLocale: UiLocale): MainNavItem[] {
             label: translate(uiLocale, "nav.assistant"),
             shortcutKey: 2,
             icon: "M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z",
+          },
+        ],
+      },
+      {
+        id: "capture",
+        group: "assistant",
+        label: translate(uiLocale, "nav.capture"),
+        icon: "M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z",
+        children: [
+          {
+            id: "capture",
+            navKey: "capture-meeting",
+            captureSubTab: "meeting",
+            label: translate(uiLocale, "nav.captureMeeting"),
+            icon: "M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z",
+          },
+          {
+            id: "capture",
+            navKey: "capture-activity",
+            captureSubTab: "activity",
+            label: translate(uiLocale, "nav.captureActivity"),
+            icon: "M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
           },
         ],
       },
@@ -95,14 +120,7 @@ export function useMainNavItems(uiLocale: UiLocale): MainNavItem[] {
             navKey: "memories-map",
             memorySubTab: "map",
             label: translate(uiLocale, "memories.tabs.map"),
-            icon: "M9 6.75V15m6-6v8.25m.503-3.498 4.875-2.438c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.126C2.873 5.5 2.25 6.044 2.25 6.879V19.125c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z",
-          },
-          {
-            id: "memories",
-            navKey: "memories-activity",
-            memorySubTab: "activity",
-            label: translate(uiLocale, "memories.tabs.activity"),
-            icon: "M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
+            icon: "M9 6.75V15m6-6v8.25m.503-3.498 4.875-2.438c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.126C2.873 5.5 2.25 6.044 2.25 6.879V19.125c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317.159.69.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z",
           },
         ],
       },
@@ -178,9 +196,11 @@ export function useMainNavItems(uiLocale: UiLocale): MainNavItem[] {
         shortcutKey: 6,
         icon: "M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244",
       },
-    ],
-    [uiLocale],
-  );
+    ];
+}
+
+export function useMainNavItems(uiLocale: UiLocale): MainNavItem[] {
+  return useMemo(() => buildMainNavItems(uiLocale), [uiLocale]);
 }
 
 /** Reorder nav items based on first-run persona preference. Default order is assistant-first. */

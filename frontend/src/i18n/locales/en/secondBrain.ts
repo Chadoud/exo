@@ -33,7 +33,7 @@ export const enSecondBrainLocaleSlice = {
       overviewSubtitle: "A quick picture of what your assistant remembers.",
       activitySubtitle: "Opt-in screen summaries from what you’re working on — images are deleted after processing.",
     },
-    allSectionsSubtitle: "Overview, activity timeline, and brain map — scroll to browse everything.",
+    allSectionsSubtitle: "Overview and brain map — scroll to browse everything.",
     overview: {
       metrics: {
         total: "Total memories",
@@ -373,7 +373,8 @@ export const enSecondBrainLocaleSlice = {
   },
   meeting: {
     heading: "Meeting mode",
-    desc: "Capture what was said during a call. When you end, the assistant summarizes it and extracts action items automatically.",
+    desc: "Capture what was said during a call. Notes show who is talking. When you end, you get a summary and to-dos for the right person.",
+    placeLead: "Who said what — notes while you talk, summary and to-dos when you end.",
     listening: "Listening",
     recording: "Recording",
     titlePlaceholder: "Meeting title (optional)",
@@ -384,7 +385,7 @@ export const enSecondBrainLocaleSlice = {
       "Microphone access is off — type notes below, or enable the microphone and try listening again.",
     transcribeUnavailable: "Couldn't turn speech into notes. You can still type below.",
     notesOnly: "Notes only",
-    notesEmptyListening: "Speak — notes will appear here.",
+    notesEmptyListening: "Speak — notes will show who said what.",
     retryListening: "Try listening again",
     closeConfirm: "End this meeting and save notes?",
     closeConfirmBody: "Ending stops the microphone and saves what you have.",
@@ -616,9 +617,8 @@ export const enSecondBrainLocaleSlice = {
     pairCopied: "Copied — paste on your phone",
     pairCopyError: "Couldn't copy the pairing code. Try again.",
     pairSessionExpired:
-      "Your Exo sign-in expired. Sign in again (profile menu), then tap Retry QR and copy a fresh code.",
+      "Your Exo sign-in expired. Sign in again from the profile menu — the pairing code will refresh on its own.",
     pairKeyUnreadable:
       "Can't read the sync key from Keychain. Unlock macOS Keychain, or install a signed Exo (same Developer ID as before). Do not erase local data.",
-    pairRetry: "Retry QR",
   },
 } as const;

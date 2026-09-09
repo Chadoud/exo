@@ -135,6 +135,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
   useCodegenErrorToast();
 
   const {
+    captureSubTab,
     memorySubTab,
     memoryShowAllSections,
     todoSubTab,
@@ -151,6 +152,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
     openMemoryNeedsReview,
     openProfileFromSidebar,
     openMemoriesSubTab,
+    openCaptureSubTab,
     reportSettingsScrollSection,
     reportMemoryScrollSection,
     reportTodoScrollSection,
@@ -310,6 +312,7 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
                 activeTab={tab}
                 memorySubTab={memorySubTab}
                 memoryShowAllSections={memoryShowAllSections}
+                captureSubTab={captureSubTab}
                 todoSubTab={todoSubTab}
                 todoShowAllSections={todoShowAllSections}
                 settingsSubTab={settingsSubTab}
@@ -353,6 +356,8 @@ export default function AppMainWorkspace(props: AppMainWorkspaceProps) {
             memorySubTab={memorySubTab}
             memoryShowAllSections={memoryShowAllSections}
             openMemoriesSubTab={openMemoriesSubTab}
+            captureSubTab={captureSubTab}
+            openCaptureSubTab={openCaptureSubTab}
             todoSubTab={todoSubTab}
             todoShowAllSections={todoShowAllSections}
             openTodoSubTab={openTodoSubTab}

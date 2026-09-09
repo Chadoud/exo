@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { SETTINGS_SHOW_ALL_SECTIONS_EVENT } from "../../constants";
 import type { EntitlementStatus } from "../../api";
 import type { MainNavTab } from "../../hooks/useMainNavItems";
+import { useCaptureSubTab } from "../../hooks/useCaptureSubTab";
 import { useMemorySubTab } from "../../hooks/useMemorySubTab";
 import { useTodoSubTab } from "../../hooks/useTodoSubTab";
 import { useSettingsSubTab } from "../../hooks/useSettingsSubTab";
 import { openPrimarySettingsSection, settingsNavTabForEntryId } from "../../utils/settingsNav";
-import { queueMemoryNeedsReview, consumeQueuedTodoSubTab } from "../../utils/deferredPanelActions";
+import type { CaptureSubTab } from "../../utils/captureUi";
+import { queueMemoryNeedsReview, consumeQueuedTodoSubTab, consumeOpenMeetingModal } from "../../utils/deferredPanelActions";
 import type { MemorySubTab } from "../../utils/memoryUi";
 import { memorySubTabForScrollSection } from "../../utils/memoryUi";
 import type { TodoSubTab } from "../../utils/todoUi";
@@ -42,6 +44,7 @@ export function useWorkspaceSidebarNav({
     selectMemorySubTab,
     selectMemoryAllSections,
   } = useMemorySubTab();
+  const { captureSubTab, selectCaptureSubTab } = useCaptureSubTab();
   const { todoSubTab, todoShowAllSections, selectTodoSubTab } = useTodoSubTab();
   const {
     settingsSubTab,
@@ -100,6 +103,7 @@ export function useWorkspaceSidebarNav({
       nextSettingsSubTab?: SettingsNavTab,
       nextTodoSubTab?: TodoSubTab,
       openAllSections?: boolean,
+      nextCaptureSubTab?: CaptureSubTab,
     ) => {
       if (openAllSections && nextTab === "memories") {
         selectMemoryAllSections();
@@ -118,6 +122,10 @@ export function useWorkspaceSidebarNav({
         setTodoHighlightedSubTab(null);
       }
 
+      if (nextCaptureSubTab) {
+        selectCaptureSubTab(nextCaptureSubTab);
+      }
+
       if (openAllSections && nextTab === "settings") {
         selectSettingsAllSections();
         setSettingsHighlightedSubTab(null);
@@ -134,6 +142,7 @@ export function useWorkspaceSidebarNav({
       selectMemorySubTab,
       selectSettingsAllSections,
       selectSettingsSubTab,
+      selectCaptureSubTab,
       selectTodoSubTab,
       todoAttentionCounts,
       todoSubTab,
@@ -180,7 +189,23 @@ export function useWorkspaceSidebarNav({
     [requestTab, selectMemorySubTab],
   );
 
+  const openCaptureSubTab = useCallback(
+    (nextCaptureSubTab: CaptureSubTab) => {
+      selectCaptureSubTab(nextCaptureSubTab);
+      requestTab("capture");
+    },
+    [requestTab, selectCaptureSubTab],
+  );
+
+  useEffect(() => {
+    if (consumeOpenMeetingModal()) {
+      selectCaptureSubTab("meeting");
+      requestTab("capture");
+    }
+  }, [requestTab, selectCaptureSubTab]);
+
   return {
+    captureSubTab,
     memorySubTab,
     memoryShowAllSections,
     todoSubTab,
@@ -197,6 +222,7 @@ export function useWorkspaceSidebarNav({
     openMemoryNeedsReview,
     openProfileFromSidebar,
     openMemoriesSubTab,
+    openCaptureSubTab,
     reportSettingsScrollSection,
     reportMemoryScrollSection,
     reportTodoScrollSection,

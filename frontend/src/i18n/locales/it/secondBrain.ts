@@ -33,7 +33,7 @@ export const itSecondBrainLocaleSlice = {
       activitySubtitle:
         "Riassunti dello schermo su opt-in — le immagini vengono eliminate dopo l’elaborazione.",
     },
-    allSectionsSubtitle: "Panoramica, attività e mappa mentale — tutto in una pagina.",
+    allSectionsSubtitle: "Panoramica e mappa mentale — tutto in una pagina.",
     overview: {
       metrics: {
         total: "Memorie totali",
@@ -374,7 +374,8 @@ export const itSecondBrainLocaleSlice = {
   },
   meeting: {
     heading: "Modalità riunione",
-    desc: "Cattura ciò che viene detto durante una chiamata. Al termine, l'assistente lo riassume ed estrae automaticamente le azioni.",
+    desc: "Cattura ciò che viene detto durante una chiamata. Le note mostrano chi parla. Alla fine ottieni un riepilogo e azioni per la persona giusta.",
+    placeLead: "Chi ha detto cosa — note mentre parli, riepilogo e azioni alla fine.",
     listening: "In ascolto",
     recording: "Registrazione",
     titlePlaceholder: "Titolo riunione (facoltativo)",
@@ -386,7 +387,7 @@ export const itSecondBrainLocaleSlice = {
     transcribeUnavailable:
       "Impossibile trasformare il parlato in note. Puoi comunque scrivere sotto.",
     notesOnly: "Solo note",
-    notesEmptyListening: "Parla — le note compariranno qui.",
+    notesEmptyListening: "Parla — le note mostreranno chi ha detto cosa.",
     retryListening: "Riprova ad ascoltare",
     closeConfirm: "Terminare la riunione e salvare le note?",
     closeConfirmBody: "Terminare spegne il microfono e salva le note.",
@@ -621,9 +622,8 @@ export const itSecondBrainLocaleSlice = {
     pairCopied: "Copiato — incolla sul telefono",
     pairCopyError: "Impossibile copiare il codice. Riprova.",
     pairSessionExpired:
-      "Accesso Exo scaduto. Accedi di nuovo (menu profilo), poi tocca Riprova QR e copia un codice nuovo.",
+      "Accesso Exo scaduto. Accedi di nuovo (menu profilo) — il codice di associazione si aggiorna da solo.",
     pairKeyUnreadable:
       "Impossibile leggere la chiave sync dal Portachiavi. Sblocca il Portachiavi macOS, oppure installa un Exo firmato (stesso Developer ID). Non cancellare i dati locali.",
-    pairRetry: "Riprova QR",
   },
 } as const;

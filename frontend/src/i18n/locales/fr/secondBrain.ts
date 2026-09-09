@@ -34,7 +34,7 @@ export const frSecondBrainLocaleSlice = {
       activitySubtitle:
         "Résumés d’écran sur opt-in — les images sont supprimées après traitement.",
     },
-    allSectionsSubtitle: "Aperçu, activité et carte mentale — tout sur une page.",
+    allSectionsSubtitle: "Aperçu et carte mentale — tout sur une page.",
     overview: {
       metrics: {
         total: "Souvenirs au total",
@@ -375,7 +375,8 @@ export const frSecondBrainLocaleSlice = {
   },
   meeting: {
     heading: "Mode réunion",
-    desc: "Capturez ce qui se dit pendant un appel. À la fin, l'assistant le résume et en extrait automatiquement les actions.",
+    desc: "Capturez ce qui se dit pendant un appel. Les notes indiquent qui parle. À la fin, vous obtenez un résumé et des actions pour la bonne personne.",
+    placeLead: "Qui a dit quoi — des notes pendant que vous parlez, un résumé et des actions à la fin.",
     listening: "À l'écoute",
     recording: "Enregistrement",
     titlePlaceholder: "Titre de la réunion (facultatif)",
@@ -387,7 +388,7 @@ export const frSecondBrainLocaleSlice = {
     transcribeUnavailable:
       "Impossible de transformer la parole en notes. Vous pouvez encore écrire ci-dessous.",
     notesOnly: "Notes uniquement",
-    notesEmptyListening: "Parlez — les notes apparaîtront ici.",
+    notesEmptyListening: "Parlez — les notes indiqueront qui a dit quoi.",
     retryListening: "Réessayer l'écoute",
     closeConfirm: "Terminer cette réunion et enregistrer les notes ?",
     closeConfirmBody: "Terminer coupe le micro et enregistre vos notes.",
@@ -622,9 +623,8 @@ export const frSecondBrainLocaleSlice = {
     pairCopied: "Copié — collez-le sur le téléphone",
     pairCopyError: "Impossible de copier le code. Réessayez.",
     pairSessionExpired:
-      "Votre connexion Exo a expiré. Reconnectez-vous (menu profil), puis appuyez sur Réessayer le QR et copiez un nouveau code.",
+      "Votre connexion Exo a expiré. Reconnectez-vous (menu profil) — le code d’appariement se met à jour tout seul.",
     pairKeyUnreadable:
       "Impossible de lire la clé de sync dans le trousseau. Déverrouillez le trousseau macOS, ou installez un Exo signé (le même Developer ID). N'effacez pas les données locales.",
-    pairRetry: "Réessayer le QR",
   },
 } as const;

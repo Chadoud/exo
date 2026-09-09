@@ -74,8 +74,10 @@ export const OUTPUT_FOLDER_SORT_TAB_TOAST_SHOWN_KEY = "exosites.sortTab.outputFo
 export const POST_RUN_CARD_SESSION_HIDDEN_JOB_ID_KEY = "exosites.postRunCard.sessionHiddenJobId.v1";
 /** User chose "Don't show again" on the free-tier API quota nudge toast. */
 export const QUOTA_TOAST_DISMISSED_KEY = "exosites.quotaToast.dismissed.v1";
-/** Last selected sub-tab on the Memory panel (facts | activity | map). */
+/** Last selected sub-tab on the Memory panel (facts | map). */
 export const MEMORY_SUB_TAB_STORAGE_KEY = "exosites.memorySubTab.v1";
+/** Last selected Capture child (meeting | activity). */
+export const CAPTURE_SUB_TAB_STORAGE_KEY = "exosites.captureSubTab.v1";
 export const MEMORY_LIST_EXPANDED_STORAGE_KEY = "exosites.memoryListExpanded.v1";
 /** Last selected sub-tab on the To Do panel (today | inbox | done). */
 export const TODO_SUB_TAB_STORAGE_KEY = "exosites.todoSubTab.v1";

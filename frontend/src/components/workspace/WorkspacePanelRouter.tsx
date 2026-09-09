@@ -5,6 +5,7 @@ import type { UseModelsReturn } from "../../hooks/useModels";
 import type { MainNavTab } from "../../hooks/useMainNavItems";
 import type { EntitlementStatus } from "../../api";
 import type { GmailAnalyzeSlice } from "../../api";
+import type { CaptureSubTab } from "../../utils/captureUi";
 import type { MemorySubTab } from "../../utils/memoryUi";
 import type { TodoSubTab } from "../../utils/todoUi";
 import type { TodoFeed } from "../../hooks/useTodoFeed";
@@ -34,12 +35,13 @@ import {
   LazyExternalSourcesPanel,
   LazyHistoryPanel,
   LazyMemoriesPanel,
+  LazyCapturePanel,
   LazyOverviewPanel,
   LazyQueuePanel,
   LazySettingsPanel,
   LazyTasksPanel,
 } from "./workspaceLazyPanels";
-import { queueOpenMeetingModal, queueStartActivityCapture } from "../../utils/deferredPanelActions";
+import { queueStartActivityCapture } from "../../utils/deferredPanelActions";
 import type QueuePanel from "../QueuePanel";
 import type OverviewPanel from "../OverviewPanel";
 
@@ -51,6 +53,8 @@ interface WorkspacePanelRouterProps {
   memorySubTab: MemorySubTab;
   memoryShowAllSections: boolean;
   openMemoriesSubTab: (nextMemorySubTab: MemorySubTab) => void;
+  captureSubTab: CaptureSubTab;
+  openCaptureSubTab: (next: CaptureSubTab) => void;
   todoSubTab: TodoSubTab;
   todoShowAllSections: boolean;
   openTodoSubTab: (subTab: TodoSubTab) => void;
@@ -169,6 +173,8 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
     memorySubTab,
     memoryShowAllSections,
     openMemoriesSubTab,
+    captureSubTab,
+    openCaptureSubTab,
     todoSubTab,
     todoShowAllSections,
     openTodoSubTab,
@@ -401,6 +407,20 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
         </Suspense>
       )}
 
+      {tab === "capture" && (
+        <Suspense fallback={<PanelRouteFallback />}>
+          <LazyCapturePanel
+            subTab={captureSubTab}
+            backendOnline={backendOnline}
+            proAllowed={entitlement?.canUseProactive !== false}
+            onUpgrade={() =>
+              openPrimarySettingsSection(jumpToSettingsSection, { section: "license" })
+            }
+            onOpenConversation={() => requestTab("exo")}
+          />
+        </Suspense>
+      )}
+
       {tab === "memories" && (
         <Suspense fallback={<PanelRouteFallback />}>
           <LazyMemoriesPanel
@@ -459,12 +479,11 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
           deferPermissionPrompt={deferAssistantPermissionPrompt}
           onOpenSort={() => requestTab("queue")}
           onStartMeeting={() => {
-            queueOpenMeetingModal();
-            openTodoSubTab("today");
+            openCaptureSubTab("meeting");
           }}
           onStartCapture={() => {
             queueStartActivityCapture();
-            openMemoriesSubTab("activity");
+            openCaptureSubTab("activity");
           }}
           onOpenAssistantSettings={() =>
             openPrimarySettingsSection(jumpToSettingsSection, { section: "assistantTools" })

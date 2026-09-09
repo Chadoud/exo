@@ -71,6 +71,12 @@ export function useCommandPaletteCommands(
         run: () => (openSettingsHome ?? (() => requestTab("settings")))(),
       },
       {
+        id: "tab-capture",
+        label: translate(uiLocale, "nav.capture"),
+        keywords: "capture meeting record activity listen notes microphone",
+        run: () => requestTab("capture"),
+      },
+      {
         id: "tab-memories",
         label: translate(uiLocale, "nav.memories"),
         keywords: "memory second brain facts remember knowledge",

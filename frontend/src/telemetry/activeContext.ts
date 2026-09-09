@@ -29,6 +29,8 @@ export function featureFromNavTab(tab: string): string {
       return "settings";
     case "memories":
       return "memories";
+    case "capture":
+      return "capture";
     case "tasks":
       return "tasks";
     default:

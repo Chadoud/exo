@@ -8,7 +8,6 @@ import {
 describe("workspacePanelHeadings", () => {
   it("maps memory sub-tabs to sidebar-aligned title keys", () => {
     expect(getMemoryPanelHeadingKeys("overview").titleKey).toBe("memories.tabs.overview");
-    expect(getMemoryPanelHeadingKeys("activity").titleKey).toBe("memories.tabs.activity");
     expect(getMemoryPanelHeadingKeys("map").titleKey).toBe("memories.tabs.map");
   });
 

@@ -107,7 +107,7 @@ export function consumeOpenWhatsAppSetup(): boolean {
   }
 }
 
-/** Navigate to Tasks, then open the meeting recorder once the panel is ready. */
+/** Open Capture → Meeting once the workspace is ready. */
 export function queueOpenMeetingModal(): void {
   try {
     sessionStorage.setItem(OPEN_MEETING_MODAL_SESSION_KEY, "1");
@@ -127,7 +127,7 @@ export function consumeOpenMeetingModal(): boolean {
   }
 }
 
-/** Navigate to Memories → Activity, then start capture when prerequisites are met. */
+/** Open Capture → Activity, then start screen capture when prerequisites are met. */
 export function queueStartActivityCapture(): void {
   try {
     sessionStorage.setItem(START_ACTIVITY_CAPTURE_SESSION_KEY, "1");

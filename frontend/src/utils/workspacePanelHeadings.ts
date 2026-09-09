@@ -13,10 +13,6 @@ const MEMORY_SUB_TAB_HEADINGS: Record<MemorySubTab, PanelHeadingKeys> = {
     titleKey: "memories.tabs.overview",
     subtitleKey: "memories.tabs.overviewSubtitle",
   },
-  activity: {
-    titleKey: "memories.tabs.activity",
-    subtitleKey: "memories.tabs.activitySubtitle",
-  },
   map: {
     titleKey: "memories.tabs.map",
     subtitleKey: "memories.mapPreviewDesc",
@@ -46,7 +42,7 @@ const TODO_SUB_TAB_HEADINGS: Record<TodoSubTab, PanelHeadingKeys> = {
   },
 };
 
-/** Panel header keys for the active Memory sub-view (Facts / Activity / Map). */
+/** Panel header keys for the active Memory sub-view (Overview / Map). */
 export function getMemoryPanelHeadingKeys(
   subTab: MemorySubTab,
   showAllSections = false,
