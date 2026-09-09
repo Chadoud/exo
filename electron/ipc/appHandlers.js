@@ -356,6 +356,7 @@ function registerAppHandlers() {
     const denied = rejectUntrustedSender(event);
     if (denied) return denied;
     cloudAuth.logout(ud());
+    syncWorker.clearPairingGrantCache();
     activateGuestProfile(ud());
     await remountProfileRuntime(ud(), { restartBackend: true });
     return { ok: true };

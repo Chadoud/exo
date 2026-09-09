@@ -99,4 +99,95 @@ describe("SettingsSyncSection", () => {
     expect(container.textContent).not.toContain("scan this QR");
   });
 
+  it("shows a pairing QR without a retry control", async () => {
+    const getQr = vi.fn(async () => ({
+      dataUrl: "data:image/png;base64,xx",
+      expiresAt: "2099-01-01T00:00:00.000Z",
+    }));
+    window.electronAPI = {
+      ...window.electronAPI,
+      syncGetStatus: vi.fn(async () => ({
+        enabled: true,
+        lastRunAt: "2026-01-01T12:00:00.000Z",
+        lastSuccessfulSyncAt: "2026-01-01T12:00:00.000Z",
+        lastError: null,
+      })),
+      syncGetPairingQr: getQr,
+    } as unknown as Window["electronAPI"];
+    await act(async () => {
+      root.render(
+        <I18nProvider locale="en">
+          <SettingsSyncSection canUseSync licensed onUpgrade={vi.fn()} />
+        </I18nProvider>,
+      );
+    });
+    expect(container.textContent).toContain("scan this QR");
+    expect(container.textContent).not.toContain("Retry QR");
+    const qr = container.querySelector('img[alt="Pair mobile device"]');
+    expect(qr?.getAttribute("src")).toBe("data:image/png;base64,xx");
+    const before = getQr.mock.calls.length;
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(getQr.mock.calls.length).toBeGreaterThan(before);
+  });
+
+  it("asks the user to sign in again without a Retry QR control", async () => {
+    window.electronAPI = {
+      ...window.electronAPI,
+      syncGetStatus: vi.fn(async () => ({
+        enabled: true,
+        lastRunAt: "2026-01-01T12:00:00.000Z",
+        lastSuccessfulSyncAt: "2026-01-01T12:00:00.000Z",
+        lastError: null,
+      })),
+      syncGetPairingQr: vi.fn(async () => ({ error: "invalid_token" })),
+    } as unknown as Window["electronAPI"];
+    await act(async () => {
+      root.render(
+        <I18nProvider locale="en">
+          <SettingsSyncSection canUseSync licensed onUpgrade={vi.fn()} />
+        </I18nProvider>,
+      );
+    });
+    expect(container.textContent).toContain("Sign in again");
+    expect(container.textContent).toContain("refresh on its own");
+    expect(container.textContent).not.toContain("Retry QR");
+  });
+
+  it("hides the pairing QR when a later refresh fails", async () => {
+    let failNext = false;
+    const getQr = vi.fn(async () => {
+      if (failNext) return { error: "invalid_token" };
+      return {
+        dataUrl: "data:image/png;base64,xx",
+        expiresAt: "2099-01-01T00:00:00.000Z",
+      };
+    });
+    window.electronAPI = {
+      ...window.electronAPI,
+      syncGetStatus: vi.fn(async () => ({
+        enabled: true,
+        lastRunAt: "2026-01-01T12:00:00.000Z",
+        lastSuccessfulSyncAt: "2026-01-01T12:00:00.000Z",
+        lastError: null,
+      })),
+      syncGetPairingQr: getQr,
+    } as unknown as Window["electronAPI"];
+    await act(async () => {
+      root.render(
+        <I18nProvider locale="en">
+          <SettingsSyncSection canUseSync licensed onUpgrade={vi.fn()} />
+        </I18nProvider>,
+      );
+    });
+    expect(container.querySelector('img[alt="Pair mobile device"]')).not.toBeNull();
+    failNext = true;
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(container.querySelector('img[alt="Pair mobile device"]')).toBeNull();
+    expect(container.textContent).toContain("Sign in again");
+  });
+
 });

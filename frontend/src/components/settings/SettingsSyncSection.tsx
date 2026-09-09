@@ -7,6 +7,8 @@ import { useI18n } from "../../i18n/I18nContext";
 import { isStaleTrialSyncError, syncLastErrorKind } from "../../utils/syncLastErrorCopy";
 import ExoAppIcon from "../ExoAppIcon";
 import ProUpgradeCard from "../ProUpgradeCard";
+import { pairingErrorMessage } from "./pairingErrorMessage";
+import { usePairingQr } from "./usePairingQr";
 
 interface SyncStatus {
   enabled?: boolean;
@@ -36,46 +38,12 @@ function syncErrorLine(
   return lastError?.trim() || null;
 }
 
-function pairingErrorMessage(
-  result: unknown,
-  fallback: string,
-  keyUnreadable?: string,
-  sessionExpired?: string,
-): string {
-  if (result && typeof result === "object" && "error" in result) {
-    const err = (result as { error?: unknown }).error;
-    if (typeof err === "string" && err.trim()) {
-      if (
-        keyUnreadable &&
-        (err.includes("sync_master_key_unreadable") || err.includes("sync_not_enabled"))
-      ) {
-        return keyUnreadable;
-      }
-      // Cloud JWT rejected when minting a pairing grant.
-      if (
-        sessionExpired &&
-        (err.includes("invalid_token") ||
-          err.includes("missing_token") ||
-          err.includes("not_logged_in") ||
-          err.includes("401"))
-      ) {
-        return sessionExpired;
-      }
-      return `${fallback} (${err.trim()})`;
-    }
-  }
-  return fallback;
-}
-
 export default function SettingsSyncSection({ canUseSync, licensed = false, onUpgrade }: Props) {
   const { t } = useI18n();
   const [status, setStatus] = useState<SyncStatus>({});
   const [busy, setBusy] = useState(false);
   const retriedStaleTrialError = useRef(false);
-  const [pairQrDataUrl, setPairQrDataUrl] = useState<string | null>(null);
-  const [pairError, setPairError] = useState<string | null>(null);
   const [copyHint, setCopyHint] = useState<string | null>(null);
-  const [pairRetryTick, setPairRetryTick] = useState(0);
 
   const refresh = useCallback(async () => {
     const api = window.electronAPI;
@@ -89,44 +57,7 @@ export default function SettingsSyncSection({ canUseSync, licensed = false, onUp
   }, [refresh]);
 
   const hasSyncedOnce = Boolean(status.lastSuccessfulSyncAt);
-
-  useEffect(() => {
-    // Do not mint a pairing QR until desktop has synced at least once.
-    if (!hasSyncedOnce) {
-      setPairQrDataUrl(null);
-      setPairError(null);
-      return;
-    }
-    const api = window.electronAPI;
-    if (!api?.syncGetPairingQr) {
-      setPairQrDataUrl(null);
-      setPairError(t("sync.pairQrError"));
-      return;
-    }
-    const getPairingQr = api.syncGetPairingQr;
-    void (async () => {
-      try {
-        const result = await getPairingQr();
-        if (result && "dataUrl" in result && typeof result.dataUrl === "string") {
-          setPairQrDataUrl(result.dataUrl);
-          setPairError(null);
-          return;
-        }
-        setPairQrDataUrl(null);
-        setPairError(
-          pairingErrorMessage(
-            result,
-            t("sync.pairQrError"),
-            t("sync.pairKeyUnreadable"),
-            t("sync.pairSessionExpired"),
-          ),
-        );
-      } catch {
-        setPairQrDataUrl(null);
-        setPairError(t("sync.pairQrError"));
-      }
-    })();
-  }, [hasSyncedOnce, t, pairRetryTick]);
+  const { pairQrDataUrl, pairError } = usePairingQr(hasSyncedOnce);
 
   const runNow = useCallback(async () => {
     const api = window.electronAPI;
@@ -225,8 +156,12 @@ export default function SettingsSyncSection({ canUseSync, licensed = false, onUp
             {hasSyncedOnce && !pairError ? t("sync.pairHint") : t("sync.pairSyncFirst")}
           </p>
           {pairError ? <p className="mt-2 text-[11px] text-red-500">{pairError}</p> : null}
-          {hasSyncedOnce && pairQrDataUrl ? (
-            <img src={pairQrDataUrl} alt="" className="mt-3 h-[220px] w-[220px] rounded-md bg-white p-2" />
+          {hasSyncedOnce && pairQrDataUrl && !pairError ? (
+            <img
+              src={pairQrDataUrl}
+              alt={t("sync.pairTitle")}
+              className="mt-3 h-[220px] w-[220px] rounded-md bg-white p-2"
+            />
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
@@ -237,19 +172,6 @@ export default function SettingsSyncSection({ canUseSync, licensed = false, onUp
             >
               {t("sync.pairCopy")}
             </button>
-            {hasSyncedOnce ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setCopyHint(null);
-                  setPairRetryTick((n) => n + 1);
-                }}
-                className="inline-flex min-h-10 items-center rounded-lg border border-border bg-bg-card px-3 py-2 text-xs font-medium text-text-primary hover:bg-hover-overlay disabled:opacity-50"
-              >
-                {t("sync.pairRetry")}
-              </button>
-            ) : null}
             {copyHint ? <p className="text-[11px] text-muted">{copyHint}</p> : null}
           </div>
         </div>

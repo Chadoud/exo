@@ -746,7 +746,9 @@ export interface ElectronAPI {
   syncSetEnabled?: (enabled: boolean) => Promise<{ ok: boolean }>;
   syncRunNow?: () => Promise<{ ok: boolean }>;
   /** Main builds the QR so master_key_b64 never enters the renderer. */
-  syncGetPairingQr?: () => Promise<{ dataUrl: string } | { ok: false; error: string }>;
+  syncGetPairingQr?: () => Promise<
+    { dataUrl: string; expiresAt?: string | null } | { ok: false; error: string }
+  >;
   /** Main copies the same pairing JSON as the QR onto the clipboard (no key in renderer). */
   syncCopyPairingPayload?: () => Promise<{ ok: true } | { ok: false; error: string }>;
 

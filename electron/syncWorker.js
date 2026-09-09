@@ -9,6 +9,7 @@ const { safeStorage } = require("electron");
 const cloudAuth = require("./cloudAuth");
 const state = require("./state");
 const { BACKEND_PORT } = require("./constants");
+const { canReusePairingGrant, rememberPairingGrant } = require("./syncPairingGrant");
 
 const SYNC_PREFS = "sync_prefs.json";
 const SYNC_KEY_FILE = "sync_master_key.enc";
@@ -16,6 +17,8 @@ const SYNC_LOG = "sync_runs.jsonl";
 const INTERVAL_MS = 5 * 60 * 1000;
 
 let timer = null;
+/** Last minted pairing payload so QR and clipboard share one grant. */
+let pairingGrantCache = null;
 /** Device userData root (session); prefs/key resolve under active profile. */
 let activeDeviceRoot = null;
 let lastStatus = {
@@ -295,7 +298,12 @@ function getSyncStatus(deviceRootHint) {
   };
 }
 
+function clearPairingGrantCache() {
+  pairingGrantCache = null;
+}
+
 function setSyncEnabled(deviceRootHint, enabled) {
+  clearPairingGrantCache();
   const { profileRoot } = syncRoots(deviceRootHint);
   const prefs = readPrefs(profileRoot);
   const nextEnabled = Boolean(enabled);
@@ -313,7 +321,7 @@ function setSyncEnabled(deviceRootHint, enabled) {
  * @param {string} deviceRootHint
  * @returns {Promise<object>}
  */
-async function getPairingPayload(deviceRootHint) {
+async function getPairingPayload(deviceRootHint, { force = false } = {}) {
   const { profileRoot, deviceRoot } = syncRoots(deviceRootHint);
   const base = cloudUrl();
   if (!base) {
@@ -341,6 +349,15 @@ async function getPairingPayload(deviceRootHint) {
   if (!accountId) {
     throw new Error("account_id_missing");
   }
+  if (
+    canReusePairingGrant(pairingGrantCache, {
+      force,
+      masterKeyB64,
+      accountId,
+    })
+  ) {
+    return pairingGrantCache.payload;
+  }
   const keyFingerprint = crypto
     .createHash("sha256")
     .update(Buffer.from(masterKeyB64, "base64"))
@@ -357,7 +374,7 @@ async function getPairingPayload(deviceRootHint) {
   if (!grantRes.ok || !grant.grant_token) {
     throw new Error(grant.detail || `pairing_grant_${grantRes.status}`);
   }
-  return {
+  const payload = {
     v: 2,
     cloud_url: base,
     master_key_b64: masterKeyB64,
@@ -366,6 +383,8 @@ async function getPairingPayload(deviceRootHint) {
     issued_at: new Date().toISOString(),
     expires_at: grant.expires_at || null,
   };
+  pairingGrantCache = rememberPairingGrant(payload);
+  return payload;
 }
 
 /**
@@ -375,9 +394,9 @@ async function getPairingPayload(deviceRootHint) {
  */
 async function getPairingQrDataUrl(userData) {
   const QRCode = require("qrcode");
-  const payload = await getPairingPayload(userData);
+  const payload = await getPairingPayload(userData, { force: true });
   const dataUrl = await QRCode.toDataURL(JSON.stringify(payload), { margin: 1, width: 220 });
-  return { dataUrl };
+  return { dataUrl, expiresAt: payload.expires_at || null };
 }
 
 /**
@@ -411,4 +430,5 @@ module.exports = {
   getPairingPayload,
   getPairingQrDataUrl,
   copyPairingPayloadToClipboard,
+  clearPairingGrantCache,
 };
