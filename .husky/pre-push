@@ -1,9 +1,11 @@
 #!/usr/bin/env sh
-# Path-aware local verify on every push; v*/mobile-v* tags require a fresh release stamp.
+# Path-aware local verify on pushes that carry code; v*/mobile-v* tags require a fresh release stamp.
 set -e
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$ROOT"
+
+REMOTE="${1:-origin}"
 
 if [ "${HUSKY_SKIP_VERIFY:-0}" = "1" ]; then
   echo "" >&2
@@ -15,10 +17,41 @@ if [ "${HUSKY_SKIP_VERIFY:-0}" = "1" ]; then
   exit 0
 fi
 
-echo "==> pre-push: verify-local --quick"
-bash scripts/verify-local.sh --quick
+# Husky/git provide ref lines on stdin once — local_ref local_sha remote_ref
+# remote_sha — and they are needed twice below, so buffer them.
+REF_FILE="$(mktemp)"
+cat >"$REF_FILE"
+trap 'rm -f "$REF_FILE"' EXIT
 
-# Husky/git provide ref lines on stdin: local_ref local_sha remote_ref remote_sha
+ZERO_SHA="0000000000000000000000000000000000000000"
+
+# True when the push sends commits the remote does not already have.
+#
+# Moving or deleting a tag sends none, and the branch push that created those
+# commits already ran the suites, so running them again proves nothing — while
+# costing a quarter of an hour, because the mobile suite is that slow. When the
+# remote cannot be listed or an object is missing locally, assume there is new
+# code and verify. Release stamps are enforced either way.
+push_adds_commits() {
+  heads="$(git ls-remote --heads "$REMOTE" 2>/dev/null | awk '{print $1}' || true)"
+  [ -n "$heads" ] || return 0
+  while read -r _local_ref local_sha _remote_ref _remote_sha; do
+    [ -n "$local_sha" ] || continue
+    [ "$local_sha" = "$ZERO_SHA" ] && continue
+    # shellcheck disable=SC2086
+    count="$(git rev-list --count "$local_sha" --not $heads 2>/dev/null || echo 1)"
+    [ "$count" = "0" ] || return 0
+  done <"$REF_FILE"
+  return 1
+}
+
+if push_adds_commits; then
+  echo "==> pre-push: verify-local --quick"
+  bash scripts/verify-local.sh --quick
+else
+  echo "==> pre-push: no new commits for ${REMOTE} — skipping code suites"
+fi
+
 while read -r local_ref local_sha remote_ref remote_sha; do
   case "$local_ref" in
     refs/tags/v*|refs/tags/mobile-v*)
@@ -26,4 +59,4 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       bash scripts/require-release-gate.sh "$local_ref"
       ;;
   esac
-done
+done <"$REF_FILE"
