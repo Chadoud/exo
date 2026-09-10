@@ -191,6 +191,41 @@ function codesignArgs(identity, targetPath, entitlementsPath) {
   return args;
 }
 
+const TIMESTAMP_ATTEMPTS = 4;
+const TIMESTAMP_BACKOFF_MS = 4000;
+
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * `--timestamp` contacts Apple once per file, and a slice holds hundreds of
+ * Mach-O files. One hiccup there ("The timestamp service is not available")
+ * used to throw away the whole release build minutes from the finish line, so
+ * that single failure is retried with a widening delay. Everything else — a bad
+ * identity, an ambiguous bundle — still fails on the first try, because
+ * retrying it would only hide the real problem.
+ */
+function runCodesign(args, { backoffMs = TIMESTAMP_BACKOFF_MS } = {}) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      execFileSync("codesign", args, { stdio: ["inherit", "inherit", "pipe"] });
+      return;
+    } catch (err) {
+      const stderr = String(err.stderr || "");
+      if (stderr) process.stderr.write(stderr);
+      const timestampUnavailable = stderr.includes("timestamp service is not available");
+      if (!timestampUnavailable || attempt >= TIMESTAMP_ATTEMPTS) throw err;
+      const waitMs = backoffMs * attempt;
+      console.log(
+        `[codesign] Apple timestamp service unavailable; retrying in ${waitMs}ms ` +
+          `(attempt ${attempt + 1} of ${TIMESTAMP_ATTEMPTS})`,
+      );
+      sleepSync(waitMs);
+    }
+  }
+}
+
 /**
  * Codesign every Mach-O in an onedir slice (inner libs first, launcher last).
  * Sign Versions/<x.y> as the framework bundle — not Python.framework itself
@@ -215,14 +250,12 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
   );
 
   for (const filePath of machOFiles) {
-    execFileSync("codesign", codesignArgs(identity, filePath, entitlementsPath), {
-      stdio: "inherit",
-    });
+    runCodesign(codesignArgs(identity, filePath, entitlementsPath));
   }
 
   for (const frameworkDir of collectFrameworkDirs(sliceDir)) {
     try {
-      execFileSync("codesign", codesignArgs(identity, frameworkDir, null), { stdio: "inherit" });
+      runCodesign(codesignArgs(identity, frameworkDir, null));
       execFileSync("codesign", ["--verify", "--deep", "--strict", frameworkDir], {
         stdio: "inherit",
       });
@@ -233,9 +266,7 @@ function codesignMacOnedirSlice(sliceDir, identity, entitlementsPath) {
   }
   normalizeFrameworksInTree(sliceDir);
 
-  execFileSync("codesign", codesignArgs(identity, launcher, entitlementsPath), {
-    stdio: "inherit",
-  });
+  runCodesign(codesignArgs(identity, launcher, entitlementsPath));
   execFileSync("codesign", ["--verify", "--deep", "--strict", "--verbose=2", launcher], {
     stdio: "inherit",
   });
@@ -275,4 +306,5 @@ module.exports = {
   repairFrameworkShortcuts,
   detachFrameworkTopExec,
   codesignArgs,
+  runCodesign,
 };

@@ -15,6 +15,7 @@ const {
   detachFrameworkTopExec,
   codesignArgs,
   resignPackagedBackendSlices,
+  runCodesign,
 } = require("./backend-onedir.cjs");
 
 test("nestedBackendExecutable uses platform-specific launcher name", () => {
@@ -194,4 +195,55 @@ test("stageOnedirDirectory replaces destination with a fresh copy", () => {
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+/**
+ * A slice signs hundreds of files, each one contacting Apple's timestamp
+ * service, so a single blip there must not discard the whole release build.
+ */
+function withFakeCodesign(script, run) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-codesign-"));
+  const counter = path.join(dir, "calls");
+  fs.writeFileSync(counter, "");
+  const fake = path.join(dir, "codesign");
+  fs.writeFileSync(fake, script.replace(/__COUNTER__/g, counter), { mode: 0o755 });
+  const previousPath = process.env.PATH;
+  process.env.PATH = `${dir}${path.delimiter}${previousPath}`;
+  try {
+    return run(() => fs.readFileSync(counter, "utf8").trim().split("\n").filter(Boolean).length);
+  } finally {
+    process.env.PATH = previousPath;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("runCodesign retries when the Apple timestamp service is unavailable", () => {
+  const script = [
+    "#!/bin/sh",
+    'echo call >> "__COUNTER__"',
+    'if [ "$(wc -l < "__COUNTER__")" -lt 3 ]; then',
+    '  echo "target: The timestamp service is not available." >&2',
+    "  exit 1",
+    "fi",
+    "exit 0",
+  ].join("\n");
+
+  withFakeCodesign(script, (calls) => {
+    runCodesign(["--sign", "id", "/tmp/target"], { backoffMs: 1 });
+    assert.equal(calls(), 3, "should retry past the transient failures");
+  });
+});
+
+test("runCodesign gives up on failures that are not the timestamp service", () => {
+  const script = [
+    "#!/bin/sh",
+    'echo call >> "__COUNTER__"',
+    'echo "target: bundle format is ambiguous" >&2',
+    "exit 1",
+  ].join("\n");
+
+  withFakeCodesign(script, (calls) => {
+    assert.throws(() => runCodesign(["--sign", "id", "/tmp/target"], { backoffMs: 1 }));
+    assert.equal(calls(), 1, "a real signing error must fail on the first attempt");
+  });
 });
