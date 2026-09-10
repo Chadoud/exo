@@ -6,6 +6,27 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.75] - 2026-09-10
+
+### Added
+
+- **Meetings:** Transcripts label who was speaking instead of running every voice together.
+- **Capture:** Meeting capture and activity have their own tab, so they are no longer buried inside Tasks and Memory.
+- **Sync:** Stop a mail or calendar source and the tasks it harvested are dropped on the desktop and on the phone.
+
+### Changed
+
+- **Appearance:** The app opens light by default, and the sign-in, OAuth and password-reset pages match it.
+- **Settings:** Leaving Settings no longer asks whether to save. Changes were already saved as you made them.
+- **Voice:** When the mic cannot start, it says why — sign-in needed, offline, or backend still coming up — rather than doing nothing.
+- **Sync:** Pairing says when a code expires, and a paired desktop stops asking the relay for a grant it already has.
+
+### Fixed
+
+- **Sort:** Custom instructions you have typed survive leaving Settings, collapsing the section, or switching sort mode. They still only reach the classifier once you save.
+- **Dialogs:** Buttons no longer get clipped in French, German and Italian, where labels are wider than the English ones.
+- **Tasks:** Deleting a mail task also removes its Inbox draft.
+
 ## [1.1.74] - 2026-08-23
 
 ### Fixed
