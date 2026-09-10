@@ -7,6 +7,7 @@
  *   node scripts/validate-release-version.mjs --version 1.2.3
  *   node scripts/validate-release-version.mjs --version 1.2.3 --latest-mac-yml path/to/latest-mac.yml
  */
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,17 +22,51 @@ const ROOT = path.resolve(__dirname, "..");
 export function parseArgs(argv, root = ROOT) {
   let version = null;
   let latestMacYml = null;
+  let requireCommitted = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--version" || a === "-v") {
       version = String(argv[++i] || "").trim();
     } else if (a === "--latest-mac-yml") {
       latestMacYml = String(argv[++i] || "").trim();
+    } else if (a === "--require-committed") {
+      requireCommitted = true;
     } else if (a === "--root") {
       root = path.resolve(String(argv[++i] || root));
     }
   }
-  return { version, latestMacYml, root };
+  return { version, latestMacYml, root, requireCommitted };
+}
+
+/** Every file this script reads a version out of. */
+export const VERSION_FILES = [
+  "package.json",
+  "frontend/package.json",
+  "frontend/src/appVersion.ts",
+  "installer.iss",
+  "installer-test.iss",
+  "CHANGELOG.md",
+];
+
+/**
+ * This script reads the working tree, but a tag captures the commit. 1.1.75
+ * shipped a tag whose installer-test.iss still said 1.1.74: the file was
+ * correct on disk and simply never staged, so the check passed locally and
+ * failed in CI. Anything uncommitted here means the tag would not match what
+ * was just validated.
+ * @param {string} root
+ * @returns {string[]} version files with uncommitted changes
+ */
+export function findUncommittedVersionFiles(root, run = spawnSync) {
+  const res = run("git", ["status", "--porcelain", "--", ...VERSION_FILES], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  if (res.status !== 0) return [];
+  return String(res.stdout || "")
+    .split("\n")
+    .map((line) => line.slice(3).trim())
+    .filter(Boolean);
 }
 
 /**
@@ -149,7 +184,9 @@ export function validateLatestMacYmlVersion(ymlPath, expected) {
 }
 
 function main() {
-  const { version: argVersion, latestMacYml, root } = parseArgs(process.argv.slice(2));
+  const { version: argVersion, latestMacYml, root, requireCommitted } = parseArgs(
+    process.argv.slice(2),
+  );
   let expected = argVersion;
   if (!expected) {
     try {
@@ -172,6 +209,16 @@ function main() {
     if (ymlErr) {
       console.error("[validate-release-version] FAILED:");
       console.error(`  - ${ymlErr}`);
+      process.exit(1);
+    }
+  }
+
+  if (requireCommitted) {
+    const dirty = findUncommittedVersionFiles(root);
+    if (dirty.length) {
+      console.error("[validate-release-version] FAILED — version files not committed:");
+      for (const file of dirty) console.error(`  - ${file}`);
+      console.error("Commit these before tagging; the tag records the commit, not your disk.");
       process.exit(1);
     }
   }

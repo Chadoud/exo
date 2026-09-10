@@ -7,6 +7,9 @@ import {
   normalizeSemver,
   validateReleaseVersion,
   validateLatestMacYmlVersion,
+  findUncommittedVersionFiles,
+  VERSION_FILES,
+  parseArgs,
 } from "./validate-release-version.mjs";
 
 function writeFixture(root, version, { emptyChangelog = false } = {}) {
@@ -59,4 +62,34 @@ test("validateLatestMacYmlVersion", () => {
   fs.writeFileSync(p, "version: 1.2.3\npath: Exo.zip\n");
   assert.equal(validateLatestMacYmlVersion(p, "1.2.3"), null);
   assert.match(validateLatestMacYmlVersion(p, "1.2.4") || "", /expected 1\.2\.4/);
+});
+
+test("findUncommittedVersionFiles reports version files with pending changes", () => {
+  const calls = [];
+  const run = (cmd, args) => {
+    calls.push({ cmd, args });
+    return { status: 0, stdout: " M installer-test.iss\n?? frontend/package.json\n" };
+  };
+
+  const dirty = findUncommittedVersionFiles("/repo", run);
+  assert.deepEqual(dirty, ["installer-test.iss", "frontend/package.json"]);
+  assert.equal(calls[0].cmd, "git");
+  for (const file of VERSION_FILES) {
+    assert.ok(calls[0].args.includes(file), `should ask git about ${file}`);
+  }
+});
+
+test("findUncommittedVersionFiles treats a clean tree as nothing pending", () => {
+  const dirty = findUncommittedVersionFiles("/repo", () => ({ status: 0, stdout: "" }));
+  assert.deepEqual(dirty, []);
+});
+
+test("findUncommittedVersionFiles stays quiet outside a git repo", () => {
+  const dirty = findUncommittedVersionFiles("/tmp", () => ({ status: 128, stdout: "" }));
+  assert.deepEqual(dirty, []);
+});
+
+test("--require-committed is opt-in so mid-bump runs still work", () => {
+  assert.equal(parseArgs([]).requireCommitted, false);
+  assert.equal(parseArgs(["--require-committed"]).requireCommitted, true);
 });

@@ -112,6 +112,12 @@ if [[ "$PACKAGING_OK" != "1" ]]; then
   exit 0
 fi
 
+# The stamp unlocks a v* tag push, so the version sources have to agree *and* be
+# committed before it is written — otherwise the tag can disagree with the tree
+# this gate just validated.
+echo "==> Release version sources agree and are committed"
+node scripts/validate-release-version.mjs --require-committed
+
 bash scripts/write-release-gate.sh desktop
 
 VERSION="$(node -p "require('./package.json').version")"
