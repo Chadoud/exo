@@ -13,6 +13,9 @@ abstract final class ExoConfig {
     defaultValue: 'https://api.exosites.ch',
   );
 
+  /// Password reset page — same host as [cloudUrl], matches desktop portal.
+  static String get forgotPasswordUrl => '$cloudUrl/auth/forgot-password/page';
+
   /// Optional debug FCM/APNs stand-in. Never a production secret.
   static const debugPushToken = String.fromEnvironment(
     'EXOSITES_DEBUG_PUSH_TOKEN',
@@ -31,9 +34,20 @@ abstract final class ExoConfig {
     defaultValue: 'https://exosites.ch/eng/app-terms',
   );
 
+  /// App Store / Play subscription product. Price always comes from the store.
+  static const iapProductId = String.fromEnvironment(
+    'EXOSITES_IAP_PRODUCT_ID',
+    defaultValue: 'exo.pro.monthly',
+  );
+
   /// Explicit opt-in for profile/release staging builds (e.g. internal IPA).
   static const _devSkipPairDefine = bool.fromEnvironment(
     'EXOSITES_DEV_SKIP_PAIR',
+    defaultValue: false,
+  );
+
+  static const _devSkipFirstRunDefine = bool.fromEnvironment(
+    'EXOSITES_DEV_SKIP_FIRST_RUN',
     defaultValue: false,
   );
 
@@ -41,12 +55,37 @@ abstract final class ExoConfig {
 
   static String get displayFlavor => isStaging ? 'Staging' : '';
 
+  /// Shared gate: never on in a production **release** binary (TestFlight / store).
+  @visibleForTesting
+  static bool resolveDevSkip({
+    required bool releaseMode,
+    required String flavorName,
+    required bool debugMode,
+    required bool defineEnabled,
+  }) {
+    if (releaseMode && flavorName == 'production') return false;
+    return debugMode || defineEnabled;
+  }
+
   /// Allow entering the app shell after sign-in without desktop pairing.
   ///
-  /// On by default in **debug** (`flutter run`). Never in production **release**
-  /// (TestFlight / store). Opt in elsewhere with `--dart-define=EXOSITES_DEV_SKIP_PAIR=true`.
-  static bool get allowDevSkipPair {
-    if (kReleaseMode && flavor == 'production') return false;
-    return kDebugMode || _devSkipPairDefine;
-  }
+  /// On by default in **debug** (`flutter run`). Never in production **release**.
+  /// Opt in elsewhere with `--dart-define=EXOSITES_DEV_SKIP_PAIR=true`.
+  static bool get allowDevSkipPair => resolveDevSkip(
+        releaseMode: kReleaseMode,
+        flavorName: flavor,
+        debugMode: kDebugMode,
+        defineEnabled: _devSkipPairDefine,
+      );
+
+  /// Skip trial + profile + sources only. Server still enforces store checkout.
+  ///
+  /// On by default in **debug**. Never in production **release**. Never set
+  /// `EXOSITES_DEV_SKIP_FIRST_RUN` in `mobile/env/production.json`.
+  static bool get allowDevSkipFirstRun => resolveDevSkip(
+        releaseMode: kReleaseMode,
+        flavorName: flavor,
+        debugMode: kDebugMode,
+        defineEnabled: _devSkipFirstRunDefine,
+      );
 }

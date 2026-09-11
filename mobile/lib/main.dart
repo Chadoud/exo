@@ -85,11 +85,12 @@ class _ExositesMobileAppState extends State<ExositesMobileApp> {
     final title = ExoConfig.displayFlavor.isEmpty ? 'Exo' : 'Exo (${ExoConfig.displayFlavor})';
     final ready = _hydrated && _introDone;
 
+    final theme = ExoTheme.product();
     return MaterialApp(
       title: title,
-      // Light only on the phone — the OS dark toggle must not flip us.
-      theme: ExoTheme.light(),
-      darkTheme: ExoTheme.light(),
+      // Desktop light tokens — pale canvas + #0F0B2E brand ink; OS toggle ignored.
+      theme: theme,
+      darkTheme: theme,
       themeMode: ThemeMode.light,
       scaffoldMessengerKey: _scaffoldMessengerKey,
       // Hold a blank canvas until hydrate; play the stroke only on first install.

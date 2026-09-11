@@ -1,5 +1,4 @@
 import type { AppSettings } from "../types/settings";
-import { SECTION_LABEL_CLASS } from "../utils/styles";
 import { useI18n } from "../i18n/I18nContext";
 import {
   LEGAL_TERMS_BUNDLE_VERSION,
@@ -40,8 +39,8 @@ export default function WelcomePrivacyStep({ settings, onSettingsPatch }: Welcom
 
   return (
     <div className="max-w-xl mx-auto space-y-5 text-left">
-      <div className="space-y-3 rounded-xl border border-border bg-bg-secondary/40 px-4 py-4">
-        <p className="text-2xs font-semibold uppercase tracking-wider text-muted">{t("welcome.legalAcceptHeading")}</p>
+      <div className="space-y-3 rounded-xl border border-border bg-bg-card px-4 py-4">
+        <p className="text-sm font-medium text-text-primary">{t("welcome.legalAcceptHeading")}</p>
         <label className="flex items-start gap-3 cursor-pointer group">
           <input
             type="checkbox"
@@ -80,18 +79,17 @@ export default function WelcomePrivacyStep({ settings, onSettingsPatch }: Welcom
           {t("welcome.legalAcceptHint")}
           {!termsHref ? <> {t("welcome.legalAcceptHintNoLinks")}</> : null}
         </p>
-      </div>
-
-      <div className="rounded-xl border border-border-soft bg-bg-primary/60 px-4 py-4 space-y-2">
-        <p className={`${SECTION_LABEL_CLASS} mb-0`}>{t("welcome.diagnosticsNoticeTitle")}</p>
-        <p className="text-xs text-muted leading-relaxed">{t("welcome.diagnosticsNoticeBody")}</p>
-        {PRIVACY_POLICY_URL ? (
-          <p className="text-2xs text-muted">
-            <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
-              {t("settings.privacyPolicyLink")}
-            </a>
-          </p>
-        ) : null}
+        <div className="space-y-2 border-t border-border pt-4">
+          <p className="text-sm font-medium text-text-primary">{t("welcome.diagnosticsNoticeTitle")}</p>
+          <p className="text-xs text-muted leading-relaxed">{t("welcome.diagnosticsNoticeBody")}</p>
+          {PRIVACY_POLICY_URL ? (
+            <p className="text-2xs text-muted">
+              <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
+                {t("settings.privacyPolicyLink")}
+              </a>
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <p className="text-2xs text-muted leading-relaxed">{t("welcome.privacyStepFooter")}</p>

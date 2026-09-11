@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../design/exo_palette.dart';
 import '../../design/exo_spacing.dart';
+import '../../design/exo_status_banner.dart';
 import '../../design/exo_widgets.dart';
 import '../../sync/user_messages.dart';
+import 'setup_portal_header.dart';
 
 /// Setup step 2 — paste-primary link phone (Connect). Scan opens [PairingScreen] via parent.
 class SetupLinkPanel extends StatefulWidget {
@@ -54,7 +56,6 @@ class _SetupLinkPanelState extends State<SetupLinkPanel> {
   @override
   void didUpdateWidget(covariant SetupLinkPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Prefill / "Paste from clipboard" — replace field when parent supplies new text.
     if (widget.initialPasteText != oldWidget.initialPasteText &&
         widget.initialPasteText.isNotEmpty &&
         widget.initialPasteText != _pasteController.text) {
@@ -74,6 +75,7 @@ class _SetupLinkPanelState extends State<SetupLinkPanel> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final muted = textTheme.bodySmall?.copyWith(color: ExoPalette.of(context).textMuted);
     final subtitle = widget.clipboardReady
         ? SyncUserMessages.pairCodeReady
         : SyncUserMessages.pairStepSubtitle;
@@ -81,16 +83,23 @@ class _SetupLinkPanelState extends State<SetupLinkPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const ExoMark(),
-        const SizedBox(height: ExoSpacing.xxl),
-        const ExoSectionLabel(SyncUserMessages.stepPair),
+        SetupPortalHeader(
+          stepLabel: SyncUserMessages.stepPair,
+          title: SyncUserMessages.pairStepTitle,
+          subtitle: subtitle,
+        ),
         const SizedBox(height: ExoSpacing.sm),
-        Text(SyncUserMessages.pairStepTitle, style: textTheme.headlineSmall),
-        const SizedBox(height: ExoSpacing.sm),
-        Text(subtitle, style: textTheme.bodyMedium),
+        Text(
+          SyncUserMessages.setupPairingHint,
+          style: muted,
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: ExoSpacing.xl),
         if (widget.error != null) ...[
-          ExoSyncStatusBanner(message: widget.error!, isError: true),
+          ExoStatusBanner(
+            kind: ExoStatusKind.error,
+            message: widget.error!,
+          ),
           const SizedBox(height: ExoSpacing.md),
         ],
         ExoSurface(
@@ -110,7 +119,6 @@ class _SetupLinkPanelState extends State<SetupLinkPanel> {
                 keyboardType: TextInputType.visiblePassword,
                 decoration: const InputDecoration(
                   hintText: SyncUserMessages.pastePairingFieldHint,
-                  border: OutlineInputBorder(),
                   isDense: true,
                 ),
               ),
@@ -131,26 +139,26 @@ class _SetupLinkPanelState extends State<SetupLinkPanel> {
                     : null,
               ),
               const SizedBox(height: ExoSpacing.sm),
-              OutlinedButton(
+              ExoSecondaryButton(
+                label: SyncUserMessages.scanInstead,
                 onPressed: widget.busy ? null : widget.onScan,
-                child: const Text(SyncUserMessages.scanInstead),
               ),
-              if (widget.onSkipDev != null) ...[
-                const SizedBox(height: ExoSpacing.md),
-                Text(
-                  SyncUserMessages.skipPairingDevHint,
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: ExoPalette.of(context).textMuted),
-                ),
-                const SizedBox(height: ExoSpacing.sm),
-                TextButton(
-                  onPressed: widget.busy ? null : () => widget.onSkipDev!(),
-                  child: const Text(SyncUserMessages.skipPairingDev),
-                ),
-              ],
             ],
           ),
         ),
+        if (widget.onSkipDev != null) ...[
+          const SizedBox(height: ExoSpacing.md),
+          Text(
+            SyncUserMessages.skipPairingDevHint,
+            style: muted,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: ExoSpacing.sm),
+          TextButton(
+            onPressed: widget.busy ? null : () => widget.onSkipDev!(),
+            child: const Text(SyncUserMessages.skipPairingDev),
+          ),
+        ],
         if (widget.onSignOut != null) ...[
           const SizedBox(height: ExoSpacing.lg),
           TextButton(

@@ -2,6 +2,15 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const crypto = require("crypto");
 
+function mockPool(conn) {
+  return {
+    execute: (sql, params) => conn.execute(sql, params),
+    async getConnection() {
+      return conn;
+    },
+  };
+}
+
 test("deleteAccount purges telemetry and records deletion audit", async () => {
   const accountId = "acc-test-001";
   const executed = [];
@@ -18,20 +27,16 @@ test("deleteAccount purges telemetry and records deletion audit", async () => {
     },
     async execute(sql, params = []) {
       executed.push({ sql: sql.replace(/\s+/g, " ").trim(), params });
+      if (/select .*from store_subscriptions/i.test(sql)) return [[]];
       return [{ affectedRows: 1 }];
     },
     release() {},
   };
 
-  const pool = {
-    async getConnection() {
-      return conn;
-    },
-  };
-
   delete require.cache[require.resolve("../lib/db")];
+  delete require.cache[require.resolve("../lib/storeDeletion")];
   delete require.cache[require.resolve("../lib/accountLifecycle")];
-  require("../lib/db").getPool = () => pool;
+  require("../lib/db").getPool = () => mockPool(conn);
 
   const { deleteAccount } = require("../lib/accountLifecycle");
   await deleteAccount(accountId);
@@ -79,6 +84,17 @@ test("deleteAccount purges telemetry and records deletion audit", async () => {
   assert.ok(pairingGrantsDelete);
   assert.deepEqual(pairingGrantsDelete.params, [accountId]);
 
+  const storeSubsDelete = executed.find(
+    (e) => typeof e === "object" && /delete from store_subscriptions/i.test(e.sql),
+  );
+  assert.equal(storeSubsDelete, undefined);
+
+  const storeRetire = executed.find(
+    (e) => typeof e === "object" && /update store_subscriptions/i.test(e.sql) && /retired/i.test(e.sql),
+  );
+  assert.ok(storeRetire);
+  assert.deepEqual(storeRetire.params, [accountId]);
+
   assert.ok(executed.includes("commit"));
 });
 
@@ -99,6 +115,7 @@ test("deleteAccount tolerates sync_changes/sync_pairing_grants not existing yet 
     async execute(sql, params = []) {
       const normalized = sql.replace(/\s+/g, " ").trim();
       executed.push({ sql: normalized, params });
+      if (/select .*from store_subscriptions/i.test(normalized)) return [[]];
       if (/delete from sync_changes|delete from sync_pairing_grants/i.test(normalized)) {
         const err = new Error("no such table");
         err.code = "ER_NO_SUCH_TABLE";
@@ -109,15 +126,10 @@ test("deleteAccount tolerates sync_changes/sync_pairing_grants not existing yet 
     release() {},
   };
 
-  const pool = {
-    async getConnection() {
-      return conn;
-    },
-  };
-
   delete require.cache[require.resolve("../lib/db")];
+  delete require.cache[require.resolve("../lib/storeDeletion")];
   delete require.cache[require.resolve("../lib/accountLifecycle")];
-  require("../lib/db").getPool = () => pool;
+  require("../lib/db").getPool = () => mockPool(conn);
 
   const { deleteAccount } = require("../lib/accountLifecycle");
   await deleteAccount(accountId);

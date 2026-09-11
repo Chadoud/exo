@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:exosites_mobile/design/exo_theme.dart';
 
-/// The theme the app actually ships.
+/// The theme the app actually ships (desktop light tokens).
 ///
-/// Widget tests must go through this instead of naming a theme directly —
-/// otherwise a screen can keep passing under dark tokens long after the
-/// product has flipped to light.
-ThemeData productTheme() => ExoTheme.light();
+/// Widget tests must go through this instead of naming a theme directly.
+ThemeData productTheme() => ExoTheme.product();

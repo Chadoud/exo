@@ -3,7 +3,7 @@ import { memoryOriginProviderKey } from "./memoryOrigin";
 import { MEMORY_SUB_TAB_STORAGE_KEY, MEMORY_LIST_EXPANDED_STORAGE_KEY } from "../constants";
 import { HIDDEN_INTERNAL_MEMORY_KEYS } from "./memoryInternalKeys";
 
-export type MemorySubTab = "overview" | "map";
+export type MemorySubTab = "overview" | "map" | "brief";
 
 /** Align with backend/signal_quality/constants.py — keep in sync when thresholds change. */
 export const AUTO_MEMORY_HIDDEN_NOISE_THRESHOLD = 0.35;
@@ -15,7 +15,7 @@ export function loadMemorySubTab(): MemorySubTab {
   try {
     const v = localStorage.getItem(MEMORY_SUB_TAB_STORAGE_KEY);
     if (v === "activity") return "overview";
-    if (v === "map" || v === "overview") return v;
+    if (v === "map" || v === "overview" || v === "brief") return v;
     if (v === "facts") return "overview";
   } catch {
     /* ignore */

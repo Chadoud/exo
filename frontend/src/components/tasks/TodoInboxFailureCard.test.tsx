@@ -108,7 +108,9 @@ describe("TodoInboxFailureCard", () => {
         </I18nProvider>,
       );
     });
-    expect(container.querySelector('[aria-pressed]')).toBeTruthy();
+    const checkbox = container.querySelector('[aria-pressed]');
+    expect(checkbox).toBeTruthy();
+    expect(checkbox?.className).toContain("rounded-full");
     expect(container.textContent).toContain("Retry in Chat");
   });
 

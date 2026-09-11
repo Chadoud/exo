@@ -93,6 +93,8 @@
     "package:win:unlimited": "cross-env EXO_UNLIMITED_BUILD=1 node scripts/package-app.js",
     "build:win:unlimited": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-win-unlimited.ps1",
     "package:mac": "node scripts/package-mac.js",
+    "package:mac:test": "cross-env EXO_TEST_BUILD=1 node scripts/package-mac.js",
+    "build:mac:test": "EXO_TEST_BUILD=1 bash scripts/build-mac-release.sh",
     "clean:installers": "node scripts/clean-dist-installer.cjs",
     "clean:installers:all": "node scripts/clean-dist-installer.cjs --all",
     "sync:gmail-oauth-release": "node scripts/sync-gmail-oauth-release-env.js",

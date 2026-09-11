@@ -63,7 +63,7 @@ class _InboxExpandCardState extends State<InboxExpandCard> {
                           children: [
                             Text(
                               widget.title,
-                              style: Theme.of(context).textTheme.titleSmall,
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
                             if (subtitle.isNotEmpty) ...[
                               const SizedBox(height: ExoSpacing.xs),

@@ -44,7 +44,7 @@ abstract final class ExoColors {
   static Color get errorSoft => error.withValues(alpha: 0.14);
 }
 
-/// Desktop `[data-theme="light"]` — the shipped phone palette.
+/// Desktop `[data-theme="light"]` — shipped phone palette (`ExoTheme.product()`).
 abstract final class ExoLightColors {
   static const bgPrimary = Color(0xFFF0F2F8);
   static const bgSecondary = Color(0xFFFFFFFF);

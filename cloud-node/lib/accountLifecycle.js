@@ -6,6 +6,9 @@ const crypto = require("crypto");
 const { getPool } = require("./db");
 const { getProfile } = require("./accounts");
 const { cancelSubscriptionsForAccountDeletion } = require("./stripeBilling");
+const { listStoreSubscriptions } = require("./storeDeletion");
+const { retireStoreSubscriptionsForDeletion } = require("./storeDeletion");
+const { exportStoreSubscriptionMeta } = require("./storeManage");
 
 /**
  * Export cloud-held metadata for an account (no plaintext sync payloads).
@@ -33,6 +36,7 @@ async function exportAccountData(accountId) {
     "SELECT provider, provider_subject, email_at_link, created_at FROM auth_identities WHERE account_id = ?",
     [accountId],
   );
+  const storeRows = await listStoreSubscriptions(pool, accountId);
 
   return {
     exported_at: new Date().toISOString(),
@@ -40,6 +44,7 @@ async function exportAccountData(accountId) {
     auth_identities: identities,
     sync_devices: devices,
     sync_blobs_metadata: blobMeta,
+    store_subscriptions: storeRows.map(exportStoreSubscriptionMeta),
     note: "Ciphertext blobs are included as metadata only; decryption requires the user's device master key.",
   };
 }
@@ -100,6 +105,11 @@ async function deleteAccount(accountId) {
     await cancelSubscriptionsForAccountDeletion(accountId);
   } catch (e) {
     console.error("[account-delete] subscription cancel step failed:", e?.message || e);
+  }
+  try {
+    await retireStoreSubscriptionsForDeletion(accountId, { pool });
+  } catch (e) {
+    console.error("[account-delete] store billing retire step failed:", e?.message || e);
   }
   const conn = await pool.getConnection();
   const accountHash = crypto.createHash("sha256").update(String(accountId)).digest("hex");

@@ -44,6 +44,13 @@ function syncCloudSubscription(userData, profile) {
       : null,
     subscriptionCancelAtPeriodEnd: Boolean(profile.subscription_cancel_at_period_end),
     plan: typeof profile.plan === "string" ? profile.plan : null,
+    subscriptionSource:
+      typeof profile.subscription_source === "string" ? profile.subscription_source : null,
+    subscriptionManagementUrl:
+      typeof profile.subscription_management?.url === "string"
+        ? profile.subscription_management.url
+        : null,
+    storeSubscriptionSurvivesDeletion: Boolean(profile.store_subscription_survives_deletion),
     lastSyncedAt: Date.now() / 1000,
   };
   const p = subscriptionPath(userData);
@@ -68,6 +75,9 @@ function getSubscriptionStatus(userData, nowMs = Date.now()) {
       subscriptionCancelAtPeriodEnd: false,
       subscriptionPlan: null,
       subscriptionEntitled: false,
+      subscriptionSource: null,
+      subscriptionManagementUrl: null,
+      storeSubscriptionSurvivesDeletion: false,
     };
   }
   const status = typeof record.subscriptionStatus === "string" ? record.subscriptionStatus : null;
@@ -82,6 +92,10 @@ function getSubscriptionStatus(userData, nowMs = Date.now()) {
     subscriptionCancelAtPeriodEnd: Boolean(record.subscriptionCancelAtPeriodEnd),
     subscriptionPlan: typeof record.plan === "string" ? record.plan : null,
     subscriptionEntitled: active && withinTrust,
+    subscriptionSource: typeof record.subscriptionSource === "string" ? record.subscriptionSource : null,
+    subscriptionManagementUrl:
+      typeof record.subscriptionManagementUrl === "string" ? record.subscriptionManagementUrl : null,
+    storeSubscriptionSurvivesDeletion: Boolean(record.storeSubscriptionSurvivesDeletion),
   };
 }
 

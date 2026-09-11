@@ -17,7 +17,9 @@ const sortCredentialsRouter = require("./routes/sortCredentials");
 const licensesRouter = require("./routes/licenses");
 const whatsappWebhookRouter = require("./routes/whatsappWebhook");
 const { createBillingRouter, createStripeWebhookRouter } = require("./routes/billing");
+const { createAppleWebhookRouter, createPlayWebhookRouter } = require("./routes/storeWebhooks");
 const { startSubscriptionReconciliation } = require("./lib/reconcileSubscriptions");
+const { startStoreSubscriptionReconciliation, storeLifecycleReady } = require("./lib/reconcileStoreSubscriptions");
 const { createAdminRouter } = require("./routes/admin");
 const whatsappMeRouter = require("./routes/whatsappMe");
 const { router: whatsappOAuthCallbackRouter } = require("./routes/whatsappOAuthCallback");
@@ -93,6 +95,9 @@ app.use(
   createStripeWebhookRouter(),
 );
 
+app.use("/v1/webhooks/app-store", express.json({ limit: "512kb" }), createAppleWebhookRouter());
+app.use("/v1/webhooks/play", express.json({ limit: "512kb" }), createPlayWebhookRouter());
+
 app.use(express.json({ limit: "256kb" }));
 app.use(metricsMiddleware);
 
@@ -114,6 +119,8 @@ app.get("/health", async (_req, res) => {
         product_analytics: await productAnalyticsReady(pool),
         whatsapp_webhooks: await whatsappWebhookReady(pool),
         billing: config.stripe.enabled && Boolean(config.stripe.secretKey),
+        store_billing: process.env.STORE_BILLING_ENABLED === "1",
+        store_lifecycle: storeLifecycleReady(),
         sort_credentials: Boolean(
           sortLlm.mockToken || sortLlm.masterKey || sortLlm.allowMasterDelegation,
         ),
@@ -158,4 +165,5 @@ app.listen(config.port, () => {
   console.log(`[exo-cloud-api] listening on port ${config.port}`);
   // Nightly self-heal for missed Stripe webhooks (billing runbook).
   startSubscriptionReconciliation();
+  startStoreSubscriptionReconciliation();
 });

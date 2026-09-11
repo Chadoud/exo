@@ -10,6 +10,7 @@ const {
   resolveBackendInSlice,
   fileOutputMatches,
 } = require("./backend-onedir.cjs");
+const { isTestDesktopChannel } = require("./desktopChannel.cjs");
 
 /** @typedef {'x64' | 'arm64'} MacArch */
 
@@ -57,12 +58,18 @@ function otherPyInstallerTargetArch() {
  * @returns {string}
  */
 function dmgArtifactName(env = process.env) {
-  if (isUniversalBuild(env)) return "Exo-universal.${ext}";
-  return `Exo-${hostNativeArch()}.\${ext}`;
+  const prefix = isTestDesktopChannel(env) ? "Exo-Test" : "Exo";
+  if (isUniversalBuild(env)) return `${prefix}-universal.\${ext}`;
+  return `${prefix}-${hostNativeArch()}.\${ext}`;
 }
 
-function macSharedExtraResources() {
-  return [
+function testChannelBuilderOverrides(env = process.env) {
+  if (!isTestDesktopChannel(env)) return {};
+  return { appId: "com.exo.app.test", productName: "Exo Test" };
+}
+
+function macSharedExtraResources(env = process.env) {
+  const rows = [
     { from: "electron/preload.js", to: "preload.js" },
     { from: "electron/preload-setup.js", to: "preload-setup.js" },
     {
@@ -76,6 +83,13 @@ function macSharedExtraResources() {
       filter: ["**/*"],
     },
   ];
+  if (isTestDesktopChannel(env)) {
+    rows.push({
+      from: "electron/resources/desktop-channel.json",
+      to: "desktop-channel.json",
+    });
+  }
+  return rows;
 }
 
 /**
@@ -118,6 +132,7 @@ function electronBuilderConfig(env = process.env) {
   const { updaterAsarFileGlobs } = require("./updater-packaging.cjs");
   return {
     ...baseBuild,
+    ...testChannelBuilderOverrides(env),
     files: [...(baseBuild.files || []), ...updaterAsarFileGlobs()],
     dmg: {
       ...baseBuild.dmg,
@@ -125,7 +140,7 @@ function electronBuilderConfig(env = process.env) {
     },
     mac: {
       ...baseBuild.mac,
-      extraResources: [...macSharedExtraResources(), ...macBackendExtraResources(env)],
+      extraResources: [...macSharedExtraResources(env), ...macBackendExtraResources(env)],
       x64ArchFiles: UNIVERSAL_X64_ARCH_FILES,
       // Slices are already signed by codesignMacOnedirSlice. electron-builder's
       // walk hits Python.framework/Python ("bundle format is ambiguous").
@@ -234,7 +249,7 @@ function verifyBackendSlices(resourcesDir, options = {}) {
  *
  * @param {string} distDir
  */
-function copyPrimaryDmgAlias(distDir) {
+function copyPrimaryDmgAlias(distDir, env = process.env) {
   if (!fs.existsSync(distDir)) {
     throw new Error("dist-installer/ missing");
   }
@@ -259,8 +274,9 @@ function copyPrimaryDmgAlias(distDir) {
   const newest = [...dmgs].sort((a, b) => b.mtime - a.mtime)[0];
   const primary = universal || native || newest;
 
-  fs.copyFileSync(primary.filePath, path.join(distDir, "Exo.dmg"));
-  console.log(`[mac-packaging] Exo.dmg ← ${primary.name}`);
+  const alias = isTestDesktopChannel(env) ? "Exo-Test.dmg" : "Exo.dmg";
+  fs.copyFileSync(primary.filePath, path.join(distDir, alias));
+  console.log(`[mac-packaging] ${alias} ← ${primary.name}`);
 }
 
 module.exports = {
@@ -270,6 +286,7 @@ module.exports = {
   packagingMode,
   otherPyInstallerTargetArch,
   dmgArtifactName,
+  testChannelBuilderOverrides,
   UNIVERSAL_X64_ARCH_FILES,
   MAC_BACKEND_SIGN_IGNORE,
   macSharedExtraResources,

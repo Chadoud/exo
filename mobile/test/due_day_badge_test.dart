@@ -4,6 +4,8 @@ import 'package:exosites_mobile/features/tasks/task_due_label.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/product_theme.dart';
+
 void main() {
   final now = DateTime(2026, 9, 9, 15);
 
@@ -51,8 +53,9 @@ void main() {
 
   testWidgets('DueDayBadge paints the day count', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
+      MaterialApp(
+        theme: productTheme(),
+        home: const Scaffold(
           body: Row(
             children: [
               DueDayBadge(days: 3),

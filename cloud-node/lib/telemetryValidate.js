@@ -5,6 +5,7 @@ const FORBIDDEN_PROP_KEYS = new Set(
     "path", "paths", "filepath", "file_path", "filePath", "filename", "file_name",
     "folder", "folder_path", "output_dir", "outputDir", "dest_path",
     "email", "password", "token", "license_key", "licenseKey", "content", "prompt", "response",
+    "purchaseToken", "jws", "receipt", "signed_transaction", "signed_jws", "work_role",
   ].map((k) => k.toLowerCase()),
 );
 

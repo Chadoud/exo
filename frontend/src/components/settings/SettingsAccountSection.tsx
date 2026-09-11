@@ -10,6 +10,11 @@ import {
   accountAvatarInitials,
   accountFullName,
 } from "../../utils/accountProfileDisplay";
+import {
+  CONFIRM_DIALOG_DANGER_TONE_CLASS,
+  CONFIRM_DIALOG_FOOTER_BTN_CLASS,
+  DANGER_INLINE_CLASS,
+} from "../../utils/styles";
 
 interface SettingsAccountSectionProps {
   entitlement: EntitlementStatus | null;
@@ -241,6 +246,8 @@ export default function SettingsAccountSection({
           setBusy={setBusy}
           telemetryOptIn={telemetryOptIn}
           uiLocale={uiLocale}
+          storeSubscriptionSurvivesDeletion={Boolean(entitlement.storeSubscriptionSurvivesDeletion)}
+          storeManagementUrl={entitlement.subscriptionManagementUrl ?? null}
         />
       </div>
     </div>
@@ -253,12 +260,16 @@ function CloudDataRightsControls({
   onSessionChange,
   telemetryOptIn,
   uiLocale,
+  storeSubscriptionSurvivesDeletion,
+  storeManagementUrl,
 }: {
   busy: boolean;
   setBusy: (v: boolean) => void;
   onSessionChange: () => void;
   telemetryOptIn?: boolean;
   uiLocale?: string;
+  storeSubscriptionSurvivesDeletion: boolean;
+  storeManagementUrl: string | null;
 }) {
   const { t } = useI18n();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -322,6 +333,20 @@ function CloudDataRightsControls({
     <div className="space-y-2 pt-2 border-t border-border-soft">
       <p className="text-xs font-medium text-text-primary">{t("settings.accountDataRightsTitle")}</p>
       <p className="text-2xs text-muted leading-relaxed">{t("settings.accountDataRightsHint")}</p>
+      {storeSubscriptionSurvivesDeletion ? (
+        <p className="text-2xs text-warning leading-relaxed">
+          {t("settings.accountDeleteStoreWarning")}{" "}
+          {storeManagementUrl ? (
+            <button
+              type="button"
+              className="underline underline-offset-2"
+              onClick={() => void window.electronAPI?.openExternal?.(storeManagementUrl)}
+            >
+              {t("settings.accountDeleteStoreManage")}
+            </button>
+          ) : null}
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -334,11 +359,12 @@ function CloudDataRightsControls({
         <button
           type="button"
           disabled={busy}
+          aria-live="polite"
           onClick={() => void deleteAccount()}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40 ${
+          className={`disabled:opacity-40 ${
             confirmDelete
-              ? "bg-red-600 text-white hover:bg-red-500"
-              : "border border-red-500/40 text-red-400 hover:bg-red-500/10"
+              ? DANGER_INLINE_CLASS
+              : `${CONFIRM_DIALOG_FOOTER_BTN_CLASS} ${CONFIRM_DIALOG_DANGER_TONE_CLASS}`
           }`}
         >
           {confirmDelete ? t("settings.accountDeleteConfirm") : t("settings.accountDelete")}

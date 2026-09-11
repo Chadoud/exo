@@ -13,6 +13,10 @@ Threat model: stolen phone, malicious QR, XSS on unrelated sites is out of scope
 | QR master key | WARN (by design) | Treat QR like a password; desktop shows only when user starts pairing |
 | Refresh on 401 | OK | Single-flight `/auth/refresh`; failed refresh clears session |
 | Crash ingest | OK | Opt-in; truncated fields; no paths/prompts |
+| Store IAP secrets | OK | None in the Flutter binary; Apple/Play keys stay in cloud-node env |
+| Store receipt verify | OK | Phone sends JWS / Play token once; cloud live-fetches; never log `purchaseToken` / JWS |
+| EventKit calendars | OK | Read-only; prompt after explicit tap; count only over the channel; not uploaded |
+| First-run / pair dev skip | OK | `resolveDevSkip` is false in production **release**; dart-defines must not land in `mobile/env/production.json` |
 
 ## Residual risks
 

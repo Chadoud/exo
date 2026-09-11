@@ -4,7 +4,8 @@ import type { UiLocale } from "../i18n/locale";
 import { translate } from "../i18n/translate";
 import { modShortcutLabel } from "../utils/platform";
 import { getPrimarySettingsSectionDomId } from "../utils/settingsNav";
-import { queueTodoSubTab } from "../utils/deferredPanelActions";
+import { queueMemorySubTab, queueTodoSubTab } from "../utils/deferredPanelActions";
+import { persistStartupSubTab } from "../utils/startupUi";
 import type { MainNavTab } from "./useMainNavItems";
 
 export function useCommandPaletteCommands(
@@ -69,6 +70,16 @@ export function useCommandPaletteCommands(
         keywords: "settings preferences models ocr output vision",
         shortcut: `${mod}+7`,
         run: () => (openSettingsHome ?? (() => requestTab("settings")))(),
+      },
+      {
+        id: "tab-brief",
+        label: translate(uiLocale, "memories.tabs.brief"),
+        keywords: "briefing action start kickoff digest calendar weather news morning",
+        run: () => {
+          persistStartupSubTab("today");
+          queueMemorySubTab("brief");
+          requestTab("memories");
+        },
       },
       {
         id: "tab-capture",

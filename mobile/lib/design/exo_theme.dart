@@ -14,7 +14,16 @@ abstract final class ExoTheme {
   /// Text fields and other inset controls.
   static const double radiusInput = 10;
 
-  /// The app default.
+  /// Shipped mobile + widget-test theme — desktop `[data-theme="light"]`.
+  static ThemeData product() => light();
+
+  /// Status bar icons on boot screens — mirrors [AppBarTheme.systemOverlayStyle].
+  static SystemUiOverlayStyle systemOverlayFor(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? SystemUiOverlayStyle.light
+        : SystemUiOverlayStyle.dark;
+  }
+
   static ThemeData light() {
     return _build(
       brightness: Brightness.light,
@@ -49,7 +58,7 @@ abstract final class ExoTheme {
       accent: ExoColors.accent,
       primary: ExoColors.brandSecondary,
       appBarInk: ExoColors.selected,
-      navIndicator: const Color(0x1FFFFFFF),
+      navIndicator: ExoColors.buttonPrimary,
       snackBg: ExoColors.bgSecondary,
       snackFg: ExoColors.textPrimary,
       error: ExoColors.error,
@@ -274,6 +283,8 @@ abstract final class ExoTheme {
         color: accent,
         circularTrackColor: border,
       ),
+      // Desktop loads Inter from the web; mobile uses the platform sans at the
+      // same size ramp (SF Pro / Roboto) — do not claim Inter without bundling.
       textTheme: exoTextTheme(
         textPrimary: textPrimary,
         textSecondary: palette.textSecondary,

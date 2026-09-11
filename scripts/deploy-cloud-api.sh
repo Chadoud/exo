@@ -106,6 +106,8 @@ run_ssh "cd ${REMOTE_PATH} && node scripts/apply-migration-026.js"
 run_ssh "cd ${REMOTE_PATH} && node scripts/apply-migration-027.js"
 run_ssh "cd ${REMOTE_PATH} && node scripts/apply-migration-028.js"
 run_ssh "cd ${REMOTE_PATH} && node scripts/apply-migration-029.js"
+run_ssh "cd ${REMOTE_PATH} && node scripts/apply-migration-030.js"
+run_ssh "cd ${REMOTE_PATH} && node scripts/apply-migration-031.js"
 if [[ "${TRIAL_GRANDFATHER_EXPIRED:-0}" == "1" ]]; then
   echo -e "${YELLOW}Grandfathering expired trials (one-time — TRIAL_GRANDFATHER_EXPIRED=1)…${NC}"
   run_ssh "cd ${REMOTE_PATH} && TRIAL_GRANDFATHER_EXPIRED=1 node scripts/apply-migration-003.js"

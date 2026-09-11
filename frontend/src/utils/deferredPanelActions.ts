@@ -1,11 +1,13 @@
 import {
   MEMORY_HIGHLIGHT_SESSION_KEY,
+  MEMORY_NAV_QUEUE_SESSION_KEY,
   MEMORY_NEEDS_REVIEW_SESSION_KEY,
   OPEN_MEETING_MODAL_SESSION_KEY,
   OPEN_WHATSAPP_SETUP_SESSION_KEY,
   START_ACTIVITY_CAPTURE_SESSION_KEY,
   TODO_NAV_QUEUE_SESSION_KEY,
 } from "../constants";
+import type { MemorySubTab } from "./memoryUi";
 import type { TodoSubTab } from "./todoUi";
 import {
   consumeChatDraft,
@@ -56,6 +58,29 @@ export function consumeHighlightMemory(): number | null {
   } catch {
     return null;
   }
+}
+
+/** Navigate to a Memory sub-tab once the workspace is ready. */
+export function queueMemorySubTab(subTab: MemorySubTab): void {
+  try {
+    sessionStorage.setItem(MEMORY_NAV_QUEUE_SESSION_KEY, subTab);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Returns queued Memory sub-tab once; clears the flag. */
+export function consumeQueuedMemorySubTab(): MemorySubTab | null {
+  try {
+    const value = sessionStorage.getItem(MEMORY_NAV_QUEUE_SESSION_KEY);
+    sessionStorage.removeItem(MEMORY_NAV_QUEUE_SESSION_KEY);
+    if (value === "overview" || value === "map" || value === "brief") {
+      return value;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }
 
 /** Navigate to To Do sub-tab once the workspace is ready. */

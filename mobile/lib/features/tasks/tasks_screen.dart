@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/mobile_sync_config.dart';
 import '../../design/exo_spacing.dart';
+import '../../design/exo_status_banner.dart';
 import '../../design/exo_widgets.dart';
 import '../../sync/sync_collection_scaffold.dart';
 import '../../sync/sync_list_empty.dart';
@@ -354,7 +355,8 @@ class _TasksScreenState extends State<TasksScreen> {
               ExoSpacing.lg,
               0,
             ),
-            child: ExoSyncStatusBanner(
+            child: ExoStatusBanner(
+              kind: ExoStatusKind.info,
               message: DueReminderCopy.of(context).taskGone,
             ),
           ),
@@ -382,19 +384,10 @@ class _TasksScreenState extends State<TasksScreen> {
     final title = _filter == TaskListFilter.done
         ? SyncUserMessages.tasksDoneEmptyTitle
         : SyncUserMessages.tasksOpenEmptyTitle;
-    return Padding(
-      padding: const EdgeInsets.all(ExoSpacing.xl),
-      child: Column(
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: ExoSpacing.sm),
-          Text(
-            SyncUserMessages.tasksFilterEmptySubtitle,
-            style: Theme.of(context).textTheme.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+    return ExoEmptyState(
+      title: title,
+      subtitle: SyncUserMessages.tasksFilterEmptySubtitle,
+      icon: Icons.task_alt_outlined,
     );
   }
 

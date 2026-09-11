@@ -1,5 +1,6 @@
 /**
  * MemoriesPanel — Memory tab; Overview | Map live in the sidebar under Memory.
+ * Brief is a sibling sidebar child routed to StartupPanel, not this file.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
@@ -66,8 +67,8 @@ interface Props {
   onHighlightMemory?: (memoryId: number) => void;
   proAllowed?: boolean;
   onUpgrade?: () => void;
-  subTab: MemorySubTab;
-  /** Parent Memory nav: Overview, Activity, and Map on one scrollable page. */
+  subTab: Exclude<MemorySubTab, "brief">;
+  /** Parent Memory nav: Overview and Map on one scrollable page. */
   showAllSections?: boolean;
   /** Main column scroll root for scroll-spy when `showAllSections`. */
   scrollRootRef?: RefObject<HTMLElement | null>;

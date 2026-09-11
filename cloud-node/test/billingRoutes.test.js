@@ -123,6 +123,31 @@ test("checkout-session returns 409 when a live subscription exists", async () =>
   }
 });
 
+test("checkout-session returns 409 when a store entitlement exists", async () => {
+  const account = freshAccount();
+  const pool = createBillingMockPool();
+  pool.addAccount(account, "user@test.ch");
+  pool.state.entitlements.push({
+    account_id: account,
+    feature: "sort",
+    source: "app_store",
+    active: 1,
+    extra: "{}",
+  });
+  const server = await listenApp(buildApp({ pool, stripe: createMockStripe() }));
+  try {
+    const res = await server.fetch("/v1/billing/checkout-session", {
+      method: "POST",
+      headers: authHeaders(account),
+      body: JSON.stringify({ interval: "monthly" }),
+    });
+    assert.equal(res.status, 409);
+    assert.equal((await res.json()).detail, "already_subscribed");
+  } finally {
+    await server.close();
+  }
+});
+
 test("portal-session returns 404 before any subscription exists", async () => {
   const account = freshAccount();
   const pool = createBillingMockPool();

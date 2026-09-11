@@ -82,7 +82,17 @@ def _gmail_search(params: dict[str, Any]) -> dict[str, Any]:
         msg_res = httpx.get(
             f"{_GMAIL_BASE}/messages/{meta['id']}",
             headers=_gmail_headers(),
-            params={"format": "metadata", "metadataHeaders": ["Subject", "From", "Date"]},
+            params={
+                "format": "metadata",
+                "metadataHeaders": [
+                    "Subject",
+                    "From",
+                    "Date",
+                    "List-Unsubscribe",
+                    "List-Id",
+                    "Precedence",
+                ],
+            },
             timeout=10,
         )
         if msg_res.status_code != 200:

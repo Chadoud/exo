@@ -2,6 +2,8 @@ import type { EntitlementStatus } from "../../api";
 import { useI18n } from "../../i18n/I18nContext";
 import { useBillingActions, billingErrorKey, hasBillingIpc } from "../../hooks/useBillingActions";
 import { useBillingConfig } from "../../hooks/useBillingConfig";
+import { isStoreSubscriptionSource } from "../../utils/subscriptionManagement";
+import { PRIMARY_BTN_CLASS, SECONDARY_BTN_CLASS } from "../../utils/styles";
 
 /** The cloud API contract is ISO 8601 (see accounts.getProfile). */
 function formatPeriodEnd(iso: string | null | undefined): string {
@@ -29,7 +31,8 @@ export default function SettingsBillingStatusCard({ entitlement }: SettingsBilli
   const billing = useBillingActions();
 
   const status = entitlement?.subscriptionStatus ?? null;
-  const hasSubscription = Boolean(status);
+  const storeManaged = isStoreSubscriptionSource(entitlement?.subscriptionSource);
+  const hasSubscription = Boolean(status) || storeManaged;
   // No IPC (web build), billing switched off, and nothing to manage → no card.
   if (!hasBillingIpc() || (!config.enabled && !hasSubscription)) return null;
   if (entitlement?.licensed || entitlement?.unlimitedBuild) return null;
@@ -78,18 +81,29 @@ export default function SettingsBillingStatusCard({ entitlement }: SettingsBilli
         {hasSubscription ? (
           <button
             type="button"
-            disabled={billing.busy === "portal"}
-            onClick={() => void billing.openPortal()}
-            className="px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-text-primary hover:border-accent-line disabled:opacity-40 disabled:pointer-events-none"
+            disabled={storeManaged ? false : billing.busy === "portal"}
+            onClick={() => {
+              if (storeManaged) {
+                const url = entitlement?.subscriptionManagementUrl;
+                if (url) void window.electronAPI?.openExternal?.(url);
+                return;
+              }
+              void billing.openPortal();
+            }}
+            className={`${SECONDARY_BTN_CLASS} disabled:opacity-40 disabled:pointer-events-none`}
           >
-            {billing.busy === "portal" ? t("billing.openingPortal") : t("billing.manageBilling")}
+            {storeManaged
+              ? t("billing.manageStore")
+              : billing.busy === "portal"
+                ? t("billing.openingPortal")
+                : t("billing.manageBilling")}
           </button>
         ) : (
           <button
             type="button"
             disabled={billing.busy === "checkout" || !config.enabled}
             onClick={() => void billing.checkout("monthly")}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-button-primary text-white hover:bg-button-hover disabled:opacity-40 disabled:pointer-events-none"
+            className={`${PRIMARY_BTN_CLASS} disabled:opacity-40 disabled:pointer-events-none`}
           >
             {billing.busy === "checkout"
               ? t("billing.openingCheckout")
@@ -103,18 +117,20 @@ export default function SettingsBillingStatusCard({ entitlement }: SettingsBilli
             type="button"
             disabled={billing.busy === "checkout" || !config.enabled}
             onClick={() => void billing.checkout("annual")}
-            className="px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-text-primary hover:border-accent-line disabled:opacity-40 disabled:pointer-events-none"
+            className={`${SECONDARY_BTN_CLASS} disabled:opacity-40 disabled:pointer-events-none`}
           >
             {t("billing.subscribeAnnual", { price: config.priceAnnual })}
           </button>
         )}
       </div>
       {billing.errorCode ? (
-        <p className="text-xs text-warning" role="status">
+        <p className="rounded-lg border border-warning-line bg-warning-soft px-3 py-2 text-xs text-warning" role="status">
           {t(billingErrorKey(billing.errorCode))}
         </p>
       ) : (
-        <p className="text-2xs text-muted leading-relaxed">{t("billing.manageBillingHint")}</p>
+        <p className="text-2xs text-muted leading-relaxed">
+          {t(storeManaged ? "billing.manageStoreHint" : "billing.manageBillingHint")}
+        </p>
       )}
     </div>
   );

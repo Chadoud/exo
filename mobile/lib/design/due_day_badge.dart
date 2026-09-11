@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'exo_colors.dart';
+import 'exo_palette.dart';
+import 'exo_spacing.dart';
+import 'exo_theme.dart';
 
-/// Top-right day count: primary when due is today or later, red when overdue.
+/// Top-right day count: outline when due is today or later, filled error when overdue.
 class DueDayBadge extends StatelessWidget {
   const DueDayBadge({super.key, required this.days, this.french = false});
 
@@ -31,17 +33,23 @@ class DueDayBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = overdue ? ExoLightColors.error : ExoLightColors.buttonPrimary;
-    const fg = ExoLightColors.onButton;
+    final palette = ExoPalette.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final bg = overdue ? scheme.error : Colors.transparent;
+    final fg = overdue ? scheme.onError : scheme.onSurface;
     return Semantics(
       label: semanticLabel,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(ExoTheme.radiusInput),
+          border: overdue ? null : Border.all(color: palette.border),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+          padding: const EdgeInsets.symmetric(
+            horizontal: ExoSpacing.sm,
+            vertical: ExoSpacing.xs,
+          ),
           child: Text(
             _count,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(

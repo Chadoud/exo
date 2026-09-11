@@ -85,6 +85,56 @@ test("sync push and pull over HTTP", async () => {
   }
 });
 
+test("redeem and register return 402 when store checkout is required; blobs stay open", async () => {
+  process.env.STORE_BILLING_ENABLED = "1";
+  const checkout = require("../lib/storeCheckout");
+  const original = checkout.storeCheckoutRequiredForAccount;
+  checkout.storeCheckoutRequiredForAccount = async () => true;
+  const mock = createSyncMockPool();
+  const app = mountSyncRouterWithMock(mock);
+  const server = await listenApp(app);
+  try {
+    const redeem = await server.fetch("/v1/sync/pairing/redeem", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ grant_token: "g", key_fingerprint: "fp" }),
+    });
+    assert.equal(redeem.status, 402);
+    assert.equal((await redeem.json()).detail, "store_checkout_required");
+
+    const register = await server.fetch("/v1/sync/devices/register", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ device_id: "dev-1", name: "Phone", platform: "ios" }),
+    });
+    assert.equal(register.status, 402);
+
+    const push = await server.fetch("/v1/sync/blobs/push", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        blobs: [
+          {
+            collection: "conversations",
+            record_id: "conv-gate",
+            device_id: "desktop",
+            logical_clock: 1,
+            updated_at: "2026-06-16T12:00:00Z",
+            schema_version: 2,
+            ciphertext: "enc",
+            content_hash: "b".repeat(64),
+          },
+        ],
+      }),
+    });
+    assert.equal(push.status, 200);
+  } finally {
+    checkout.storeCheckoutRequiredForAccount = original;
+    process.env.STORE_BILLING_ENABLED = "0";
+    await server.close();
+  }
+});
+
 test("sync push rejects batches over 500", async () => {
   const mock = createSyncMockPool();
   const app = mountSyncRouterWithMock(mock);

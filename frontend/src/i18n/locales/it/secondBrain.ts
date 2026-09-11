@@ -29,6 +29,7 @@ export const itSecondBrainLocaleSlice = {
       facts: "Panoramica",
       activity: "Attività",
       map: "Mappa",
+      brief: "Briefing",
       overviewSubtitle: "Un quadro rapido di ciò che ricorda il tuo assistente.",
       activitySubtitle:
         "Riassunti dello schermo su opt-in — le immagini vengono eliminate dopo l’elaborazione.",
@@ -168,9 +169,9 @@ export const itSecondBrainLocaleSlice = {
     systemFactBadge: "Impostazione app",
     systemFacts: {
       startupBriefingGranted:
-        "Briefing giornaliero all’avvio attivo — l’assistente può avviare il riepilogo Oggi all’inizio di una sessione.",
+        "Il briefing parlato è attivo — l’assistente può avviarlo all’inizio di una sessione.",
       startupBriefingDeclined:
-        "Briefing giornaliero all’avvio disattivo — hai chiesto di non eseguirlo automaticamente.",
+        "Il briefing parlato è disattivo — hai chiesto di non eseguirlo automaticamente.",
     },
     categories: {
       identity: "Identità",
@@ -184,7 +185,7 @@ export const itSecondBrainLocaleSlice = {
   },
   tasks: {
     title: "Oggi",
-    subtitle: "Briefing, azioni e sync account — in un unico posto.",
+    subtitle: "Azioni e sync account — in un unico posto.",
     syncAccounts: "Sync",
     syncDetails: "Porta mail e calendario in questo elenco",
     toastNone: "Nessun nuovo elemento dai tuoi account",
@@ -430,6 +431,32 @@ export const itSecondBrainLocaleSlice = {
     toastGenerateFailed: "Impossibile generare il riepilogo",
     newSuggestions: "{n} nuovi suggerimenti",
     openTasksToReview: "Apri Attività per rivedere.",
+  },
+  startup: {
+    todaySubtitle: "Il riepilogo scritto di oggi.",
+    includeSubtitle: "Scegli cosa dice Exo all'avvio. Puoi cambiarlo in qualsiasi momento.",
+    includeLead: "Attiva solo ciò che Exo deve dire nel briefing parlato.",
+    sectionCalendar: "Calendario",
+    sectionCalendarHint: "Gli incontri nel briefing parlato.",
+    sectionMail: "Mail",
+    sectionMailHint: "Le mail importanti non lette nel briefing parlato.",
+    sectionNews: "Notizie",
+    sectionNewsHint: "Un breve punto sui titoli di oggi.",
+    sectionWeather: "Meteo",
+    sectionWeatherHint: "Il meteo di oggi per la tua città.",
+    cityLabel: "Città",
+    cityPlaceholder: "Ginevra",
+    offerTitle: "Quando apro Exo",
+    offerAsk: "Chiedi ogni volta",
+    offerAlways: "Avvia sempre",
+    offerNever: "Non avviare automaticamente",
+    saveFailed: "Impossibile salvare cosa includere.",
+    offline: "Collega il servizio assistant per vedere il briefing.",
+    offlineDigest: "Il riepilogo scritto compare quando sei collegato.",
+    loadFailed: "Impossibile caricare cosa includere.",
+    retry: "Riprova",
+    loadingInclude: "Caricamento di cosa includere…",
+    openTodo: "Apri To Do",
   },
   activity: {
     loadFailed: "Impossibile caricare la cronologia attività",

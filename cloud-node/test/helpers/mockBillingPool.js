@@ -12,6 +12,12 @@ function createBillingMockPool() {
     events: {},
     /** @type {Array<{ admin_account_id: string; action: string; target_account_id: string; details: string }>} */
     adminAudit: [],
+    /** @type {Record<string, { display_name: string | null; locale: string; work_role: string | null }>} */
+    profiles: {},
+    /** @type {Array<{ account_id: string | null; platform: string; store_original_id: string; product_id: string; status: string; environment: string; retired?: number; current_period_end?: Date | string | null; auto_renew?: number; updated_at?: number }>} */
+    storeSubscriptions: [],
+    /** @type {Record<string, { provider: string; event_type: string | null; account_id: string | null }>} */
+    storeEvents: {},
     nextSubId: 1,
     updateSeq: 1,
   };
@@ -30,8 +36,12 @@ function createBillingMockPool() {
       last_name: null,
       created_at: "2026-01-01T00:00:00.000Z",
       trial_ends_at: null,
+      store_billing_exempt: 0,
       ...opts,
     };
+    if (!state.profiles[id]) {
+      state.profiles[id] = { display_name: null, locale: "en", work_role: null };
+    }
   }
 
   function addProductAdmin(id) {
@@ -57,21 +67,168 @@ function createBillingMockPool() {
       ];
     }
 
-    if (q.startsWith("select id, email, first_name, last_name, created_at, trial_ends_at from accounts")) {
+    if (
+      q.startsWith("select id, email, first_name, last_name, created_at, trial_ends_at, store_billing_exempt from accounts") ||
+      q.startsWith("select id, email, first_name, last_name, created_at, trial_ends_at from accounts")
+    ) {
       const [id] = params;
       const row = state.accounts[id];
       return [row && row.is_active ? [row] : []];
     }
 
-    if (q.startsWith("select display_name, locale from user_profiles")) {
-      return [[]];
+    if (q.startsWith("select store_billing_exempt from accounts")) {
+      const [id] = params;
+      const row = state.accounts[id];
+      return [row && row.is_active ? [{ store_billing_exempt: row.store_billing_exempt || 0 }] : []];
+    }
+
+    if (q.startsWith("select display_name, locale, work_role from user_profiles") || q.startsWith("select display_name, locale from user_profiles")) {
+      const [id] = params;
+      const profile = state.profiles[id];
+      return [profile ? [profile] : []];
+    }
+
+    if (q.startsWith("update user_profiles set")) {
+      const id = params[params.length - 1];
+      const profile = state.profiles[id] || { display_name: null, locale: "en", work_role: null };
+      if (q.includes("display_name = ?") && q.includes("work_role = ?")) {
+        profile.display_name = params[0];
+        profile.work_role = params[1];
+      } else if (q.includes("display_name = ?")) {
+        profile.display_name = params[0];
+      } else if (q.includes("work_role = ?")) {
+        profile.work_role = params[0];
+      }
+      state.profiles[id] = profile;
+      return [{ affectedRows: 1 }];
+    }
+
+    if (q.startsWith("select 1 from entitlements")) {
+      const [accountId] = params;
+      const hit = state.entitlements.find(
+        (e) =>
+          e.account_id === accountId &&
+          e.feature === "sort" &&
+          Number(e.active) === 1 &&
+          (e.source === "app_store" || e.source === "play"),
+      );
+      return [hit ? [{ 1: 1 }] : []];
+    }
+
+    if (q.startsWith("select 1 from subscriptions")) {
+      const [accountId] = params;
+      const hit = state.subscriptions.find((s) => s.account_id === accountId && ENTITLED.has(s.status));
+      return [hit ? [{ 1: 1 }] : []];
+    }
+
+    if (
+      q.startsWith("select account_id from store_subscriptions") ||
+      q.startsWith("select account_id, retired from store_subscriptions")
+    ) {
+      const [platform, originalId] = params;
+      const row = state.storeSubscriptions.find(
+        (s) => s.platform === platform && s.store_original_id === originalId,
+      );
+      return [row ? [{ account_id: row.account_id, retired: row.retired || 0 }] : []];
+    }
+
+    if (q.startsWith("select platform, product_id, status, current_period_end, auto_renew, retired")) {
+      const [accountId] = params;
+      const rows = state.storeSubscriptions
+        .filter((s) => s.account_id === accountId && !s.retired)
+        .sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
+      return [rows];
+    }
+
+    if (q.startsWith("select platform, store_original_id, product_id, status, current_period_end, auto_renew, retired")) {
+      const [accountId] = params;
+      return [state.storeSubscriptions.filter((s) => s.account_id === accountId && !s.retired)];
+    }
+
+    if (q.startsWith("select account_id, platform, store_original_id, status, environment from store_subscriptions")) {
+      return [
+        state.storeSubscriptions
+          .filter((s) => s.account_id && !s.retired)
+          .map((s) => ({
+            account_id: s.account_id,
+            platform: s.platform,
+            store_original_id: s.store_original_id,
+            status: s.status,
+            environment: s.environment,
+          })),
+      ];
+    }
+
+    if (q.startsWith("insert ignore into store_events_processed")) {
+      const [eventId, provider, eventType, accountId] = params;
+      if (state.storeEvents[eventId]) return [{ affectedRows: 0 }];
+      state.storeEvents[eventId] = { provider, event_type: eventType, account_id: accountId };
+      return [{ affectedRows: 1 }];
+    }
+
+    if (q.startsWith("update store_events_processed set account_id")) {
+      const [accountId] = params;
+      for (const ev of Object.values(state.storeEvents)) {
+        if (ev.account_id === accountId) ev.account_id = null;
+      }
+      return [{ affectedRows: 1 }];
+    }
+
+    if (q.startsWith("update store_subscriptions") && q.includes("retired = 1")) {
+      const [accountId] = params;
+      for (const row of state.storeSubscriptions) {
+        if (row.account_id === accountId) {
+          row.account_id = null;
+          row.retired = 1;
+          row.status = "canceled";
+          row.auto_renew = 0;
+        }
+      }
+      return [{ affectedRows: 1 }];
+    }
+
+    if (q.startsWith("update entitlements set active = 0")) {
+      const [accountId] = params;
+      for (const row of state.entitlements) {
+        if (row.account_id === accountId && (row.source === "app_store" || row.source === "play")) {
+          row.active = 0;
+        }
+      }
+      return [{ affectedRows: 1 }];
+    }
+
+    if (q.startsWith("insert into store_subscriptions")) {
+      const [accountId, platform, originalId, productId, status, environment, periodEnd, autoRenew] = params;
+      const existing = state.storeSubscriptions.find(
+        (s) => s.platform === platform && s.store_original_id === originalId,
+      );
+      const next = {
+        account_id: accountId,
+        product_id: productId,
+        status,
+        environment,
+        retired: 0,
+        auto_renew: autoRenew ? 1 : 0,
+        current_period_end: periodEnd || null,
+        updated_at: Date.now(),
+      };
+      if (existing) {
+        Object.assign(existing, next);
+      } else {
+        state.storeSubscriptions.push({
+          platform,
+          store_original_id: originalId,
+          ...next,
+        });
+      }
+      return [{ affectedRows: 1 }];
     }
 
     if (q.startsWith("select bytes_balance from wallets")) {
       return [[]];
     }
 
-    if (q.startsWith("select feature, source, active, extra from entitlements")) {
+    if (q.startsWith("select feature, source, active from entitlements") || q.startsWith("select feature, source, active, extra from entitlements")) {
       const [accountId] = params;
       return [state.entitlements.filter((e) => e.account_id === accountId)];
     }
@@ -205,17 +362,28 @@ function createBillingMockPool() {
 
     if (q.startsWith("insert into entitlements")) {
       const accountId = params[0];
-      const isDisputeWrite = q.includes("0, ?)");
-      const active = isDisputeWrite ? 0 : Number(params[1]);
-      const extra = isDisputeWrite ? params[1] : params[2];
+      let source = "stripe";
+      let active;
+      let extra;
+      if (q.includes("values (?, 'sort', ?, ?, ?)")) {
+        source = params[1];
+        active = Number(params[2]);
+        extra = params[3];
+      } else if (q.includes("values (?, 'sort', 'stripe', 0, ?)")) {
+        active = 0;
+        extra = params[1];
+      } else {
+        active = Number(params[1]);
+        extra = params[2];
+      }
       const existing = state.entitlements.find(
-        (e) => e.account_id === accountId && e.feature === "sort" && e.source === "stripe",
+        (e) => e.account_id === accountId && e.feature === "sort" && e.source === source,
       );
       if (existing) {
         existing.active = active;
         existing.extra = extra;
       } else {
-        state.entitlements.push({ account_id: accountId, feature: "sort", source: "stripe", active, extra });
+        state.entitlements.push({ account_id: accountId, feature: "sort", source, active, extra });
       }
       return [{ affectedRows: 1 }];
     }

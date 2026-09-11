@@ -42,7 +42,15 @@ void main() {
     expect(ExoLightColors.border, const Color(0xFFDDE1F0));
   });
 
-  test('the app ships light', () {
+  test('ExoTheme.product matches light()', () {
+    final product = ExoTheme.product();
+    final light = ExoTheme.light();
+    expect(product.brightness, light.brightness);
+    expect(product.scaffoldBackgroundColor, light.scaffoldBackgroundColor);
+    expect(product.extension<ExoPalette>()?.cubeStroke, ExoPalette.light.cubeStroke);
+  });
+
+  test('the app ships light (desktop default)', () {
     final theme = productTheme();
     expect(theme.brightness, Brightness.light);
     expect(theme.scaffoldBackgroundColor, ExoLightColors.bgPrimary);
@@ -60,7 +68,6 @@ void main() {
       WidgetState.selected,
     });
     expect(selectedIcon?.color, ExoLightColors.onButton);
-    // The glyph sits on the indicator, so it must not match the canvas either.
     expect(selectedIcon?.color, isNot(ExoLightColors.bgPrimary));
     expect(selectedIcon?.color, isNot(theme.navigationBarTheme.indicatorColor));
   });
@@ -69,7 +76,6 @@ void main() {
     final palette = ExoPalette.light;
     expect(palette.selectedInk, isNot(palette.bgElevated));
     expect(_contrast(palette.selectedInk, palette.bgElevated), greaterThan(4.5));
-    // The wash must not swallow the label.
     expect(palette.accentLight, isNot(palette.selectedInk));
   });
 
@@ -80,15 +86,31 @@ void main() {
 
     expect(_contrast(ExoLightColors.textPrimary, canvas), greaterThan(4.5));
     expect(_contrast(ExoLightColors.textPrimary, card), greaterThan(4.5));
-    // bodySmall uses textSecondary on light precisely because muted grey does not clear AA here.
     expect(_contrast(palette.textSecondary, canvas), greaterThan(4.5));
-    expect(_contrast(ExoLightColors.onButton, ExoLightColors.buttonPrimary),
-        greaterThan(4.5));
+    expect(_contrast(ExoLightColors.onButton, ExoLightColors.buttonPrimary), greaterThan(4.5));
   });
 
   test('bodySmall uses the ink that clears AA on the canvas', () {
     final theme = productTheme();
     expect(theme.textTheme.bodySmall?.color, ExoLightColors.textSecondary);
+  });
+
+  testWidgets('ExoPalette.of falls back to light when extension is missing', (
+    tester,
+  ) async {
+    ExoPalette? captured;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(useMaterial3: true),
+        home: Builder(
+          builder: (context) {
+            captured = ExoPalette.of(context);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+    expect(captured!.cubeStroke, ExoPalette.light.cubeStroke);
   });
 
   test('dark theme still builds with its own palette', () {

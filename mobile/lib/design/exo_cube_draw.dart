@@ -4,10 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'exo_colors.dart';
-
-/// Brand cube stroke — navy so the wireframe reads on the light canvas.
-const Color kExoCubeStroke = ExoLightColors.accent;
+import 'exo_palette.dart';
+import 'exo_theme.dart';
 
 /// First-install brand stroke only. A signed-in, paired, or finished session skips it.
 bool shouldPlayBootIntro({
@@ -24,17 +22,18 @@ class ExoCubeDraw extends StatelessWidget {
     super.key,
     required this.progress,
     this.size = 128,
-    this.strokeColor = kExoCubeStroke,
+    this.strokeColor,
     this.strokeWidth = 2.5,
   });
 
   final double progress;
   final double size;
-  final Color strokeColor;
+  final Color? strokeColor;
   final double strokeWidth;
 
   @override
   Widget build(BuildContext context) {
+    final stroke = strokeColor ?? ExoPalette.of(context).cubeStroke;
     return Semantics(
       label: 'Exo',
       child: SizedBox(
@@ -43,7 +42,7 @@ class ExoCubeDraw extends StatelessWidget {
         child: CustomPaint(
           painter: _ExoCubeStrokePainter(
             progress: progress.clamp(0.0, 1.0),
-            strokeColor: strokeColor,
+            strokeColor: stroke,
             strokeWidth: strokeWidth,
           ),
         ),
@@ -125,6 +124,27 @@ class _ExoCubeIntroState extends State<ExoCubeIntro> with SingleTickerProviderSt
   }
 }
 
+/// Full-screen boot canvas — status bar + scaffold from [Theme].
+class ExoBootCanvas extends StatelessWidget {
+  const ExoBootCanvas({super.key, this.body});
+
+  final Widget? body;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final overlay = theme.appBarTheme.systemOverlayStyle ??
+        ExoTheme.systemOverlayFor(theme.brightness);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlay,
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: body,
+      ),
+    );
+  }
+}
+
 /// Full-screen boot: solid canvas + brand cube drawing itself.
 class ExoBootScreen extends StatelessWidget {
   const ExoBootScreen({
@@ -140,17 +160,12 @@ class ExoBootScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // No AppBar here, so the status bar style has to be declared directly.
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        backgroundColor: ExoLightColors.bgPrimary,
-        body: Center(
-          child: ExoCubeIntro(
-            duration: introDuration,
-            settleDuration: settleDuration,
-            onComplete: onIntroComplete,
-          ),
+    return ExoBootCanvas(
+      body: Center(
+        child: ExoCubeIntro(
+          duration: introDuration,
+          settleDuration: settleDuration,
+          onComplete: onIntroComplete,
         ),
       ),
     );
@@ -162,12 +177,7 @@ class ExoBootHold extends StatelessWidget {
   const ExoBootHold({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
-      child: Scaffold(backgroundColor: ExoLightColors.bgPrimary),
-    );
-  }
+  Widget build(BuildContext context) => const ExoBootCanvas();
 }
 
 /// ViewBox + stroke path from `assets/exo_cube.svg`.

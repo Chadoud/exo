@@ -36,6 +36,7 @@ import {
   LazyHistoryPanel,
   LazyMemoriesPanel,
   LazyCapturePanel,
+  LazyStartupPanel,
   LazyOverviewPanel,
   LazyQueuePanel,
   LazySettingsPanel,
@@ -421,11 +422,28 @@ export default function WorkspacePanelRouter(props: WorkspacePanelRouterProps) {
         </Suspense>
       )}
 
-      {tab === "memories" && (
+      {tab === "memories" && memorySubTab === "brief" && !memoryShowAllSections && (
+        <Suspense fallback={<PanelRouteFallback />}>
+          <LazyStartupPanel
+            backendOnline={backendOnline}
+            proAllowed={entitlement?.canUseProactive !== false}
+            onUpgrade={() =>
+              openPrimarySettingsSection(jumpToSettingsSection, { section: "license" })
+            }
+            onRetryBackend={handleRetryBackend}
+            onOpenTodo={() => {
+              openTodoSubTab("today");
+              requestTab("tasks");
+            }}
+          />
+        </Suspense>
+      )}
+
+      {tab === "memories" && (memorySubTab !== "brief" || memoryShowAllSections) && (
         <Suspense fallback={<PanelRouteFallback />}>
           <LazyMemoriesPanel
           backendOnline={backendOnline}
-          subTab={memorySubTab}
+          subTab={memorySubTab === "brief" ? "overview" : memorySubTab}
           showAllSections={memoryShowAllSections}
           scrollRootRef={scrollRootRef}
           onScrollSectionReport={onMemoryScrollSectionReport}

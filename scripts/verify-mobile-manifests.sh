@@ -22,6 +22,18 @@ else
     echo "FAIL: Info.plist still declares NSMicrophoneUsageDescription (Capture deferred)"
     fail=1
   fi
+  if ! grep -q NSCalendarsUsageDescription "$PLIST"; then
+    echo "FAIL: Info.plist missing NSCalendarsUsageDescription"
+    fail=1
+  fi
+  if ! grep -q NSCalendarsFullAccessUsageDescription "$PLIST"; then
+    echo "FAIL: Info.plist missing NSCalendarsFullAccessUsageDescription"
+    fail=1
+  fi
+  if grep -q NSCalendarsWriteOnlyAccessUsageDescription "$PLIST"; then
+    echo "FAIL: Info.plist must not declare write-only calendar access"
+    fail=1
+  fi
 fi
 
 if [[ ! -f "$MANIFEST" ]]; then
@@ -46,6 +58,10 @@ else
   fi
   if grep -q RECORD_AUDIO "$MANIFEST"; then
     echo "FAIL: AndroidManifest still declares RECORD_AUDIO (Capture deferred)"
+    fail=1
+  fi
+  if grep -q READ_CALENDAR "$MANIFEST"; then
+    echo "FAIL: AndroidManifest must not declare READ_CALENDAR (Apple Calendar is iOS-only)"
     fail=1
   fi
 fi

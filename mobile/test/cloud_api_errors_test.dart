@@ -8,4 +8,22 @@ void main() {
     expect(ex.body, contains('invalid_token'));
     expect(ex.toString(), contains('401'));
   });
+
+  test('isStoreCheckoutRequired is only 402 with that detail', () {
+    expect(
+      CloudApiException(402, '{"detail":"store_checkout_required"}')
+          .isStoreCheckoutRequired,
+      isTrue,
+    );
+    expect(
+      CloudApiException(403, '{"detail":"store_checkout_required"}')
+          .isStoreCheckoutRequired,
+      isFalse,
+    );
+    expect(
+      CloudApiException(402, '{"detail":"payment_required"}')
+          .isStoreCheckoutRequired,
+      isFalse,
+    );
+  });
 }

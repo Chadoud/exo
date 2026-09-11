@@ -1696,6 +1696,9 @@ export default {
     accountDeleteDone: "Account eliminato. Sei disconnesso.",
     accountDeleteError: "Impossibile eliminare l’account.",
     accountDeleteUnavailable: "Eliminazione disponibile nell’app desktop quando sei connesso.",
+    accountDeleteStoreWarning:
+      "Eliminare Exo non disdice un abbonamento App Store o Play. Disdilo nello store se vuoi interrompere i pagamenti.",
+    accountDeleteStoreManage: "Gestisci abbonamento store",
     fileOpMode: "Operazione sui file",
     copyMode: "Copia (sicuro)",
     moveMode: "Sposta",
@@ -3066,6 +3069,8 @@ Esempi:
     cancelScheduledNote: "Il tuo abbonamento non si rinnoverà — l'accesso continua fino alla data indicata sopra.",
     manageBilling: "Gestisci fatturazione",
     manageBillingHint: "Aggiorna la carta, scarica le fatture o annulla — in modo sicuro tramite Stripe.",
+    manageStore: "Gestisci nello store",
+    manageStoreHint: "Modifica o disdici questo piano nell’App Store o su Google Play. Exo non può cambiare la fatturazione store.",
   },
   toast: {
     apiConnected: "Connesso â€” app pronta",
@@ -3178,7 +3183,7 @@ Esempi:
     always: "Sempre…",
     alwaysConfirmTitle: "Eseguire sempre il briefing di oggi?",
     alwaysConfirmBody:
-      "Exo proporrà di avviare il briefing all’apertura. Puoi cambiarlo più tardi in Ricordi.",
+      "Exo proporrà di avviare il briefing all’apertura. Puoi cambiarlo più tardi in Memoria → Briefing → Includi.",
     alwaysConfirm: "Sempre",
     loading: "Caricamento del briefing di oggi…",
     cancel: "Annulla",

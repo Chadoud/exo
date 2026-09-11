@@ -4,6 +4,8 @@ const config = require("./config");
 const { getPool } = require("./db");
 const { isAccountProductAdmin } = require("./productAdmins");
 const { latestSubscriptionRow, isEntitledSubscriptionRow } = require("./stripeBilling");
+const { computeStoreCheckoutRequired } = require("./storeCheckout");
+const { loadStoreSubscriptionSummary, overlayStoreBilling } = require("./storeManage");
 const { createVerifyToken } = require("./emailVerification");
 const { sendEmail } = require("./email");
 const { verifyEmailTemplate } = require("./emailTemplates");
@@ -246,9 +248,9 @@ async function latestSubscriptionForProfile(pool, accountId) {
  * @param {boolean} trialActive
  * @returns {"trial" | "pro" | "past_due" | "canceled" | "expired"}
  */
-function computePlan(subscription, trialActive) {
-  if (subscription?.status === "past_due") return "past_due";
-  if (isEntitledSubscriptionRow(subscription)) return "pro";
+function computePlan(subscription, trialActive, storeEntitled, storeStatus) {
+  if (subscription?.status === "past_due" || storeStatus === "past_due") return "past_due";
+  if (isEntitledSubscriptionRow(subscription) || storeEntitled) return "pro";
   if (trialActive) return "trial";
   if (subscription) return "canceled";
   return "expired";
@@ -268,18 +270,46 @@ async function findAccountByEmail(email) {
   return rows[0] ?? null;
 }
 
+async function loadAccountForProfile(pool, accountId) {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT id, email, first_name, last_name, created_at, trial_ends_at, store_billing_exempt FROM accounts WHERE id = ? AND is_active = 1 LIMIT 1",
+      [accountId],
+    );
+    return rows[0] || null;
+  } catch (e) {
+    if (e?.code !== "ER_BAD_FIELD_ERROR") throw e;
+    const [rows] = await pool.execute(
+      "SELECT id, email, first_name, last_name, created_at, trial_ends_at FROM accounts WHERE id = ? AND is_active = 1 LIMIT 1",
+      [accountId],
+    );
+    return rows[0] ? { ...rows[0], store_billing_exempt: 0 } : null;
+  }
+}
+
+async function loadUserProfileRow(pool, accountId) {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT display_name, locale, work_role FROM user_profiles WHERE account_id = ? LIMIT 1",
+      [accountId],
+    );
+    return rows[0] || { display_name: null, locale: "en", work_role: null };
+  } catch (e) {
+    if (e?.code !== "ER_BAD_FIELD_ERROR") throw e;
+    const [rows] = await pool.execute(
+      "SELECT display_name, locale FROM user_profiles WHERE account_id = ? LIMIT 1",
+      [accountId],
+    );
+    return rows[0] ? { ...rows[0], work_role: null } : { display_name: null, locale: "en", work_role: null };
+  }
+}
+
 async function getProfile(accountId) {
   const pool = getPool();
-  const [accounts] = await pool.execute(
-    "SELECT id, email, first_name, last_name, created_at, trial_ends_at FROM accounts WHERE id = ? AND is_active = 1 LIMIT 1",
-    [accountId],
-  );
-  if (!accounts.length) return null;
+  const account = await loadAccountForProfile(pool, accountId);
+  if (!account) return null;
 
-  const [profiles] = await pool.execute(
-    "SELECT display_name, locale FROM user_profiles WHERE account_id = ? LIMIT 1",
-    [accountId],
-  );
+  const profileRow = await loadUserProfileRow(pool, accountId);
   const [wallets] = await pool.execute(
     "SELECT bytes_balance FROM wallets WHERE account_id = ? ORDER BY id ASC LIMIT 1",
     [accountId],
@@ -289,7 +319,7 @@ async function getProfile(accountId) {
     [accountId],
   );
 
-  const trialEndsAt = accounts[0].trial_ends_at;
+  const trialEndsAt = account.trial_ends_at;
   const trialEndsMs = trialEndsAt ? new Date(trialEndsAt).getTime() : null;
   const nowMs = Date.now();
   const trialDaysRemaining =
@@ -298,33 +328,54 @@ async function getProfile(accountId) {
   const isProductAdmin = await isAccountProductAdmin(accountId);
   const subscription = await latestSubscriptionForProfile(pool, accountId);
   const subscriptionActive = isEntitledSubscriptionRow(subscription);
+  const entitlementList = ents.map((e) => ({
+    feature: e.feature,
+    source: e.source,
+    active: Boolean(e.active),
+    extra: e.extra ? JSON.parse(e.extra) : null,
+  }));
+  const storeBillingExempt = Number(account.store_billing_exempt) === 1;
+  const storeCheckoutRequired = computeStoreCheckoutRequired({
+    exempt: storeBillingExempt,
+    stripeEntitled: subscriptionActive,
+    entitlements: entitlementList,
+  });
+  const storeRow = await loadStoreSubscriptionSummary(pool, accountId);
+  const billing = overlayStoreBilling({
+    stripeSub: subscription,
+    stripeEntitled: subscriptionActive,
+    entitlements: entitlementList,
+    storeRow,
+  });
 
   return {
-    account_id: accounts[0].id,
-    email: accounts[0].email,
-    first_name: accounts[0].first_name,
-    last_name: accounts[0].last_name,
-    created_at: accounts[0].created_at,
+    account_id: account.id,
+    email: account.email,
+    first_name: account.first_name,
+    last_name: account.last_name,
+    created_at: account.created_at,
     trial_ends_at: trialEndsAt,
     trial_days_remaining: trialDaysRemaining,
     trial_active: trialActive,
     is_product_admin: isProductAdmin,
-    plan: computePlan(subscription, trialActive),
-    subscription_active: subscriptionActive,
-    subscription_status: subscription?.status ?? null,
+    plan: computePlan(subscription, trialActive, billing.store_entitled, billing.subscription_status),
+    subscription_active: billing.subscription_active,
+    subscription_status: billing.subscription_status,
+    subscription_source: billing.subscription_source,
+    subscription_management: billing.subscription_management,
+    store_subscription_survives_deletion: billing.store_subscription_survives_deletion,
+    store_billing_exempt: storeBillingExempt,
+    store_checkout_required: storeCheckoutRequired,
     // Explicit ISO 8601 — clients must never see driver-dependent date shapes.
-    subscription_current_period_end: subscription?.current_period_end
-      ? new Date(subscription.current_period_end).toISOString()
-      : null,
-    subscription_cancel_at_period_end: Boolean(subscription?.cancel_at_period_end),
-    profile: profiles[0] || { display_name: null, locale: "en" },
+    subscription_current_period_end: billing.subscription_current_period_end,
+    subscription_cancel_at_period_end: billing.subscription_cancel_at_period_end,
+    profile: {
+      display_name: profileRow.display_name ?? null,
+      locale: profileRow.locale || "en",
+      work_role: profileRow.work_role ?? null,
+    },
     bytes_balance: wallets[0]?.bytes_balance ?? 0,
-    entitlements: ents.map((e) => ({
-      feature: e.feature,
-      source: e.source,
-      active: Boolean(e.active),
-      extra: e.extra ? JSON.parse(e.extra) : null,
-    })),
+    entitlements: entitlementList,
   };
 }
 

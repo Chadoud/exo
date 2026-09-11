@@ -3,7 +3,6 @@ import type { Task } from "../../api/tasks";
 import type { DueDayGroup } from "../../utils/taskBuckets";
 import EmptyState from "../ui/EmptyState";
 import ListSkeleton from "../ui/ListSkeleton";
-import TodayBriefingCard from "./TodayBriefingCard";
 import TodoTaskTimeline from "./TodoTaskTimeline";
 import TodoUpcomingLater from "./TodoUpcomingLater";
 
@@ -14,9 +13,6 @@ type TodoOpenTasksBodyProps = {
   hasAnyOpenTasks: boolean;
   todayHasTasks: boolean;
   hasUpcomingContent: boolean;
-  backendOnline: boolean;
-  proAllowed?: boolean;
-  onUpgrade?: () => void;
   todayDayGroups: DueDayGroup[];
   upcomingDayGroups: DueDayGroup[];
   somedayTasks: Task[];
@@ -33,7 +29,7 @@ type TodoOpenTasksBodyProps = {
   readyRepliesHeading?: string;
 };
 
-/** Today list with briefing always first — including empty and first-load. */
+/** Open Tasks list — Brief lives under Memory. */
 export default function TodoOpenTasksBody({
   proLocked,
   loading,
@@ -41,9 +37,6 @@ export default function TodoOpenTasksBody({
   hasAnyOpenTasks,
   todayHasTasks,
   hasUpcomingContent,
-  backendOnline,
-  proAllowed,
-  onUpgrade,
   todayDayGroups,
   upcomingDayGroups,
   somedayTasks,
@@ -61,47 +54,27 @@ export default function TodoOpenTasksBody({
 }: TodoOpenTasksBodyProps) {
   if (proLocked) return null;
 
-  const briefing = (
-    <TodayBriefingCard backendOnline={backendOnline} proAllowed={proAllowed} onUpgrade={onUpgrade} />
-  );
-
   if (loading && !hasLoadedTasks) {
-    return (
-      <>
-        {briefing}
-        <div className="mt-6">
-          <ListSkeleton />
-        </div>
-      </>
-    );
+    return <ListSkeleton />;
   }
   const hasReadyLane = Boolean(unmatchedReplies) || (mailHarvesting && Boolean(readingLabel));
-  if (loading) return briefing;
-  if (!hasAnyOpenTasks && !hasReadyLane) {
+  if (!loading && !hasAnyOpenTasks && !hasReadyLane) {
     return (
-      <>
-        {briefing}
-        <div className="mt-6">
-          <EmptyState
-            title={emptyTitle}
-            description={emptyDesc}
-            primaryAction={{ label: syncLabel, onClick: onSync }}
-          />
-        </div>
-      </>
+      <EmptyState
+        title={emptyTitle}
+        description={emptyDesc}
+        primaryAction={{ label: syncLabel, onClick: onSync }}
+      />
     );
   }
 
   return (
     <>
-      {briefing}
       {todayHasTasks ? (
-        <div className="mt-6">
-          <TodoTaskTimeline mode="today" dueGroups={todayDayGroups} renderTask={renderTask} />
-        </div>
+        <TodoTaskTimeline mode="today" dueGroups={todayDayGroups} renderTask={renderTask} />
       ) : null}
       {hasUpcomingContent ? (
-        <div className="mt-6">
+        <div className={todayHasTasks ? "mt-6" : undefined}>
           <TodoUpcomingLater
             showDivider={todayHasTasks}
             dueGroups={upcomingDayGroups}

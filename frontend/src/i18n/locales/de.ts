@@ -1692,6 +1692,9 @@ export default {
     accountDeleteDone: "Konto gelöscht. Sie sind abgemeldet.",
     accountDeleteError: "Konto konnte nicht gelöscht werden.",
     accountDeleteUnavailable: "Kontolöschung nur in der Desktop-App bei Anmeldung.",
+    accountDeleteStoreWarning:
+      "Das Löschen von Exo kündigt kein App-Store- oder Play-Abo. Kündigen Sie dort, wenn die Zahlung stoppen soll.",
+    accountDeleteStoreManage: "Store-Abo verwalten",
     fileOpMode: "Datei-Modus",
     copyMode: "Kopieren (sicher)",
     moveMode: "Verschieben",
@@ -3061,6 +3064,8 @@ Beispiele:
     cancelScheduledNote: "Ihr Abonnement verlängert sich nicht — der Zugriff bleibt bis zum obigen Datum bestehen.",
     manageBilling: "Abrechnung verwalten",
     manageBillingHint: "Karte aktualisieren, Rechnungen herunterladen oder kündigen — sicher über Stripe.",
+    manageStore: "Im Store verwalten",
+    manageStoreHint: "Dieses Abo im App Store oder bei Google Play ändern. Exo kann Store-Zahlungen nicht selbst ändern.",
   },
   toast: {
     apiConnected: "Verbunden — App bereit",
@@ -3173,7 +3178,7 @@ Beispiele:
     always: "Immer…",
     alwaysConfirmTitle: "Heutiges Briefing immer starten?",
     alwaysConfirmBody:
-      "Exo bietet beim Öffnen an, Ihr Briefing zu starten. Sie können das später unter Erinnerungen ändern.",
+      "Exo bietet beim Öffnen an, Ihr Briefing zu starten. Sie können das später unter Gedächtnis → Briefing → Einbeziehen ändern.",
     alwaysConfirm: "Immer",
     loading: "Heutiges Briefing wird geladen…",
     cancel: "Abbrechen",

@@ -59,7 +59,7 @@ export type MainNavItem = {
 /**
  * Sidebar tab definitions (labels follow UI locale).
  *
- * Assistant zone first (voice, chat, memory, today), then Files (sort + settings).
+ * Assistant zone first (voice, chat, memory), then Files (sort + settings).
  * Every id remains an independent `MainNavTab` route.
  */
 export function buildMainNavItems(uiLocale: UiLocale): MainNavItem[] {
@@ -121,6 +121,13 @@ export function buildMainNavItems(uiLocale: UiLocale): MainNavItem[] {
             memorySubTab: "map",
             label: translate(uiLocale, "memories.tabs.map"),
             icon: "M9 6.75V15m6-6v8.25m.503-3.498 4.875-2.438c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.126C2.873 5.5 2.25 6.044 2.25 6.879V19.125c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317.159.69.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z",
+          },
+          {
+            id: "memories",
+            navKey: "memories-brief",
+            memorySubTab: "brief",
+            label: translate(uiLocale, "memories.tabs.brief"),
+            icon: "M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z",
           },
         ],
       },

@@ -27,6 +27,14 @@ if [[ -f "$INFO_PLIST" && -x "$PLIST_BUDDY" ]]; then
     "$PLIST_BUDDY" -c "Add :NSCameraUsageDescription string Exo uses the camera to scan the desktop pairing QR code." "$INFO_PLIST" 2>/dev/null || true
     echo "Patched NSCameraUsageDescription"
   fi
+  if ! grep -q NSCalendarsUsageDescription "$INFO_PLIST"; then
+    "$PLIST_BUDDY" -c "Add :NSCalendarsUsageDescription string EXO reads calendars on this iPhone to show your day. Calendar details stay on this phone." "$INFO_PLIST" 2>/dev/null || true
+    echo "Patched NSCalendarsUsageDescription"
+  fi
+  if ! grep -q NSCalendarsFullAccessUsageDescription "$INFO_PLIST"; then
+    "$PLIST_BUDDY" -c "Add :NSCalendarsFullAccessUsageDescription string EXO reads calendars on this iPhone to show your day. Calendar details stay on this phone." "$INFO_PLIST" 2>/dev/null || true
+    echo "Patched NSCalendarsFullAccessUsageDescription"
+  fi
 
   # Exact URL scheme "exosites" — do not match CFBundleName "exosites_mobile".
   scheme="$("$PLIST_BUDDY" -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$INFO_PLIST" 2>/dev/null || true)"

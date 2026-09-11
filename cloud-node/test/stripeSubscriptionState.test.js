@@ -134,4 +134,6 @@ test("computePlan maps subscription + trial state to the five plan values", () =
   assert.equal(computePlan(null, true), "trial");
   assert.equal(computePlan({ status: "canceled" }, false), "canceled");
   assert.equal(computePlan(null, false), "expired");
+  assert.equal(computePlan(null, false, true), "pro");
+  assert.equal(computePlan(null, false, true, "past_due"), "past_due");
 });

@@ -6,6 +6,7 @@ import {
   isTaskOverdue,
 } from "../../utils/taskDueFormat";
 import { useI18n } from "../../i18n/I18nContext";
+import TodoRowCheck from "./TodoRowCheck";
 
 export type TaskSourceBadge = {
   label: string;
@@ -123,35 +124,18 @@ type TaskRowLeadingProps = {
 
 function TaskRowLeading({ task, selecting, selected, onToggle, onSelect }: TaskRowLeadingProps) {
   const { t } = useI18n();
-  const checked = selecting ? selected : task.completed;
-  const shape = selecting ? "rounded-[4px]" : "rounded-full";
   return (
-    <button
-      type="button"
-      onClick={() => (selecting ? onSelect(task) : onToggle(task))}
-      className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center border-2 transition-colors ${shape} ${
-        selecting
-          ? selected
-            ? "border-accent bg-button-primary text-white"
-            : "border-border hover:border-accent"
-          : task.completed
-            ? "border-accent bg-button-primary text-white"
-            : "border-border hover:border-accent"
-      }`}
-      aria-label={
+    <TodoRowCheck
+      checked={selecting ? selected : task.completed}
+      label={
         selecting
           ? task.description
           : task.completed
             ? t("tasks.markIncomplete")
             : t("tasks.markComplete")
       }
-      aria-pressed={selecting ? selected : undefined}
-    >
-      {checked ? (
-        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      ) : null}
-    </button>
+      onClick={() => (selecting ? onSelect(task) : onToggle(task))}
+      pressed={selecting ? selected : undefined}
+    />
   );
 }

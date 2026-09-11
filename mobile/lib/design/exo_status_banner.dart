@@ -35,7 +35,6 @@ class ExoStatusBanner extends StatelessWidget {
 
   bool get _isError =>
       kind == ExoStatusKind.needsSignIn ||
-      kind == ExoStatusKind.needsPair ||
       kind == ExoStatusKind.authExpired ||
       kind == ExoStatusKind.networkError ||
       kind == ExoStatusKind.decryptError ||
@@ -116,9 +115,7 @@ class ExoStatusBanner extends StatelessWidget {
                 child: TextButton(
                   onPressed: onAction,
                   style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 36),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: const Size(48, 48),
                   ),
                   child: Text(actionLabel!),
                 ),

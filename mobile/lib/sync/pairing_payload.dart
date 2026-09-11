@@ -43,6 +43,7 @@ enum PairingParseFailure {
   missingGrant,
   expired,
   accountMismatch,
+  storeCheckoutRequired,
 }
 
 /// Result of parsing desktop pairing JSON (QR / clipboard).
@@ -83,6 +84,8 @@ String messageForPairingParseFailure(PairingParseFailure reason) {
       return SyncUserMessages.pairingExpired;
     case PairingParseFailure.accountMismatch:
       return SyncUserMessages.pairingAccountMismatch;
+    case PairingParseFailure.storeCheckoutRequired:
+      return SyncUserMessages.pairingStoreCheckoutRequired;
   }
 }
 
@@ -203,6 +206,9 @@ Future<PairingParseFailure?> applyPairingRaw(
           return PairingParseFailure.accountMismatch;
         }
       } on CloudApiException catch (e) {
+        if (e.isStoreCheckoutRequired) {
+          return PairingParseFailure.storeCheckoutRequired;
+        }
         if (e.statusCode == 410) return PairingParseFailure.expired;
         if (e.statusCode == 403) return PairingParseFailure.accountMismatch;
         // 400 invalid/already_redeemed — treat as expired pairing code.

@@ -143,12 +143,74 @@ Quick daily check: `grep "\[billing\] ALERT" server.log | tail`.
 - **Refund + revoke** — refund in dashboard **and** cancel the subscription
   (immediately, not period end). The webhook deactivates the entitlement.
 
+## Store billing (App Store / Play)
+
+Phone pair-gate uses StoreKit / Play Billing. **Keep `STORE_BILLING_ENABLED=0`
+until migration 030+031 and the Flutter trial UI ship together.** Lifecycle
+ingestion stays on whenever Apple or Play credentials exist, even if
+acquisition is off (rollback must not drop notifications).
+
+Endpoints:
+
+- `POST /v1/webhooks/app-store` — App Store Server Notifications v2 (`signedPayload`)
+- `POST /v1/webhooks/play` — Play RTDN (Pub/Sub OIDC, audience
+  `PLAY_RTDN_AUDIENCE` or `${APP_BASE_URL}/v1/webhooks/play`)
+- `POST /v1/billing/store/verify` and `/restore` — JWT only; gated by
+  `STORE_BILLING_ENABLED`
+- CLI: `node scripts/reconcile-store-subscriptions.js` (`--dry-run` to audit)
+
+Notifications are a poke. Live status is re-fetched from Apple / Play. Event
+ids live in `store_events_processed`. Sandbox events against
+`STORE_BILLING_LIVE=1` return `ignored: livemode_mismatch` and write nothing.
+
+`GET /v1/me` adds `subscription_source`, `subscription_management`, and
+`store_subscription_survives_deletion`. Desktop Settings opens the store URL
+for `app_store` / `play` and never the Stripe portal.
+
+### Account deletion
+
+- Stripe: cancel at Stripe (existing).
+- Play: best-effort Developer API cancel.
+- Apple: EXO cannot cancel. The UI must warn and link to
+  `https://apps.apple.com/account/subscriptions` before confirm.
+- Entitlements are revoked immediately. `store_subscriptions` rows are
+  **retired** (identity kept, `account_id` cleared) so the same receipt cannot
+  entitle a new account.
+
+### Alerts
+
+- `ALERT store reconcile drift` — a notification was missed; state was
+  re-applied. Repeated drift means App Store / Play delivery is broken.
+- `ALERT ignoring store notification: livemode mismatch`
+- `ALERT could not cancel Play subscription during account deletion`
+- `ALERT scheduled store reconcile failed`
+
+Never log JWS, `purchaseToken`, receipts, names, or email.
+
+### Phone first-run enablement
+
+Keep acquisition off until all of these are true:
+
+1. Migrations 030+031 applied.
+2. Flutter trial UI shipped (verify + `/me` flip before leaving the trial screen).
+3. App Store / Play product IDs + 30-day intro configured.
+4. Apple IAP key and Play service account in cloud-node env.
+5. ASSN and RTDN URLs receiving sandbox pokes.
+6. Sandbox device matrix: new account, restore, 402 pair, Upgrade A (existing onboarding), account delete warning.
+
+Then set `STORE_BILLING_ENABLED=1` one platform/environment at a time. Rollback:
+set it back to `0` (pair gate opens) while leaving webhook ingestion up.
+
 ## Data & privacy
 
 - We store: `accounts.stripe_customer_id`, `subscriptions` (ids, status,
   period end), `stripe_events_processed` (event ids). No card data, no amounts.
-- Account deletion cancels live subscriptions at Stripe first, then removes all
-  billing rows (`cloud-node/lib/accountLifecycle.js`).
+- Store: `store_subscriptions` (platform, store identity, status, period,
+  environment, retired). Play's store identity is the purchase token — never
+  export or log it. `store_events_processed` keeps event ids only.
+- Account deletion cancels live Stripe subscriptions, attempts Play cancel,
+  warns that Apple billing continues, then removes account-scoped rows while
+  retiring store identity (`cloud-node/lib/accountLifecycle.js`).
 
 ## Deferred (owner: product/eng)
 

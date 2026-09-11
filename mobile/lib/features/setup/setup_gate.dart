@@ -9,9 +9,17 @@ import '../../design/exo_widgets.dart';
 import '../../sync/sync_banner_actions.dart';
 import '../../sync/sync_failure.dart';
 import '../../sync/user_messages.dart';
+import '../../app/exo_config.dart';
 import '../auth/mobile_auth_service.dart';
 import 'setup_link_step.dart';
+import 'setup_me.dart';
+import 'setup_copy.dart';
+import 'setup_profile_step.dart';
 import 'setup_sign_in_panel.dart';
+import 'setup_sources_ack.dart';
+import 'setup_sources_step.dart';
+import 'setup_step.dart';
+import 'setup_trial_step.dart';
 
 /// Full-screen guided setup until sign-in, pair, and first-sync step complete.
 class SetupGate extends StatefulWidget {
@@ -19,10 +27,12 @@ class SetupGate extends StatefulWidget {
     super.key,
     required this.config,
     required this.auth,
+    this.sourcesAck,
   });
 
   final MobileSyncConfig config;
   final MobileAuthService auth;
+  final SetupSourcesAck? sourcesAck;
 
   @override
   State<SetupGate> createState() => _SetupGateState();
@@ -37,13 +47,22 @@ class _SetupGateState extends State<SetupGate> {
   String? _syncError;
   ExoStatusKind _syncErrorKind = ExoStatusKind.error;
   bool _wasSignedIn = false;
+  SetupMeSnapshot _me = SetupMeSnapshot.empty;
+  bool _meLoading = false;
+  String? _meError;
+  late final SetupSourcesAck _sourcesAck;
 
   @override
   void initState() {
     super.initState();
     _wasSignedIn = widget.config.isSignedIn;
+    _sourcesAck = widget.sourcesAck ?? SetupSourcesAck();
     widget.config.addListener(_onConfig);
     widget.auth.lastError.addListener(_onAuthError);
+    _loadSourcesAck();
+    if (widget.config.isSignedIn) {
+      _loadMe();
+    }
   }
 
   @override
@@ -64,8 +83,14 @@ class _SetupGateState extends State<SetupGate> {
         _signInError = null;
         _wasSignedIn = true;
       });
+      _loadMe();
     } else if (_wasSignedIn && !widget.config.isSignedIn && mounted) {
-      setState(() => _wasSignedIn = false);
+      setState(() {
+        _wasSignedIn = false;
+        _me = SetupMeSnapshot.empty;
+        _meLoading = false;
+        _meError = null;
+      });
     } else if (mounted) {
       setState(() {});
     }
@@ -194,6 +219,39 @@ class _SetupGateState extends State<SetupGate> {
     }
   }
 
+  Future<void> _loadSourcesAck() async {
+    await _sourcesAck.hydrate();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadMe() async {
+    setState(() {
+      _meLoading = true;
+      _meError = null;
+    });
+    try {
+      final me = SetupMeSnapshot.fromJson(await widget.config.api.getMe());
+      if (!mounted) return;
+      setState(() {
+        _me = me;
+        _meLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _me = SetupMeSnapshot.empty;
+        _meLoading = false;
+        _meError = SetupCopy.of(context).meLoadFailed;
+      });
+    }
+  }
+
+  void _onStoreCheckoutRequired() {
+    setState(() {
+      _me = _me.copyWith(loaded: true, storeCheckoutRequired: true);
+    });
+  }
+
   Future<void> _pairAgain() async {
     await widget.config.clearPairing();
     if (mounted) {
@@ -211,8 +269,20 @@ class _SetupGateState extends State<SetupGate> {
   @override
   Widget build(BuildContext context) {
     final cfg = widget.config;
+    final step = deriveSetupStep(
+      signedIn: cfg.isSignedIn,
+      meLoaded: _me.loaded && !_meLoading,
+      storeCheckoutRequired: _me.storeCheckoutRequired,
+      profileIncomplete: _me.profileIncomplete,
+      sourcesAckLoaded: _sourcesAck.loaded,
+      sourcesAcknowledged: _sourcesAck.acknowledged,
+      onboardingComplete: cfg.onboardingComplete,
+      paired: cfg.isPaired,
+      allowDevSkipPair: ExoConfig.allowDevSkipPair,
+      allowDevSkipFirstRun: ExoConfig.allowDevSkipFirstRun,
+    );
     final Widget body;
-    if (!cfg.isSignedIn) {
+    if (step == SetupStep.signIn) {
       body = SetupSignInPanel(
         launchingProvider: _launchingProvider,
         waitingProvider: _waitingProvider,
@@ -222,8 +292,33 @@ class _SetupGateState extends State<SetupGate> {
         onEmailLogin: _emailLogin,
         onEmailRegister: _emailRegister,
       );
-    } else if (!cfg.isPaired) {
-      body = SetupLinkStep(config: cfg);
+    } else if (step == SetupStep.loadingMe ||
+        (_meError != null && !_me.loaded)) {
+      body = _MeLoadingBody(error: _meError, onRetry: _loadMe);
+    } else if (step == SetupStep.trial) {
+      body = SetupTrialStep(
+        config: cfg,
+        onVerified: (me) => setState(() => _me = me),
+        onSignOut: () => cfg.clearSession(),
+      );
+    } else if (step == SetupStep.profile) {
+      body = SetupProfileStep(
+        config: cfg,
+        me: _me,
+        onSaved: (me) => setState(() => _me = me),
+        onSignOut: () => cfg.clearSession(),
+      );
+    } else if (step == SetupStep.sources) {
+      body = SetupSourcesStep(
+        ack: _sourcesAck,
+        onAcknowledged: () => setState(() {}),
+        onSignOut: () => cfg.clearSession(),
+      );
+    } else if (step == SetupStep.pair) {
+      body = SetupLinkStep(
+        config: cfg,
+        onStoreCheckoutRequired: _onStoreCheckoutRequired,
+      );
     } else {
       body = _FirstSyncBody(
         syncing: _syncing,
@@ -331,5 +426,39 @@ class _FirstSyncBodyState extends State<_FirstSyncBody> {
       );
     }
     return const SizedBox.shrink();
+  }
+}
+
+class _MeLoadingBody extends StatelessWidget {
+  const _MeLoadingBody({this.error, required this.onRetry});
+
+  final String? error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final copy = SetupCopy.of(context);
+    if (error != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const ExoMark(compact: true),
+          const SizedBox(height: ExoSpacing.xl),
+          ExoStatusBanner(kind: ExoStatusKind.error, message: error!),
+          const SizedBox(height: ExoSpacing.lg),
+          ExoPrimaryButton(label: SyncUserMessages.tryAgain, onPressed: onRetry),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        const SizedBox(height: ExoSpacing.xxl),
+        const ExoMark(compact: true),
+        const SizedBox(height: ExoSpacing.xxl),
+        const CircularProgressIndicator(),
+        const SizedBox(height: ExoSpacing.lg),
+        Text(copy.checkingAccount, style: Theme.of(context).textTheme.bodyMedium),
+      ],
+    );
   }
 }

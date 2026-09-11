@@ -62,7 +62,7 @@ export default function SegmentedTabBar<T extends string = string>({
       {tabs.length > 0 ? (
         <span
           aria-hidden
-          className={`pointer-events-none absolute top-1 bottom-1 left-1 rounded-[7px] bg-accent shadow-sm ${PILL_TRANSITION}`}
+          className={`pointer-events-none absolute top-1 bottom-1 left-1 rounded-[7px] bg-button-primary ${PILL_TRANSITION}`}
           style={{
             width: segmentWidth,
             transform: `translateX(calc(${activeIndex * 100}%))`,

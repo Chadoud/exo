@@ -64,6 +64,8 @@ def get_subscription_status() -> dict[str, Any]:
     record = read_subscription_record() or {}
     status = record.get("subscriptionStatus")
     plan = record.get("plan")
+    source = record.get("subscriptionSource")
+    manage_url = record.get("subscriptionManagementUrl")
     return {
         "subscriptionActive": bool(record.get("subscriptionActive")),
         "subscriptionStatus": status if isinstance(status, str) else None,
@@ -71,4 +73,7 @@ def get_subscription_status() -> dict[str, Any]:
         "subscriptionCancelAtPeriodEnd": bool(record.get("subscriptionCancelAtPeriodEnd")),
         "subscriptionPlan": plan if isinstance(plan, str) else None,
         "subscriptionEntitled": is_subscription_entitled(),
+        "subscriptionSource": source if isinstance(source, str) else None,
+        "subscriptionManagementUrl": manage_url if isinstance(manage_url, str) else None,
+        "storeSubscriptionSurvivesDeletion": bool(record.get("storeSubscriptionSurvivesDeletion")),
     }

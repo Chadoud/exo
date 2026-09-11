@@ -3,14 +3,17 @@ import {
   consumeHighlightMemory,
   consumeOpenMeetingModal,
   consumeOpenWhatsAppSetup,
+  consumeQueuedMemorySubTab,
   consumeStartActivityCapture,
   queueHighlightMemory,
+  queueMemorySubTab,
   queueOpenMeetingModal,
   queueOpenWhatsAppSetup,
   queueStartActivityCapture,
 } from "./deferredPanelActions";
 import {
   MEMORY_HIGHLIGHT_SESSION_KEY,
+  MEMORY_NAV_QUEUE_SESSION_KEY,
   OPEN_MEETING_MODAL_SESSION_KEY,
   OPEN_WHATSAPP_SETUP_SESSION_KEY,
   START_ACTIVITY_CAPTURE_SESSION_KEY,
@@ -61,6 +64,14 @@ describe("deferredPanelActions", () => {
     expect(sessionStorage.getItem(START_ACTIVITY_CAPTURE_SESSION_KEY)).toBe("1");
     expect(consumeStartActivityCapture()).toBe(true);
     expect(consumeStartActivityCapture()).toBe(false);
+  });
+
+  it("queues and consumes Memory sub-tab once", () => {
+    expect(consumeQueuedMemorySubTab()).toBeNull();
+    queueMemorySubTab("brief");
+    expect(sessionStorage.getItem(MEMORY_NAV_QUEUE_SESSION_KEY)).toBe("brief");
+    expect(consumeQueuedMemorySubTab()).toBe("brief");
+    expect(consumeQueuedMemorySubTab()).toBeNull();
   });
 
   it("queues and consumes WhatsApp setup intent once", () => {

@@ -19,7 +19,7 @@ export default function WelcomeSignedInBanner({
   return (
     <div className="mb-4 rounded-xl border border-border bg-bg-secondary/60 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
       <div className="min-w-0">
-        <p className="text-sm text-text-secondary">{t("welcome.signedInAs", { email: displayLabel })}</p>
+        <p className="text-sm text-muted">{t("welcome.signedInAs", { email: displayLabel })}</p>
         {showEmail && email ? (
           <p className="text-xs text-muted truncate">{email}</p>
         ) : null}

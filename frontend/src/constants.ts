@@ -74,10 +74,14 @@ export const OUTPUT_FOLDER_SORT_TAB_TOAST_SHOWN_KEY = "exosites.sortTab.outputFo
 export const POST_RUN_CARD_SESSION_HIDDEN_JOB_ID_KEY = "exosites.postRunCard.sessionHiddenJobId.v1";
 /** User chose "Don't show again" on the free-tier API quota nudge toast. */
 export const QUOTA_TOAST_DISMISSED_KEY = "exosites.quotaToast.dismissed.v1";
-/** Last selected sub-tab on the Memory panel (facts | map). */
+/** Last selected sub-tab on the Memory panel (overview | map | brief). */
 export const MEMORY_SUB_TAB_STORAGE_KEY = "exosites.memorySubTab.v1";
 /** Last selected Capture child (meeting | activity). */
 export const CAPTURE_SUB_TAB_STORAGE_KEY = "exosites.captureSubTab.v1";
+/** Last selected Brief in-panel chip (today | include). */
+export const STARTUP_SUB_TAB_STORAGE_KEY = "exosites.startupSubTab.v1";
+/** One-shot navigation to a Memory sub-tab (command palette, deep links). */
+export const MEMORY_NAV_QUEUE_SESSION_KEY = "exosites.memoryNavQueue.v1";
 export const MEMORY_LIST_EXPANDED_STORAGE_KEY = "exosites.memoryListExpanded.v1";
 /**
  * In-progress custom sort instructions. Kept apart from `sortSystemPrompt`

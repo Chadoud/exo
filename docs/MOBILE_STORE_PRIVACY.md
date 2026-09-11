@@ -16,6 +16,9 @@ Use when submitting **Exo** (`com.exosites.exosites_mobile`) to App Store Connec
 | Microphone | Voice Capture (not in beta) | N/A until Capture ships | No |
 | Local notifications | Remind when a synced task is due | On-device OS scheduler only | Optional lock-screen title (off by default) |
 | Optional push token | Generic wake when desktop syncs a due task or ready action | Cloud `sync_devices.push_token` | Yes (device id). Never in GDPR export. Wake payload is `{type}` only — no mail/task text |
+| App Store / Play purchase token (JWS) | Confirm 30-day trial / subscription | Sent to cloud verify once; not stored on the phone | Yes (account). Never logged. |
+| iOS calendars (EventKit) | Show the day on this iPhone | On-device only after an explicit tap | No. Titles/events are not uploaded. |
+| Display name + work role | First-run profile | Cloud `user_profiles` | Yes. `work_role` is never a telemetry prop. |
 
 Relay is **zero-knowledge**: cloud stores ciphertext only.
 
@@ -24,14 +27,16 @@ Relay is **zero-knowledge**: cloud stores ciphertext only.
 ## App Store (Apple)
 
 - **Privacy Nutrition Labels:** Data Linked to You → User Content (encrypted sync), Identifiers (device id), Contact Info (email if OAuth).
-- **Permission strings (beta):** `NSCameraUsageDescription` for QR pairing only. Local due reminders use the system notification prompt (no extra Info.plist string). Do **not** declare `NSMicrophoneUsageDescription` until Capture ships. Do **not** declare `UIBackgroundModes: remote-notification` until remote push ships.
+- **Permission strings (beta):** `NSCameraUsageDescription` for QR pairing. `NSCalendarsUsageDescription` + `NSCalendarsFullAccessUsageDescription` for read-only Apple Calendar (prompt only after **Use calendars on this iPhone**). Do **not** declare write-only calendar access or `NSMicrophoneUsageDescription` until Capture ships. Do **not** declare `UIBackgroundModes: remote-notification` until remote push ships.
+- **Purchases:** StoreKit / Play Billing on the phone. No Stripe card form. Nutrition label: Purchases. Price always comes from the store listing.
 - **Encryption export:** App uses standard HTTPS + on-device crypto — declare exempt category in App Store Connect questionnaire unless legal advises otherwise.
 - **Screenshots:** iPhone 6.7", 6.1", iPad 12.9" — dark Exo theme, Memory + Tasks tabs.
 
 ## Google Play
 
 - **Data Safety form:** align with table above; mark encryption in transit and at rest (client-side).
-- **Permissions (beta):** `POST_NOTIFICATIONS` + `SCHEDULE_EXACT_ALARM` for due-task reminders. No `RECORD_AUDIO` until Capture ships. Camera used for pairing QR via `mobile_scanner`. No FCM / remote-notification until push wake ships.
+- **Permissions (beta):** `POST_NOTIFICATIONS` + `SCHEDULE_EXACT_ALARM` for due-task reminders. No `RECORD_AUDIO` until Capture ships. No `READ_CALENDAR` (Apple Calendar is iOS-only). Camera used for pairing QR via `mobile_scanner`. No FCM / remote-notification until push wake ships.
+- **Data Safety — Purchases:** in-app subscriptions via Play Billing; financial data handled by Google. Do not list EventKit / calendar contents.
 - **Target API:** follow Flutter default from generated `android/` (review each release).
 
 ## Beta program (GTM)

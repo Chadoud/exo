@@ -17,6 +17,7 @@ const {
   stageBackendSlices,
   copyPrimaryDmgAlias,
 } = require("./lib/mac-packaging.cjs");
+const { isTestDesktopChannel, testDesktopChannelPayload } = require("./lib/desktopChannel.cjs");
 
 if (process.platform !== "darwin") {
   console.error("Error: package:mac must be run on a Mac.");
@@ -84,6 +85,14 @@ function applyMacSigningEnv(builderEnv) {
 execSync("bash scripts/prepare-release-resources.sh", { cwd: ROOT, stdio: "inherit" });
 stageBackendSlices(RESOURCES);
 
+const channelPath = path.join(RESOURCES, "desktop-channel.json");
+const pkgVersion = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")).version;
+if (isTestDesktopChannel()) {
+  fs.writeFileSync(channelPath, `${JSON.stringify(testDesktopChannelPayload(pkgVersion), null, 2)}\n`);
+} else if (fs.existsSync(channelPath)) {
+  fs.unlinkSync(channelPath);
+}
+
 const backendBin = resolvePackagedBackendBin(RESOURCES);
 if (!backendBin || !fs.existsSync(backendBin)) {
   console.error("Error: packaged macOS backend slice not found under electron/resources/");
@@ -111,7 +120,7 @@ const universal = isUniversalBuild();
 const nativeArch = hostNativeArch();
 const mode = packagingMode();
 
-console.log("\n=== Exo — macOS Packager ===\n");
+console.log(`\n=== Exo — macOS Packager${isTestDesktopChannel() ? " (Exo Test channel)" : ""} ===\n`);
 
 const builderEnv = {
   ...process.env,

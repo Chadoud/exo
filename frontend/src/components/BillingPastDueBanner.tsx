@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { EntitlementStatus } from "../api";
 import { useI18n } from "../i18n/I18nContext";
 import { useBillingActions, billingErrorKey } from "../hooks/useBillingActions";
+import { isStoreSubscriptionSource } from "../utils/subscriptionManagement";
 
 const SESSION_DISMISS_KEY = "exo.billing.pastDueBannerDismissed";
 
@@ -28,6 +29,7 @@ export default function BillingPastDueBanner({ entitlement }: BillingPastDueBann
   const [dismissed, setDismissed] = useState(readSessionDismissed);
 
   if (dismissed || entitlement?.subscriptionStatus !== "past_due") return null;
+  const storeManaged = isStoreSubscriptionSource(entitlement?.subscriptionSource);
 
   const dismiss = () => {
     try {
@@ -41,15 +43,21 @@ export default function BillingPastDueBanner({ entitlement }: BillingPastDueBann
   return (
     <div
       role="alert"
-      className="fixed inset-x-0 top-12 z-40 mx-auto flex w-fit max-w-[calc(100vw-2rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-warning-line bg-warning-soft px-4 py-2 shadow-lg"
+      className="fixed inset-x-0 top-12 z-40 mx-auto flex w-fit max-w-[calc(100vw-2rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-warning-line bg-warning-soft px-4 py-2"
     >
       <p className="text-xs text-warning">
         {billing.errorCode ? t(billingErrorKey(billing.errorCode)) : t("billing.pastDueBanner")}
       </p>
       <button
         type="button"
-        disabled={billing.busy === "portal"}
-        onClick={() => void billing.openPortal()}
+        disabled={storeManaged ? false : billing.busy === "portal"}
+        onClick={() => {
+          if (storeManaged && entitlement?.subscriptionManagementUrl) {
+            void window.electronAPI?.openExternal?.(entitlement.subscriptionManagementUrl);
+            return;
+          }
+          void billing.openPortal();
+        }}
         className="text-xs font-semibold text-warning underline-offset-2 hover:underline disabled:opacity-40"
       >
         {billing.busy === "portal" ? t("billing.openingPortal") : t("billing.pastDueUpdateCta")}
@@ -57,6 +65,7 @@ export default function BillingPastDueBanner({ entitlement }: BillingPastDueBann
       <button
         type="button"
         onClick={dismiss}
+        aria-label={t("billing.dismiss")}
         className="text-xs font-medium text-muted underline-offset-2 hover:text-text-primary hover:underline"
       >
         {t("billing.dismiss")}

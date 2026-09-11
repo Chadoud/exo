@@ -5,6 +5,7 @@ import '../../app/exo_config.dart';
 import '../../app/mobile_sync_config.dart';
 import '../../design/exo_choice_chips.dart';
 import '../../design/exo_spacing.dart';
+import '../../design/exo_status_banner.dart';
 import '../../design/exo_widgets.dart';
 import '../../notifications/due_reminder_scope.dart';
 import '../../telemetry/mobile_crash_reporter.dart';
@@ -13,6 +14,7 @@ import '../settings/pairing_screen.dart';
 import '../settings/reminder_settings_section.dart';
 import '../settings/source_stop_section.dart';
 import '../settings/sources_connect_hint.dart';
+import '../settings/store_restore_section.dart';
 import '../settings/sync_debug_section.dart';
 import 'app_sub_tab.dart';
 import 'settings_copy.dart';
@@ -156,13 +158,13 @@ class _LinkBody extends StatelessWidget {
       children: [
         ExoSectionLabel(copy.desktopSection),
         const SizedBox(height: ExoSpacing.sm),
-        ExoSyncStatusBanner(
+        ExoStatusBanner(
+          kind: config.isPaired ? ExoStatusKind.info : ExoStatusKind.needsPair,
           message: !config.isPaired
               ? copy.linkUnpaired
               : config.hasEverSynced
                   ? copy.linkPaired
                   : copy.linkPairedPending,
-          isError: !config.isPaired,
         ),
         const SizedBox(height: ExoSpacing.md),
         ExoPrimaryButton(
@@ -219,11 +221,12 @@ class _AccountBody extends StatelessWidget {
             ],
           ),
         ),
+        StoreRestoreSection(config: config),
         if (onSignOut != null) ...[
           const SizedBox(height: ExoSpacing.xl),
-          OutlinedButton(
+          ExoSecondaryButton(
+            label: copy.signOut,
             onPressed: onSignOut,
-            child: Text(copy.signOut),
           ),
         ],
       ],

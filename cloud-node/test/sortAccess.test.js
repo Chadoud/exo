@@ -49,6 +49,19 @@ test("accountHasSortAccess allows offline_license entitlement after trial ends",
   );
 });
 
+test("accountHasSortAccess allows app_store and play entitlements after trial ends", () => {
+  for (const source of ["app_store", "play"]) {
+    assert.equal(
+      accountHasSortAccess({
+        trial_active: false,
+        entitlements: [{ feature: "sort", source, active: true }],
+      }),
+      true,
+      source,
+    );
+  }
+});
+
 test("accountHasSortAccess allows active stripe entitlement after trial ends", () => {
   assert.equal(
     accountHasSortAccess({

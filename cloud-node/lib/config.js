@@ -41,6 +41,16 @@ if (nodeEnv === "production") {
   if (stripeSecretKey && stripeSecretKey.startsWith("sk_test_")) {
     console.warn("[config] WARNING: STRIPE_SECRET_KEY is a test-mode key in production");
   }
+  if (env("STORE_BILLING_ENABLED", "0") === "1") {
+    const appleReady = Boolean(env("APPLE_IAP_ISSUER_ID") && env("APPLE_IAP_KEY_ID") && env("APPLE_IAP_PRIVATE_KEY"));
+    const playReady = Boolean(env("PLAY_SERVICE_ACCOUNT_JSON"));
+    if (!appleReady || !playReady) {
+      console.error(
+        "[config] STORE_BILLING_ENABLED=1 requires Apple IAP and Play service-account credentials in production",
+      );
+      process.exit(1);
+    }
+  }
   if (env("EMAIL_ENABLED", "0") === "1" && !env("RESEND_API_KEY")) {
     console.error("[config] EMAIL_ENABLED=1 requires RESEND_API_KEY in production");
     process.exit(1);
@@ -124,6 +134,25 @@ module.exports = {
     /** Display-only price strings served to clients (never used for charging). */
     displayPriceMonthly: env("STRIPE_DISPLAY_PRICE_MONTHLY", "CHF 20"),
     displayPriceAnnual: env("STRIPE_DISPLAY_PRICE_ANNUAL", "CHF 200"),
+  },
+
+  // ─── Store billing (App Store / Play — phone pair gate) ───────────────────
+  store: {
+    /** Master switch — off keeps store_checkout_required false and verify 503. */
+    enabled: env("STORE_BILLING_ENABLED", "0") === "1",
+    liveMode: env("STORE_BILLING_LIVE", "0") === "1",
+    apple: {
+      issuerId: env("APPLE_IAP_ISSUER_ID"),
+      keyId: env("APPLE_IAP_KEY_ID"),
+      privateKey: env("APPLE_IAP_PRIVATE_KEY").replace(/\\n/g, "\n"),
+      bundleId: env("APPLE_IAP_BUNDLE_ID", "com.exosites.exositesMobile"),
+    },
+    play: {
+      packageName: env("PLAY_PACKAGE_NAME", "ch.exosites.exosites_mobile"),
+      serviceAccountJson: env("PLAY_SERVICE_ACCOUNT_JSON"),
+      /** Pub/Sub OIDC audience; defaults to ${APP_BASE_URL}/v1/webhooks/play */
+      rtdnAudience: env("PLAY_RTDN_AUDIENCE"),
+    },
   },
 
   // ─── Transactional email (Resend) ──────────────────────────────────────────

@@ -3,9 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../app/mobile_sync_config.dart';
+import '../../design/exo_palette.dart';
 import '../../design/exo_spacing.dart';
+import '../../design/exo_status_banner.dart';
 import '../../design/exo_theme.dart';
 import '../../design/exo_widgets.dart';
+import '../../sync/cloud_api.dart';
 import '../../sync/pairing_payload.dart';
 import '../../sync/user_messages.dart';
 
@@ -14,9 +17,14 @@ import '../../sync/user_messages.dart';
 /// When the camera is missing (Simulator) or scanning fails, the UI switches to
 /// paste-first — never leave the user staring at a dead viewfinder.
 class PairingScreen extends StatefulWidget {
-  const PairingScreen({super.key, required this.config});
+  const PairingScreen({
+    super.key,
+    required this.config,
+    this.onStoreCheckoutRequired,
+  });
 
   final MobileSyncConfig config;
+  final VoidCallback? onStoreCheckoutRequired;
 
   @override
   State<PairingScreen> createState() => _PairingScreenState();
@@ -91,6 +99,9 @@ class _PairingScreenState extends State<PairingScreen>
       final fail = await applyPairingRaw(widget.config, raw);
       if (!mounted) return;
       if (fail != null) {
+        if (fail == PairingParseFailure.storeCheckoutRequired) {
+          widget.onStoreCheckoutRequired?.call();
+        }
         setState(() {
           _busy = false;
           _error = messageForPairingParseFailure(fail);
@@ -101,6 +112,18 @@ class _PairingScreenState extends State<PairingScreen>
       _accountMismatch = false;
       try {
         await widget.config.registerDeviceIfNeeded();
+      } on CloudApiException catch (e) {
+        if (e.isStoreCheckoutRequired) {
+          widget.onStoreCheckoutRequired?.call();
+          if (mounted) {
+            setState(() {
+              _busy = false;
+              _error = SyncUserMessages.pairingStoreCheckoutRequired;
+            });
+          }
+          return;
+        }
+        // Pairing succeeded; parent setup step may surface register soft-fail.
       } catch (_) {
         // Pairing succeeded; parent setup step may surface register soft-fail.
       }
@@ -190,7 +213,7 @@ class _PairingScreenState extends State<PairingScreen>
     return ClipRRect(
       borderRadius: BorderRadius.circular(ExoTheme.radius),
       child: ColoredBox(
-        color: const Color(0xFF000000),
+        color: ExoPalette.of(context).selectedInk,
         child: MobileScanner(
           onDetect: _onDetect,
           errorBuilder: (context, error, child) {
@@ -210,7 +233,9 @@ class _PairingScreenState extends State<PairingScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          pasteOnly ? SyncUserMessages.pairPasteTitle : 'Pair with desktop',
+          pasteOnly
+              ? SyncUserMessages.pairPasteTitle
+              : SyncUserMessages.pairStepTitle,
         ),
       ),
       body: pasteOnly
@@ -223,7 +248,10 @@ class _PairingScreenState extends State<PairingScreen>
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: ExoSpacing.md),
-                  ExoSyncStatusBanner(message: _error!, isError: true),
+                  ExoStatusBanner(
+                    kind: ExoStatusKind.error,
+                    message: _error!,
+                  ),
                   if (_accountMismatch) ...[
                     const SizedBox(height: ExoSpacing.sm),
                     TextButton(
@@ -257,7 +285,10 @@ class _PairingScreenState extends State<PairingScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ExoSyncStatusBanner(message: _error!, isError: true),
+                        ExoStatusBanner(
+                    kind: ExoStatusKind.error,
+                    message: _error!,
+                  ),
                         if (_accountMismatch)
                           TextButton(
                             onPressed: _busy

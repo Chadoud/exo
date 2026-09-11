@@ -4,11 +4,14 @@ import 'package:exosites_mobile/design/exo_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/product_theme.dart';
+
 void main() {
   testWidgets('ExoCubeSvg is the stroke mark (not a PNG)', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
+      MaterialApp(
+        theme: productTheme(),
+        home: const Scaffold(
           body: Center(child: ExoCubeSvg(size: 48)),
         ),
       ),
@@ -20,8 +23,9 @@ void main() {
 
   testWidgets('ExoMark uses brand stroke cube', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
+      MaterialApp(
+        theme: productTheme(),
+        home: const Scaffold(
           body: Center(child: ExoMark()),
         ),
       ),

@@ -1,4 +1,5 @@
 import type { OriginalView } from "../../hooks/useMailReplyOriginal";
+import TextWithLinks from "../ui/TextWithLinks";
 
 type MailReplyOriginalBlockProps = {
   view: OriginalView;
@@ -13,7 +14,7 @@ type MailReplyOriginalBlockProps = {
   onRetry: () => void;
 };
 
-/** Presentational inbound region — text nodes only, never HTML. */
+/** Presentational inbound region — plain text only; https URLs become links. */
 export default function MailReplyOriginalBlock({
   view,
   headingId,
@@ -69,9 +70,10 @@ export default function MailReplyOriginalBlock({
             tabIndex={0}
             className="mt-2 max-h-48 overflow-y-auto overflow-x-hidden overscroll-contain"
           >
-            <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap break-words">
-              {view.text}
-            </p>
+            <TextWithLinks
+              text={view.text}
+              className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap break-words"
+            />
           </div>
           {view.kind === "truncated" ? (
             <p className="mt-2 text-2xs text-muted">{truncated}</p>

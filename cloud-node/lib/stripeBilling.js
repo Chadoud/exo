@@ -146,6 +146,12 @@ async function createCheckoutSession(deps, accountId, interval) {
     err.status = 409;
     throw err;
   }
+  const { hasActiveStoreEntitlement } = require("./storeCheckout");
+  if (await hasActiveStoreEntitlement(pool, accountId)) {
+    const err = new Error("already_subscribed");
+    err.status = 409;
+    throw err;
+  }
 
   const customerId = await ensureStripeCustomer(deps, accountId);
   const session = await stripe.checkout.sessions.create({

@@ -1,5 +1,6 @@
 const express = require("express");
 const { requireAuth } = require("../middleware/requireAuth");
+const { requireStoreCheckout } = require("../middleware/requireStoreCheckout");
 const {
   registerDevice,
   pushBlobs,
@@ -20,7 +21,7 @@ router.get("/sync/status", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/sync/devices/register", requireAuth, async (req, res) => {
+router.post("/sync/devices/register", requireAuth, requireStoreCheckout, async (req, res) => {
   try {
     const name = String(req.body?.name || "Mobile").slice(0, 120);
     const platform = String(req.body?.platform || "ios").slice(0, 16);
@@ -80,7 +81,7 @@ router.post("/sync/pairing/grants", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/sync/pairing/redeem", requireAuth, async (req, res) => {
+router.post("/sync/pairing/redeem", requireAuth, requireStoreCheckout, async (req, res) => {
   try {
     const token = String(req.body?.grant_token || "").trim();
     const fp = String(req.body?.key_fingerprint || "").trim();

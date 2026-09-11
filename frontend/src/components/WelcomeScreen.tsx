@@ -8,7 +8,7 @@ import WelcomePrivacyStep from "./WelcomePrivacyStep";
 import UnsavedChangesDialog from "./UnsavedChangesDialog";
 import WelcomeLocalServiceCard from "./welcome/WelcomeLocalServiceCard";
 import WelcomeSignedInBanner from "./welcome/WelcomeSignedInBanner";
-import { OUTLINE_PILL_BTN_CLASS, PRIMARY_BTN_CLASS } from "../utils/styles";
+import { CARD_SHELL_CLASS, MODAL_SURFACE_CLASS, OUTLINE_PILL_BTN_CLASS, PRIMARY_BTN_CLASS } from "../utils/styles";
 import { LEGAL_TERMS_BUNDLE_VERSION } from "../constants";
 import { useI18n } from "../i18n/I18nContext";
 import { isVisionCapableModelName } from "../utils/visionModels";
@@ -55,7 +55,7 @@ function ProgressDots({ current, total }: { current: number; total: number }) {
         <div
           key={i}
           className={`h-2 w-2 rounded-full transition-colors duration-300 ${
-            i <= current ? "bg-accent" : "bg-border"
+            i <= current ? "bg-button-primary" : "bg-border"
           }`}
         />
       ))}
@@ -307,17 +307,15 @@ export default function WelcomeScreen({
       {setupShellVisible ? (
       <div className="welcome-setup-shell-overlay fixed inset-0 z-50 flex flex-col items-center justify-center bg-welcome-overlay backdrop-blur-[6px] p-4 gap-4 min-h-0">
         <div
-            className="relative flex max-h-[min(96dvh,56rem)] w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-bg-card shadow-2xl max-w-3xl"
+            className={`${MODAL_SURFACE_CLASS} relative max-h-[min(96dvh,56rem)] w-full min-h-0 max-w-3xl`}
           >
-        {/* Top accent bar */}
-        <div className="h-1 w-full shrink-0 bg-gradient-to-r from-accent via-accent-hover to-accent-line-strong" />
 
         {/* Scrollable body keeps footer (Back / Next) in view when Download Models is expanded */}
         <div className="flex min-h-0 flex-1 flex-col">
         {/* Title + dots — fixed height band */}
         <div className="shrink-0 space-y-6 px-5 pt-6 sm:px-8 sm:pt-8">
           <div className="text-center space-y-3">
-            <div className="inline-flex w-14 h-14 rounded-2xl bg-accent-soft items-center justify-center mx-auto">
+            <div className="inline-flex w-14 h-14 rounded-xl bg-bg-secondary items-center justify-center mx-auto">
               {step === WELCOME_STEP.SORT_SETUP && (
                 <svg className="w-7 h-7 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v8.25m19.5 0v.75A2.25 2.25 0 0 1 19.5 17.25h-15a2.25 2.25 0 0 1-2.25-2.25V13.5" />
@@ -381,7 +379,7 @@ export default function WelcomeScreen({
                   onSwitchAccount={onSwitchAccount}
                 />
               ) : null}
-              <div className="relative rounded-2xl border border-accent bg-accent-soft ring-2 ring-accent p-5 space-y-3">
+              <div className={`relative ${CARD_SHELL_CLASS} border-l-2 border-l-accent p-5 space-y-3`}>
                 <span className="absolute right-4 top-4 rounded-full bg-button-primary px-2 py-0.5 text-2xs font-semibold text-white">
                   {t("welcome.providerSelectedBadge")}
                 </span>
@@ -394,21 +392,21 @@ export default function WelcomeScreen({
                 </div>
                 <ul className="flex flex-row flex-nowrap items-center gap-x-3 sm:gap-x-5 overflow-x-auto text-2xs sm:text-xs text-muted list-none m-0 p-0">
                   <li className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
-                    <span className="text-emerald-400" aria-hidden>✓</span>
+                    <span className="text-success" aria-hidden>✓</span>
                     {t("welcome.geminiBulletFast")}
                   </li>
                   <li className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
-                    <span className="text-emerald-400" aria-hidden>✓</span>
+                    <span className="text-success" aria-hidden>✓</span>
                     {t("welcome.geminiBulletVoice")}
                   </li>
                   <li className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
-                    <span className="text-emerald-400" aria-hidden>✓</span>
+                    <span className="text-success" aria-hidden>✓</span>
                     {t("welcome.geminiBulletFreeTier")}
                   </li>
                 </ul>
               </div>
 
-              <div className="rounded-2xl border border-border bg-bg-secondary/40 p-4 sm:p-5">
+              <div className="border-t border-border pt-4 sm:pt-5">
                 <GeminiApiKeySetupGuide
                   inputId="welcome-gemini-api-key"
                   apiKey={settings.geminiApiKey}

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
 
+from signal_quality.constants import GMAIL_NOISE_QUERY_EXCLUSIONS
+
 # ── City extractor ─────────────────────────────────────────────────────────────
 
 _CITY_RE = re.compile(
@@ -204,8 +206,9 @@ def _fmt_calendar(results: dict[str, dict], city: str | None, routine: str) -> s
 
 
 def _build_mail_fetch(routine: str) -> list[tuple[str, str, dict]]:
+    gmail_query = f"in:inbox is:unread {GMAIL_NOISE_QUERY_EXCLUSIONS}"
     return [
-        ("gmail", "google_workspace", {"operation": "search_mail", "query": "is:unread", "max_results": 8}),
+        ("gmail", "google_workspace", {"operation": "search_mail", "query": gmail_query, "max_results": 20}),
         ("outlook", "microsoft_graph", {"operation": "search_mail", "query": "isRead:false", "max_results": 8}),
     ]
 

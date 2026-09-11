@@ -3,6 +3,8 @@ import 'package:exosites_mobile/design/exo_cube_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/product_theme.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -31,8 +33,9 @@ void main() {
 
   testWidgets('ExoCubeDraw paints at progress 0 and 1', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
+      MaterialApp(
+        theme: productTheme(),
+        home: const Scaffold(
           body: Center(child: ExoCubeDraw(progress: 0, size: 48)),
         ),
       ),
@@ -40,8 +43,9 @@ void main() {
     expect(find.byType(ExoCubeDraw), findsOneWidget);
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
+      MaterialApp(
+        theme: productTheme(),
+        home: const Scaffold(
           body: Center(child: ExoCubeDraw(progress: 1, size: 48)),
         ),
       ),
@@ -53,6 +57,7 @@ void main() {
     var done = false;
     await tester.pumpWidget(
       MaterialApp(
+        theme: productTheme(),
         home: Scaffold(
           body: ExoCubeIntro(
             duration: const Duration(milliseconds: 200),
@@ -79,6 +84,7 @@ void main() {
     var done = false;
     await tester.pumpWidget(
       MaterialApp(
+        theme: productTheme(),
         home: Scaffold(
           body: ExoCubeIntro(
             skipAnimation: true,
@@ -98,6 +104,7 @@ void main() {
     var done = false;
     await tester.pumpWidget(
       MaterialApp(
+        theme: productTheme(),
         home: ExoBootScreen(
           introDuration: const Duration(milliseconds: 200),
           settleDuration: const Duration(milliseconds: 100),
@@ -123,8 +130,9 @@ void main() {
 
   testWidgets('ExoCubeSvg mark matches full stroke draw', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
+      MaterialApp(
+        theme: productTheme(),
+        home: const Scaffold(
           body: Center(child: ExoCubeSvg(size: 48)),
         ),
       ),

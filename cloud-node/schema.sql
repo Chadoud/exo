@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   password_hash VARCHAR(255) NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   trial_ends_at DATETIME NULL,
+  store_billing_exempt TINYINT(1) NOT NULL DEFAULT 0,
   refresh_token_jti CHAR(36) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_accounts_email (email)
@@ -59,7 +60,35 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   account_id CHAR(36) NOT NULL PRIMARY KEY,
   display_name VARCHAR(120) NULL,
   locale VARCHAR(16) NULL DEFAULT 'en',
+  work_role VARCHAR(64) NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS store_subscriptions (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  account_id CHAR(36) NULL,
+  platform VARCHAR(16) NOT NULL,
+  store_original_id VARCHAR(255) NOT NULL,
+  product_id VARCHAR(255) NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  environment VARCHAR(16) NOT NULL,
+  current_period_end DATETIME NULL,
+  auto_renew TINYINT(1) NOT NULL DEFAULT 0,
+  retired TINYINT(1) NOT NULL DEFAULT 0,
+  last_event_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_store_identity (platform, store_original_id),
+  KEY idx_store_account (account_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS store_events_processed (
+  event_id VARCHAR(255) NOT NULL PRIMARY KEY,
+  provider VARCHAR(16) NOT NULL,
+  event_type VARCHAR(64) NULL,
+  account_id CHAR(36) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_store_events_account (account_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Opt-in crash reports. Previously lived in a separate DB; consolidated here so the

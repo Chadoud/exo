@@ -26,7 +26,7 @@ function findPackagedMacApp(rootDir) {
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === "Exo.app") {
+        if (entry.name === "Exo.app" || entry.name === "Exo Test.app") {
           candidates.push({ appPath: full, mtime: fs.statSync(full).mtimeMs });
         } else {
           walk(full);

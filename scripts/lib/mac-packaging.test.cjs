@@ -68,6 +68,14 @@ test("dmgArtifactName is arch-specific unless universal", () => {
   assert.match(dmgArtifactName({ EXO_MAC_UNIVERSAL: "0" }), /^Exo-(x64|arm64)\.\$\{ext\}$/);
 });
 
+test("test channel uses Exo Test name and Exo-Test dmg prefix", () => {
+  const cfg = electronBuilderConfig({ EXO_TEST_BUILD: "1", EXO_MAC_UNIVERSAL: "0" });
+  assert.equal(cfg.productName, "Exo Test");
+  assert.equal(cfg.appId, "com.exo.app.test");
+  assert.match(dmgArtifactName({ EXO_TEST_BUILD: "1", EXO_MAC_UNIVERSAL: "0" }), /^Exo-Test-(x64|arm64)\.\$\{ext\}$/);
+  assert.equal(dmgArtifactName({ EXO_TEST_BUILD: "1", EXO_MAC_UNIVERSAL: "1" }), "Exo-Test-universal.${ext}");
+});
+
 test("stageBackendSlices keeps one onedir slice for native builds", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "exo-mac-pack-"));
   writeOnedirSlice(dir, "backend-x64");

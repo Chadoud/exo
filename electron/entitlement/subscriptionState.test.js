@@ -33,6 +33,21 @@ test("syncCloudSubscription persists snake_case profile as camelCase cache", () 
   assert.ok(raw.lastSyncedAt > 0);
 });
 
+test("store subscribers keep a management URL and never look like Stripe-only", () => {
+  const dir = tmpDir();
+  syncCloudSubscription(dir, {
+    ...PRO_PROFILE,
+    subscription_source: "app_store",
+    subscription_management: { destination: "app_store", url: "https://apps.apple.com/account/subscriptions" },
+    store_subscription_survives_deletion: true,
+  });
+  const status = getSubscriptionStatus(dir);
+  assert.equal(status.subscriptionSource, "app_store");
+  assert.equal(status.subscriptionManagementUrl, "https://apps.apple.com/account/subscriptions");
+  assert.equal(status.storeSubscriptionSurvivesDeletion, true);
+  assert.equal(status.subscriptionEntitled, true);
+});
+
 test("fresh active cache is entitled", () => {
   const dir = tmpDir();
   syncCloudSubscription(dir, PRO_PROFILE);

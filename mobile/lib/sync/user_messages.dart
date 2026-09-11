@@ -3,9 +3,13 @@ abstract final class SyncUserMessages {
   // Setup
   static const setupTitle = 'Sign in to your account';
   static const setupTitleCreate = 'Create your account';
-  static const setupSubtitle = 'Then link this phone to your computer.';
+  static const setupSubtitle = 'Sign in or create a free account.';
   static const setupPairingHint =
-      'Already copied a code from desktop? Sign in first — we\'ll connect you on the next step.';
+      'Already copied a code from desktop? Paste it on the next step.';
+  static const signInTab = 'Sign in';
+  static const createAccountTab = 'Create account';
+  static const emailModeTabsAria = 'Sign in or create account';
+  static const forgotPassword = 'Forgot password?';
   static const signInWithGoogle = 'Continue with Google';
   static const signInWithApple = 'Continue with Apple';
   static const signIn = 'Sign in';
@@ -66,8 +70,10 @@ abstract final class SyncUserMessages {
   static const continueToInbox = 'Continue';
   static const continueToMemories = continueToInbox;
   static const tryAgain = 'Try again';
-  static const stepSignIn = 'Step 1 of 2 · Sign in';
-  static const stepPair = 'Step 2 of 2 · Link phone';
+  static const stepSignIn = '1 · Account';
+  static const stepPair = '2 · Link phone';
+  static const pairingStoreCheckoutRequired =
+      'Start the 30-day trial on this phone before linking the computer.';
 
   // Status / sync
   static const notSignedIn = 'Sign in to continue.';

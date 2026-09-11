@@ -18,6 +18,8 @@ const { clientIp } = require("../lib/clientIp");
 const { requireAuth } = require("../middleware/requireAuth");
 const { billingHandoffPageHtml } = require("../lib/oauthHandoffHtml");
 const billing = require("../lib/stripeBilling");
+const storeBilling = require("../lib/storeBilling");
+const { storeBillingEnabled } = require("../lib/storeCheckout");
 const { processStripeEvent } = require("../lib/stripeWebhook");
 
 const SESSION_RATE_MAX = 10;
@@ -32,6 +34,12 @@ const KNOWN_ERROR_CODES = new Set([
   "no_stripe_customer",
   "billing_not_configured",
   "invalid_token",
+  "store_billing_not_configured",
+  "invalid_platform",
+  "missing_store_payload",
+  "invalid_store_receipt",
+  "store_owned_by_other_account",
+  "store_verify_failed",
 ]);
 
 /** @param {object} overrides test injection: { pool, stripe, expectLivemode, enabled } */
@@ -99,6 +107,32 @@ function createBillingRouter(overrides = {}) {
       return sendBillingError(res, err, "portal_session_failed");
     }
   });
+
+  const storeEnabled = () =>
+    overrides.storeEnabled !== undefined ? overrides.storeEnabled : storeBillingEnabled();
+
+  async function handleStoreVerify(req, res) {
+    if (!storeEnabled()) {
+      return res.status(503).json({ detail: "store_billing_not_configured" });
+    }
+    if (!allow(`store-verify:${req.accountId}`, SESSION_RATE_MAX, SESSION_RATE_WINDOW_MS)) {
+      return res.status(429).json({ detail: "rate_limited" });
+    }
+    try {
+      const deps = {
+        pool: overrides.pool || getPool(),
+        fetchStoreTruth: overrides.fetchStoreTruth,
+        expectLivemode: overrides.expectLivemode,
+      };
+      const result = await storeBilling.verifyStorePurchase(deps, req.accountId, req.body || {});
+      return res.json(result);
+    } catch (err) {
+      return sendBillingError(res, err, "store_verify_failed");
+    }
+  }
+
+  router.post("/billing/store/verify", requireAuth, handleStoreVerify);
+  router.post("/billing/store/restore", requireAuth, handleStoreVerify);
 
   router.get("/billing/done", (req, res) => {
     const kind = String(req.query.from || "") === "portal" ? "portal" : "success";

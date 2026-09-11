@@ -1,13 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { I18nProvider } from "../../i18n/I18nContext";
 import TodoOpenTasksBody from "./TodoOpenTasksBody";
-
-vi.mock("./TodayBriefingCard", () => ({
-  default: () => <section>Briefing</section>,
-}));
 
 const emptyProps = {
   proLocked: false,
@@ -16,7 +12,6 @@ const emptyProps = {
   hasAnyOpenTasks: false,
   todayHasTasks: false,
   hasUpcomingContent: false,
-  backendOnline: true,
   todayDayGroups: [],
   upcomingDayGroups: [],
   somedayTasks: [],
@@ -44,7 +39,7 @@ describe("TodoOpenTasksBody", () => {
     container.remove();
   });
 
-  it("keeps briefing visible on first-load skeleton", async () => {
+  it("shows a skeleton on first load without a briefing card", async () => {
     await act(async () => {
       root.render(
         <I18nProvider locale="en">
@@ -52,11 +47,11 @@ describe("TodoOpenTasksBody", () => {
         </I18nProvider>,
       );
     });
-    expect(container.textContent).toContain("Briefing");
+    expect(container.textContent).not.toContain("Briefing");
     expect(container.querySelector("[aria-busy], .animate-pulse, [data-skeleton]")).toBeTruthy();
   });
 
-  it("keeps briefing visible when the task list is empty", async () => {
+  it("shows the empty state without a briefing card", async () => {
     await act(async () => {
       root.render(
         <I18nProvider locale="en">
@@ -64,7 +59,7 @@ describe("TodoOpenTasksBody", () => {
         </I18nProvider>,
       );
     });
-    expect(container.textContent).toContain("Briefing");
+    expect(container.textContent).not.toContain("Briefing");
     expect(container.textContent).toContain("Nothing open");
   });
 
@@ -80,20 +75,7 @@ describe("TodoOpenTasksBody", () => {
         </I18nProvider>,
       );
     });
-    expect(container.textContent).toContain("Briefing");
-    expect(container.textContent).toContain("Ready to send");
     expect(container.textContent).toContain("Ready draft");
-    expect(container.textContent).not.toContain("Nothing open");
-  });
-
-  it("hides briefing when the tab is locked", async () => {
-    await act(async () => {
-      root.render(
-        <I18nProvider locale="en">
-          <TodoOpenTasksBody {...emptyProps} proLocked />
-        </I18nProvider>,
-      );
-    });
-    expect(container.textContent).not.toContain("Briefing");
+    expect(container.textContent).toContain("Ready to send");
   });
 });

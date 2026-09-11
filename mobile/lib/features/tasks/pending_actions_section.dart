@@ -150,16 +150,17 @@ class _PendingActionsSectionState extends State<PendingActionsSection> {
     );
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(ExoTheme.radius),
-        border: focused ? Border.all(color: palette.selectedInk, width: 2) : null,
+        border: focused
+            ? Border(left: BorderSide(color: palette.selectedInk, width: 2))
+            : null,
       ),
       child: InboxExpandCard(
-        title: copy.actionCardTitleFor(ready: ready, waiting: waiting, stale: stale),
-        subtitle: to,
-        dueDays: dueDays,
-        french: Localizations.localeOf(context).languageCode == 'fr',
-        initiallyExpanded: focused || widget.startExpanded,
-        child: Column(
+      title: copy.actionCardTitleFor(ready: ready, waiting: waiting, stale: stale),
+      subtitle: to,
+      dueDays: dueDays,
+      french: Localizations.localeOf(context).languageCode == 'fr',
+      initiallyExpanded: focused || widget.startExpanded,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (ready)
@@ -224,24 +225,23 @@ class _InboundBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = ExoPalette.of(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(ExoTheme.radiusInput),
+      child: ColoredBox(
         color: palette.well,
-        borderRadius: BorderRadius.circular(ExoTheme.radius),
-        border: Border.all(color: palette.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(ExoSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (subject.isNotEmpty)
-              Text(subject, style: Theme.of(context).textTheme.titleSmall),
-            if (snippet.isNotEmpty) ...[
-              if (subject.isNotEmpty) const SizedBox(height: ExoSpacing.sm),
-              SelectableText(snippet, style: Theme.of(context).textTheme.bodyMedium),
+        child: Padding(
+          padding: const EdgeInsets.all(ExoSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (subject.isNotEmpty)
+                Text(subject, style: Theme.of(context).textTheme.titleMedium),
+              if (snippet.isNotEmpty) ...[
+                if (subject.isNotEmpty) const SizedBox(height: ExoSpacing.sm),
+                SelectableText(snippet, style: Theme.of(context).textTheme.bodyMedium),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

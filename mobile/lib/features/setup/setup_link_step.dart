@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/exo_config.dart';
 import '../../app/mobile_sync_config.dart';
+import '../../sync/cloud_api.dart';
 import '../../sync/pairing_payload.dart';
 import '../../sync/user_messages.dart';
 import '../settings/pairing_screen.dart';
@@ -10,9 +11,14 @@ import 'setup_link_panel.dart';
 
 /// Orchestrates setup step 2: clipboard probe (no auto-apply), Connect, Scan modal.
 class SetupLinkStep extends StatefulWidget {
-  const SetupLinkStep({super.key, required this.config});
+  const SetupLinkStep({
+    super.key,
+    required this.config,
+    this.onStoreCheckoutRequired,
+  });
 
   final MobileSyncConfig config;
+  final VoidCallback? onStoreCheckoutRequired;
 
   @override
   State<SetupLinkStep> createState() => _SetupLinkStepState();
@@ -78,6 +84,17 @@ class _SetupLinkStepState extends State<SetupLinkStep>
   Future<void> _afterPaired() async {
     try {
       await widget.config.registerDeviceIfNeeded();
+    } on CloudApiException catch (e) {
+      if (e.isStoreCheckoutRequired) {
+        widget.onStoreCheckoutRequired?.call();
+        if (mounted) {
+          setState(() => _error = SyncUserMessages.pairingStoreCheckoutRequired);
+        }
+        return;
+      }
+      if (mounted) {
+        setState(() => _error = SyncUserMessages.pairingRegisterFailed);
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _error = SyncUserMessages.pairingRegisterFailed);
@@ -96,6 +113,9 @@ class _SetupLinkStepState extends State<SetupLinkStep>
       final fail = await applyPairingRaw(widget.config, raw);
       if (!mounted) return;
       if (fail != null) {
+        if (fail == PairingParseFailure.storeCheckoutRequired) {
+          widget.onStoreCheckoutRequired?.call();
+        }
         setState(() {
           _busy = false;
           _error = messageForPairingParseFailure(fail);
@@ -116,7 +136,12 @@ class _SetupLinkStepState extends State<SetupLinkStep>
 
   Future<void> _onScan() async {
     final paired = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => PairingScreen(config: widget.config)),
+      MaterialPageRoute(
+        builder: (_) => PairingScreen(
+          config: widget.config,
+          onStoreCheckoutRequired: widget.onStoreCheckoutRequired,
+        ),
+      ),
     );
     if (paired == true && mounted) {
       await _afterPaired();

@@ -87,6 +87,9 @@ class TestSubscriptionState(unittest.TestCase):
             status = get_subscription_status()
             self.assertTrue(status["subscriptionEntitled"])
             self.assertEqual(status["subscriptionPlan"], "pro")
+            self.assertIsNone(status["subscriptionSource"])
+            self.assertIsNone(status["subscriptionManagementUrl"])
+            self.assertFalse(status["storeSubscriptionSurvivesDeletion"])
 
     def test_past_due_keeps_access(self):
         from subscription_state import is_subscription_entitled

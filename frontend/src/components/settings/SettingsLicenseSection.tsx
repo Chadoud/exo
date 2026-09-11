@@ -116,7 +116,7 @@ export default function SettingsLicenseSection({
           <>
             <div className="h-2 rounded-full bg-bg-secondary overflow-hidden border border-border-soft">
               <div
-                className={`h-full rounded-full transition-[width] ${canAnalyze ? "bg-accent" : "bg-warning"}`}
+                className={`h-full rounded-full transition-[width] ${canAnalyze ? "bg-button-primary" : "bg-warning"}`}
                 style={{ width: `${trialActive ? pct : 100}%` }}
               />
             </div>

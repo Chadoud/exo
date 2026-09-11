@@ -1,7 +1,7 @@
 name: exosites_mobile
 description: Exo second brain — mobile capture + GO SYNC client
 publish_to: none
-version: 0.2.7+14
+version: 0.2.7+18
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -21,6 +21,7 @@ dependencies:
   app_links: ^6.3.3
   flutter_local_notifications: ^18.0.1
   timezone: ^0.9.4
+  in_app_purchase: ^3.2.3
 
 dev_dependencies:
   flutter_test:
@@ -40,7 +41,7 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   # Solid canvas only — cube draws itself in Flutter (ExoBootScreen).
-  # Matches the light canvas so the handoff to Flutter has no flash.
+  # Matches desktop light `--bg-primary` so the handoff to Flutter has no flash.
   color: "#F0F2F8"
   android_12:
     color: "#F0F2F8"

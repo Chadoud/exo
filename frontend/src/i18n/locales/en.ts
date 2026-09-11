@@ -1864,6 +1864,9 @@ export default {
     accountDeleteDone: "Account deleted. You're signed out.",
     accountDeleteError: "Couldn't delete account.",
     accountDeleteUnavailable: "Account deletion is available in the desktop app when signed in.",
+    accountDeleteStoreWarning:
+      "Deleting Exo does not cancel an App Store or Play subscription. Cancel it in the store first if you want billing to stop.",
+    accountDeleteStoreManage: "Manage store subscription",
     fileOpMode: "File operation",
     copyMode: "Copy (safe)",
     moveMode: "Move",
@@ -3219,6 +3222,8 @@ Override examples:
     cancelScheduledNote: "Your subscription will not renew — access continues until the date above.",
     manageBilling: "Manage billing",
     manageBillingHint: "Update your card, download invoices, or cancel — handled securely by Stripe.",
+    manageStore: "Manage in store",
+    manageStoreHint: "Cancel or change this plan in the App Store or Google Play. Exo cannot change store billing for you.",
   },
   toast: {
     apiConnected: "Connected — app ready",
@@ -3331,7 +3336,7 @@ Override examples:
     always: "Always…",
     alwaysConfirmTitle: "Always run today's briefing?",
     alwaysConfirmBody:
-      "Exo will offer to run your briefing when you open the app. You can change this later in Memories.",
+      "Exo will offer to run your briefing when you open the app. You can change this later in Memory → Brief → Include.",
     alwaysConfirm: "Always",
     loading: "Loading today's briefing…",
     cancel: "Cancel",

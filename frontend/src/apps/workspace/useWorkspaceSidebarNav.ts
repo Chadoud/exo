@@ -8,7 +8,12 @@ import { useTodoSubTab } from "../../hooks/useTodoSubTab";
 import { useSettingsSubTab } from "../../hooks/useSettingsSubTab";
 import { openPrimarySettingsSection, settingsNavTabForEntryId } from "../../utils/settingsNav";
 import type { CaptureSubTab } from "../../utils/captureUi";
-import { queueMemoryNeedsReview, consumeQueuedTodoSubTab, consumeOpenMeetingModal } from "../../utils/deferredPanelActions";
+import {
+  queueMemoryNeedsReview,
+  consumeQueuedMemorySubTab,
+  consumeQueuedTodoSubTab,
+  consumeOpenMeetingModal,
+} from "../../utils/deferredPanelActions";
 import type { MemorySubTab } from "../../utils/memoryUi";
 import { memorySubTabForScrollSection } from "../../utils/memoryUi";
 import type { TodoSubTab } from "../../utils/todoUi";
@@ -164,11 +169,16 @@ export function useWorkspaceSidebarNav({
   }, [requestTab, selectMemorySubTab]);
 
   useEffect(() => {
+    const queuedMemory = consumeQueuedMemorySubTab();
+    if (queuedMemory) {
+      selectMemorySubTab(queuedMemory);
+      requestTab("memories");
+    }
     const queued = consumeQueuedTodoSubTab();
     if (!queued) return;
     selectTodoSubTab(queued);
     requestTab("tasks");
-  }, [requestTab, selectTodoSubTab]);
+  }, [requestTab, selectMemorySubTab, selectTodoSubTab]);
 
   const openProfileFromSidebar = useCallback(() => {
     if (entitlement?.cloudAuthRequired) {

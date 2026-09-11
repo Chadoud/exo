@@ -80,7 +80,14 @@ bash scripts/prepare-release-resources.sh
 node scripts/generate-mac-icns.js
 npm run package:mac
 
-if [ "$UNIVERSAL" = "1" ]; then
+if [ "${EXO_TEST_BUILD:-0}" = "1" ]; then
+  if [ "$UNIVERSAL" = "1" ]; then
+    echo "Done: dist-installer/Exo-Test-universal.dmg (+ Exo-Test.dmg alias)"
+  else
+    NATIVE_ARCH="$([ "$(uname -m)" = arm64 ] && echo arm64 || echo x64)"
+    echo "Done: dist-installer/Exo-Test-${NATIVE_ARCH}.dmg (+ Exo-Test.dmg alias)"
+  fi
+elif [ "$UNIVERSAL" = "1" ]; then
   echo "Done: dist-installer/Exo-universal.dmg (+ Exo.dmg alias)"
 else
   NATIVE_ARCH="$([ "$(uname -m)" = arm64 ] && echo arm64 || echo x64)"

@@ -101,4 +101,12 @@ describe("TaskRow", () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onToggle).not.toHaveBeenCalled();
   });
+
+  it("keeps the Tasks circle while selecting", () => {
+    mount(vi.fn(), vi.fn(), { selecting: true, selected: false });
+    const checkbox = container.querySelector("button");
+    expect(checkbox?.className).toContain("rounded-full");
+    expect(checkbox?.className).not.toContain("rounded-[4px]");
+  });
+
 });

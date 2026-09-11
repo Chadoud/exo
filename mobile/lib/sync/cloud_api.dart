@@ -28,6 +28,72 @@ class CloudApi {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  /// Profile only — never send entitlements or store flags.
+  Future<Map<String, dynamic>> patchMe({
+    String? displayName,
+    String? workRole,
+  }) async {
+    final body = <String, dynamic>{};
+    if (displayName != null) body['display_name'] = displayName;
+    if (workRole != null) body['work_role'] = workRole;
+    final res = await _send(
+      () => _http.patch(
+        Uri.parse('$baseUrl/v1/me'),
+        headers: _headers,
+        body: jsonEncode(body),
+      ),
+    );
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  /// Live store verify — JWT account only. Never log [signedJws] / [purchaseToken].
+  Future<Map<String, dynamic>> verifyStorePurchase({
+    required String platform,
+    String? signedJws,
+    String? purchaseToken,
+  }) {
+    return _postStorePurchase(
+      '/v1/billing/store/verify',
+      platform: platform,
+      signedJws: signedJws,
+      purchaseToken: purchaseToken,
+    );
+  }
+
+  Future<Map<String, dynamic>> restoreStorePurchase({
+    required String platform,
+    String? signedJws,
+    String? purchaseToken,
+  }) {
+    return _postStorePurchase(
+      '/v1/billing/store/restore',
+      platform: platform,
+      signedJws: signedJws,
+      purchaseToken: purchaseToken,
+    );
+  }
+
+  Future<Map<String, dynamic>> _postStorePurchase(
+    String path, {
+    required String platform,
+    String? signedJws,
+    String? purchaseToken,
+  }) async {
+    final body = <String, dynamic>{'platform': platform};
+    if (signedJws != null && signedJws.isNotEmpty) body['signed_jws'] = signedJws;
+    if (purchaseToken != null && purchaseToken.isNotEmpty) {
+      body['purchase_token'] = purchaseToken;
+    }
+    final res = await _send(
+      () => _http.post(
+        Uri.parse('$baseUrl$path'),
+        headers: _headers,
+        body: jsonEncode(body),
+      ),
+    );
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> syncStatus() async {
     final res = await _send(() => _http.get(Uri.parse('$baseUrl/v1/sync/status'), headers: _headers));
     return jsonDecode(res.body) as Map<String, dynamic>;
@@ -135,6 +201,17 @@ class CloudApiException implements Exception {
 
   bool get isUnauthorized => statusCode == 401;
   bool get isNetwork => statusCode == 0;
+
+  bool get isStoreCheckoutRequired {
+    if (statusCode != 402) return false;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map && decoded['detail'] == 'store_checkout_required') {
+        return true;
+      }
+    } catch (_) {}
+    return body.contains('store_checkout_required');
+  }
 
   @override
   String toString() => 'CloudApiException($statusCode): $body';

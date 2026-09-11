@@ -4,6 +4,8 @@ import 'package:exosites_mobile/sync/local_store.dart';
 import 'package:exosites_mobile/sync/pairing_payload.dart';
 import 'package:exosites_mobile/sync/user_messages.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -130,6 +132,55 @@ void main() {
 
     final fail = await applyPairingRaw(config, 'nope');
     expect(fail, PairingParseFailure.invalidJson);
+    expect(config.isPaired, isFalse);
+  });
+
+  test('applyPairingRaw 402 is store checkout, not account mismatch', () async {
+    final storage = MemoryKeyValueStore();
+    final store = LocalBrainStore(databasePath: ':memory:');
+    const token =
+        'eyJhbGciOiJub25lIn0.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAifQ.';
+    final config = MobileSyncConfig(
+      storage: storage,
+      localStore: store,
+      httpClient: MockClient(
+        (_) async => http.Response(
+          '{"detail":"store_checkout_required"}',
+          402,
+        ),
+      ),
+    );
+    await config.hydrate();
+    await config.saveSession(accessToken: token);
+
+    final fail = await applyPairingRaw(config, validV2Json);
+    expect(fail, PairingParseFailure.storeCheckoutRequired);
+    expect(fail, isNot(PairingParseFailure.accountMismatch));
+    expect(config.isPaired, isFalse);
+    expect(storage.contains('exosites_sync_master_key_b64'), isFalse);
+    expect(
+      messageForPairingParseFailure(PairingParseFailure.storeCheckoutRequired),
+      SyncUserMessages.pairingStoreCheckoutRequired,
+    );
+  });
+
+  test('applyPairingRaw 403 stays account mismatch', () async {
+    final storage = MemoryKeyValueStore();
+    final store = LocalBrainStore(databasePath: ':memory:');
+    const token =
+        'eyJhbGciOiJub25lIn0.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAifQ.';
+    final config = MobileSyncConfig(
+      storage: storage,
+      localStore: store,
+      httpClient: MockClient(
+        (_) async => http.Response('{"detail":"forbidden"}', 403),
+      ),
+    );
+    await config.hydrate();
+    await config.saveSession(accessToken: token);
+
+    final fail = await applyPairingRaw(config, validV2Json);
+    expect(fail, PairingParseFailure.accountMismatch);
     expect(config.isPaired, isFalse);
   });
 }

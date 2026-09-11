@@ -30,6 +30,7 @@ export const deSecondBrainLocaleSlice = {
       facts: "Übersicht",
       activity: "Aktivität",
       map: "Karte",
+      brief: "Briefing",
       overviewSubtitle: "Ein schneller Überblick über das Gedächtnis deines Assistenten.",
       activitySubtitle:
         "Opt-in-Bildschirmzusammenfassungen — Bilder werden nach der Verarbeitung gelöscht.",
@@ -169,9 +170,9 @@ export const deSecondBrainLocaleSlice = {
     systemFactBadge: "App-Einstellung",
     systemFacts: {
       startupBriefingGranted:
-        "Tägliches Briefing beim Start ist an — der Assistent darf Ihre Heute-Zusammenfassung beim Sitzungsstart ausführen.",
+        "Gesprochenes Briefing ist an — der Assistent darf es beim Sitzungsstart ausführen.",
       startupBriefingDeclined:
-        "Tägliches Briefing beim Start ist aus — Sie wollten es nicht automatisch ausführen.",
+        "Gesprochenes Briefing ist aus — Sie wollten es nicht automatisch ausführen.",
     },
     categories: {
       identity: "Identität",
@@ -185,7 +186,7 @@ export const deSecondBrainLocaleSlice = {
   },
   tasks: {
     title: "Heute",
-    subtitle: "Briefing, Aufgaben und Kontosync — an einem Ort.",
+    subtitle: "Aufgaben und Kontosync — an einem Ort.",
     syncAccounts: "Sync",
     syncDetails: "Mail und Kalender in diese Liste holen",
     toastNone: "Keine neuen Einträge aus deinen Konten",
@@ -431,6 +432,32 @@ export const deSecondBrainLocaleSlice = {
     toastGenerateFailed: "Übersicht konnte nicht erstellt werden",
     newSuggestions: "{n} neue Vorschläge",
     openTasksToReview: "Öffne Aufgaben zur Prüfung.",
+  },
+  startup: {
+    todaySubtitle: "Die schriftliche Übersicht für heute.",
+    includeSubtitle: "Wähle, was Exo sagt, wenn du startest. Du kannst das jederzeit ändern.",
+    includeLead: "Schalte nur ein, was Exo im gesprochenen Briefing sagen soll.",
+    sectionCalendar: "Kalender",
+    sectionCalendarHint: "Termine im gesprochenen Briefing.",
+    sectionMail: "Mail",
+    sectionMailHint: "Wichtige ungelesene Mails im gesprochenen Briefing.",
+    sectionNews: "Nachrichten",
+    sectionNewsHint: "Ein kurzer Blick auf die Schlagzeilen.",
+    sectionWeather: "Wetter",
+    sectionWeatherHint: "Das Wetter heute in deiner Stadt.",
+    cityLabel: "Stadt",
+    cityPlaceholder: "Genf",
+    offerTitle: "Wenn ich Exo öffne",
+    offerAsk: "Jedes Mal fragen",
+    offerAlways: "Immer starten",
+    offerNever: "Nicht automatisch starten",
+    saveFailed: "Auswahl konnte nicht gespeichert werden.",
+    offline: "Verbinde den Assistentendienst, um das Briefing zu sehen.",
+    offlineDigest: "Die schriftliche Übersicht erscheint, wenn du verbunden bist.",
+    loadFailed: "Auswahl konnte nicht geladen werden.",
+    retry: "Erneut versuchen",
+    loadingInclude: "Lade, was einbezogen wird…",
+    openTodo: "To Do öffnen",
   },
   activity: {
     loadFailed: "Aktivitätsverlauf konnte nicht geladen werden",

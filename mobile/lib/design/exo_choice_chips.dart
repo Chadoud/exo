@@ -14,7 +14,8 @@ class ExoChoiceChips<T> extends StatelessWidget {
   });
 
   final List<(T value, String label)> options;
-  final T selected;
+  /// Null means no chip is selected yet (first-run work chips).
+  final T? selected;
   final ValueChanged<T> onSelected;
 
   @override
@@ -47,11 +48,7 @@ class ExoChoiceChips<T> extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(ExoTheme.radius),
             ),
-            side: BorderSide(
-              color: option.$1 == selected
-                  ? palette.selectedInk
-                  : palette.border,
-            ),
+            side: BorderSide(color: palette.border),
           ),
       ],
     );

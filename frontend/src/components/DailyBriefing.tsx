@@ -21,6 +21,7 @@ import {
 import { osNotify } from "../utils/osNotify";
 import { EntitlementBlockedError } from "../api/client";
 import ProUpgradeCard from "./ProUpgradeCard";
+import { Spinner } from "./Spinner";
 import { useI18n } from "../i18n/I18nContext";
 
 interface Props {
@@ -167,14 +168,14 @@ export default function DailyBriefing({
   return (
     <div className="space-y-3">
       {loadError && (
-        <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">{loadError}</p>
+        <p className="rounded-lg border border-error-line bg-error-soft px-3 py-2 text-xs text-error">{loadError}</p>
       )}
 
       {/* Notification center — hidden on Home (attention inbox handles nudges there). */}
       {showNudges && nudges.length > 0 && (
-        <section className="space-y-1.5 rounded-xl border border-accent/30 bg-accent/5 p-3">
+        <section className="space-y-1.5 rounded-xl border border-border bg-bg-secondary p-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted">
               {t("briefing.suggestions", { n: nudges.length })}
             </p>
             <button
@@ -186,7 +187,7 @@ export default function DailyBriefing({
             </button>
           </div>
           {nudges.map((n) => (
-            <div key={n.id} className="flex items-start gap-2 rounded-lg bg-bg-secondary px-3 py-2">
+            <div key={n.id} className="flex items-start gap-2 rounded-lg bg-bg-card px-3 py-2">
               <button
                 type="button"
                 onClick={() => openNudge(n)}
@@ -217,11 +218,16 @@ export default function DailyBriefing({
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">{t("briefing.dailyDigest")}</p>
             )}
             <p className={`text-sm text-text-primary ${embedded ? "" : "mt-0.5"}`}>
-              {generating || (loading && !digest)
-                ? t("briefing.generating")
-                : digest
-                  ? digest.headline
-                  : t("briefing.noDigest")}
+              {generating || (loading && !digest) ? (
+                <span className="inline-flex items-center gap-2">
+                  <Spinner className="h-4 w-4" />
+                  {t("briefing.generating")}
+                </span>
+              ) : digest ? (
+                digest.headline
+              ) : (
+                t("briefing.noDigest")
+              )}
             </p>
           </div>
           {!proLocked && !loading ? (
@@ -246,7 +252,7 @@ export default function DailyBriefing({
           <div className="space-y-2 border-t border-border pt-3">
             {sections.map((s) => (
               <div key={s.label}>
-                <p className="text-xs font-semibold text-text-secondary">{s.label}</p>
+                <p className="text-xs font-semibold text-muted">{s.label}</p>
                 <ul className="ml-4 list-disc text-xs text-muted">
                   {s.items.map((item, i) => (
                     <li key={i}>{item}</li>

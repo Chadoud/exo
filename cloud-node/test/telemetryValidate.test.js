@@ -16,6 +16,19 @@ test("validateEventsBatch accepts allowlisted events", () => {
   assert.equal(result.rows[0].event_name, "app_started");
 });
 
+test("validateEventsBatch rejects store receipt and work_role props", () => {
+  for (const key of ["purchaseToken", "jws", "receipt", "signed_transaction", "work_role"]) {
+    const result = validateEventsBatch({
+      instance_id: "desktop-abc12345",
+      app_version: "1.0.0",
+      platform: "electron",
+      locale: "en",
+      events: [{ name: "app_started", props: { [key]: "x" } }],
+    });
+    assert.ok("error" in result, key);
+  }
+});
+
 test("validateEventsBatch rejects forbidden props", () => {
   const result = validateEventsBatch({
     instance_id: "desktop-abc12345",

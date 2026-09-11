@@ -276,9 +276,6 @@ export default function TasksPanel({
       hasAnyOpenTasks={hasAnyOpenTasks}
       todayHasTasks={todayHasTasks}
       hasUpcomingContent={hasUpcomingContent}
-      backendOnline={backendOnline}
-      proAllowed={proAllowed}
-      onUpgrade={onUpgrade}
       todayDayGroups={todayDayGroups}
       upcomingDayGroups={upcomingDayGroups}
       somedayTasks={somedayTasks}

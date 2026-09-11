@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:exosites_mobile/app/mobile_sync_config.dart';
+import 'package:exosites_mobile/design/exo_colors.dart';
 import 'package:exosites_mobile/design/exo_status_banner.dart';
 import 'support/product_theme.dart';
 import 'package:exosites_mobile/features/tasks/tasks_screen.dart';
@@ -104,6 +105,20 @@ void main() {
       );
     }
 
+    testWidgets('uses the light canvas and navy primary CTA', (tester) async {
+      await tester.pumpWidget(_app(panel()));
+
+      final context = tester.element(find.byType(SetupSignInPanel));
+      final theme = Theme.of(context);
+      expect(theme.scaffoldBackgroundColor, ExoLightColors.bgPrimary);
+      expect(theme.colorScheme.primary, ExoLightColors.buttonPrimary);
+
+      expect(
+        theme.filledButtonTheme.style?.backgroundColor?.resolve({}),
+        ExoLightColors.buttonPrimary,
+      );
+    });
+
     testWidgets('shows email sign-in and toggles create-account with name fields',
         (tester) async {
       var googleTaps = 0;
@@ -116,15 +131,22 @@ void main() {
       );
 
       expect(find.text(SyncUserMessages.setupTitle), findsOneWidget);
-      expect(find.text(SyncUserMessages.signIn), findsOneWidget);
+      expect(find.text(SyncUserMessages.signIn), findsNWidgets(2)); // tab + CTA
+      expect(
+        find.widgetWithText(FilledButton, SyncUserMessages.signIn),
+        findsOneWidget,
+      );
       expect(find.text(SyncUserMessages.signInWithGoogle), findsOneWidget);
       expect(find.text(SyncUserMessages.signInWithApple), findsOneWidget);
       expect(find.text(SyncUserMessages.firstNameLabel), findsNothing);
 
-      await tester.tap(find.text(SyncUserMessages.noAccountCreate));
+      await tester.tap(find.text(SyncUserMessages.createAccountTab));
       await tester.pump();
       expect(find.text(SyncUserMessages.setupTitleCreate), findsOneWidget);
-      expect(find.text(SyncUserMessages.createAccount), findsOneWidget);
+      expect(
+        find.widgetWithText(FilledButton, SyncUserMessages.createAccount),
+        findsOneWidget,
+      );
       // Cloud registration requires names — fields must exist in create mode.
       expect(find.text(SyncUserMessages.firstNameLabel), findsOneWidget);
       expect(find.text(SyncUserMessages.lastNameLabel), findsOneWidget);
@@ -142,7 +164,9 @@ void main() {
         _app(panel(onEmailLogin: (_, __) async => logins++)),
       );
 
-      await tester.tap(find.text(SyncUserMessages.signIn));
+      await tester.tap(
+        find.widgetWithText(FilledButton, SyncUserMessages.signIn),
+      );
       await tester.pump();
 
       expect(find.text(SyncUserMessages.emailRequired), findsOneWidget);
@@ -163,8 +187,16 @@ void main() {
 
       expect(find.text(SyncUserMessages.waitingForBrowser), findsOneWidget);
       expect(find.text(SyncUserMessages.cloudUnreachable), findsOneWidget);
+      expect(find.text(SyncUserMessages.emailLabel), findsNothing);
+      expect(find.text(SyncUserMessages.signInWithGoogle), findsNothing);
       await tester.tap(find.text(SyncUserMessages.openSignInAgain));
       expect(retried, [SignInProvider.apple]);
+    });
+
+    testWidgets('sign-in step omits pairing hint until link step', (tester) async {
+      await tester.pumpWidget(_app(panel()));
+      expect(find.text(SyncUserMessages.setupPairingHint), findsNothing);
+      expect(find.text(SyncUserMessages.setupSubtitle), findsOneWidget);
     });
 
     testWidgets('Apple is listed before Google on iOS (guideline 4.8)',
@@ -199,7 +231,7 @@ void main() {
         )),
       );
 
-      await tester.tap(find.text(SyncUserMessages.noAccountCreate));
+      await tester.tap(find.text(SyncUserMessages.createAccountTab));
       await tester.pump();
       await tester.enterText(
           find.widgetWithText(TextFormField, SyncUserMessages.firstNameLabel), 'Ada');
@@ -211,7 +243,9 @@ void main() {
       await tester.enterText(
           find.widgetWithText(TextFormField, SyncUserMessages.passwordLabel),
           'longenough');
-      await tester.tap(find.text(SyncUserMessages.createAccount));
+      await tester.tap(
+        find.widgetWithText(FilledButton, SyncUserMessages.createAccount),
+      );
       await tester.pump();
 
       expect(gotFirst, 'Ada');

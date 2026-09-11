@@ -37,6 +37,10 @@
 		<true/>
 		<key>NSCameraUsageDescription</key>
 		<string>Exo uses the camera to scan the desktop pairing QR code.</string>
+		<key>NSCalendarsUsageDescription</key>
+		<string>EXO reads calendars on this iPhone to show your day. Calendar details stay on this phone.</string>
+		<key>NSCalendarsFullAccessUsageDescription</key>
+		<string>EXO reads calendars on this iPhone to show your day. Calendar details stay on this phone.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>
@@ -62,7 +66,7 @@
 		<true/>
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>
-		<!-- App is light only; without this the launch screen follows the
+		<!-- Light canvas only; without this the launch screen follows the
 		     phone's dark mode and the status bar goes light-on-light. -->
 		<key>UIUserInterfaceStyle</key>
 		<string>Light</string>
